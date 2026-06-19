@@ -54,14 +54,6 @@
   .switch input:checked + .slider { background: #34a853; }
   .switch input:checked + .slider:before { transform: translateX(18px); background: #fff; }
 
-  /* ===== Global mode row ===== */
-  .quick-row {
-    display: flex; align-items: center; justify-content: space-between;
-    background: #1a1d24; border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
-  }
-  .quick-row .label { font-weight: 600; font-size: 0.95rem; }
-  .quick-row .desc { color: #9aa0a6; font-size: 0.78rem; margin-top: 2px; }
-
   /* ===== Category card ===== */
   .category { background: #1a1d24; border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
   .category-head {
@@ -188,17 +180,6 @@
     <h1>🔊 InfoHub</h1>
     <div class="sub">Seu briefing pessoal, lido em voz alta.</div>
 
-    <div class="quick-row">
-      <div>
-        <div class="label">⚡ Modo rápido (TDAH)</div>
-        <div class="desc">Lê só remetente + resumo, em vez do conteúdo completo</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="quick-mode-toggle">
-        <span class="slider"></span>
-      </label>
-    </div>
-
     <div id="categories"></div>
   </section>
 
@@ -279,10 +260,10 @@ const CATEGORY_DEFS = [
     id: 'noticias', icon: '📰', title: 'Noticias',
     features: [
       { id: 'keyword', label: 'Notícias por palavra-chave', fields: [
-        { id: 'termo', placeholder: 'Ex: inteligencia artificial' },
+        { id: 'termos', placeholder: 'Até 5, separadas por vírgula. Ex: tecnologia, futebol' },
       ], hint: 'Google News RSS' },
       { id: 'reddit', label: 'Reddit', fields: [
-        { id: 'subreddit', placeholder: 'Ex: brasil' },
+        { id: 'subreddits', placeholder: 'Até 5, separados por vírgula. Ex: brasil, technology' },
       ], hint: 'Posts recentes do subreddit (RSS)' },
     ],
   },
@@ -291,7 +272,7 @@ const CATEGORY_DEFS = [
     features: [
       { id: 'dolar', label: 'Dólar e Bitcoin', fields: [], hint: 'Banco Central + CoinGecko, sem chave' },
       { id: 'acoes', label: 'Ações por ticker', fields: [
-        { id: 'ticker', placeholder: 'Ex: PETR4.SA, AAPL' },
+        { id: 'tickers', placeholder: 'Até 5, separados por vírgula. Ex: PETR4.SA, AAPL' },
       ], hint: 'Yahoo Finance RSS' },
     ],
   },
@@ -299,17 +280,22 @@ const CATEGORY_DEFS = [
     id: 'entretenimento', icon: '🎮', title: 'Entretenimento',
     features: [
       { id: 'esportes', label: 'Esportes (resultado/próximo jogo)', fields: [
-        { id: 'time', placeholder: 'Nome do time, ex: Flamengo' },
+        { id: 'times', placeholder: 'Até 5 times, separados por vírgula. Ex: Flamengo, Real Madrid' },
       ], hint: 'API-Football (free tier)' },
       { id: 'podcasts', label: 'Podcasts (novos episódios)', fields: [
-        { id: 'rss', placeholder: 'URL do RSS do podcast' },
-      ], hint: '' },
+        { id: 'nomes', placeholder: 'Até 5 podcasts, separados por vírgula' },
+      ], hint: 'Busca pelo nome, sem precisar de link de RSS' },
       { id: 'midia', label: 'Filmes e séries (lançamentos)', fields: [
-        { id: 'rss', placeholder: 'URL do RSS de lançamentos' },
-      ], hint: '' },
+        { id: 'nomes', placeholder: 'Até 5 títulos, separados por vírgula' },
+      ], hint: 'Busca pelo nome, sem precisar de link de RSS' },
     ],
   },
 ];
+
+function parseList(value) {
+  if (!value) return [];
+  return value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 5);
+}
 
 /* =========================================================================
    ESTADO / PERSISTÊNCIA
@@ -320,7 +306,6 @@ function loadState() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) {}
   return {
-    quickMode: saved.quickMode || false,
     open: saved.open || {},
     features: saved.features || {}, // { 'pessoal.email': { enabled, fields: {} } }
     briefingLimit: saved.briefingLimit || 5,
@@ -347,12 +332,6 @@ function getFeatureState(catId, featId) {
    RENDER — ABA GRÁTIS
    ========================================================================= */
 const categoriesEl = document.getElementById('categories');
-const quickModeToggle = document.getElementById('quick-mode-toggle');
-quickModeToggle.checked = state.quickMode;
-quickModeToggle.addEventListener('change', () => {
-  state.quickMode = quickModeToggle.checked;
-  saveState();
-});
 
 function renderCategories() {
   categoriesEl.innerHTML = '';
@@ -661,37 +640,61 @@ async function fetchRssTitles(targetUrl) {
   }
 }
 
-async function fetchNewsItems(termo, limit) {
-  if (!termo) return [];
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-  const titles = await fetchRssTitles(url);
-  return titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title }));
+async function fetchNewsItems(termosStr, limit) {
+  const termos = parseList(termosStr);
+  let all = [];
+  for (const termo of termos) {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+    const titles = await fetchRssTitles(url);
+    all = all.concat(titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title })));
+  }
+  return all;
 }
 
-async function fetchRedditItems(subreddit, limit) {
-  if (!subreddit) return [];
-  const url = `https://www.reddit.com/r/${encodeURIComponent(subreddit)}/.rss`;
-  const titles = await fetchRssTitles(url);
-  return titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: `r/${subreddit}`, title, full: `No subreddit ${subreddit}: ${title}.`, quick: title }));
+async function fetchRedditItems(subredditsStr, limit) {
+  const subreddits = parseList(subredditsStr);
+  let all = [];
+  for (const subreddit of subreddits) {
+    const url = `https://www.reddit.com/r/${encodeURIComponent(subreddit)}/.rss`;
+    const titles = await fetchRssTitles(url);
+    all = all.concat(titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: `r/${subreddit}`, title, full: `No subreddit ${subreddit}: ${title}.`, quick: title })));
+  }
+  return all;
 }
 
-async function fetchPodcastItems(rssUrl, limit) {
-  if (!rssUrl) return [];
-  const titles = await fetchRssTitles(rssUrl);
-  return titles.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Podcast', title, full: `Novo episódio de podcast: ${title}.`, quick: title }));
+async function fetchPodcastItems(nomesStr, limit) {
+  const nomes = parseList(nomesStr);
+  let all = [];
+  for (const nome of nomes) {
+    try {
+      const { items, error } = await callEdgeFunction('podcast', { name: nome });
+      if (error) continue;
+      all = all.concat((items || []).slice(0, limit).map(title => ({ category: 'Entretenimento', sub: `Podcast: ${nome}`, title, full: `Novo episódio de ${nome}: ${title}.`, quick: title })));
+    } catch (e) {}
+  }
+  return all;
 }
 
-async function fetchMidiaItems(rssUrl, limit) {
-  if (!rssUrl) return [];
-  const titles = await fetchRssTitles(rssUrl);
-  return titles.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Filmes/Séries', title, full: `Lançamento: ${title}.`, quick: title }));
+async function fetchMidiaItems(nomesStr, limit) {
+  const nomes = parseList(nomesStr);
+  let all = [];
+  for (const nome of nomes) {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(nome + ' lançamento')}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+    const titles = await fetchRssTitles(url);
+    all = all.concat(titles.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: nome, title, full: `Sobre ${nome}: ${title}.`, quick: title })));
+  }
+  return all;
 }
 
-async function fetchStockItems(ticker, limit) {
-  if (!ticker) return [];
-  const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(ticker)}&region=US&lang=en-US`;
-  const titles = await fetchRssTitles(url);
-  return titles.slice(0, limit).map(title => ({ category: 'Financeiro', sub: ticker, title, full: `Sobre ${ticker}: ${title}.`, quick: title }));
+async function fetchStockItems(tickersStr, limit) {
+  const tickers = parseList(tickersStr);
+  let all = [];
+  for (const ticker of tickers) {
+    const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(ticker)}&region=US&lang=en-US`;
+    const titles = await fetchRssTitles(url);
+    all = all.concat(titles.slice(0, limit).map(title => ({ category: 'Financeiro', sub: ticker, title, full: `Sobre ${ticker}: ${title}.`, quick: title })));
+  }
+  return all;
 }
 
 /* =========================================================================
@@ -724,12 +727,16 @@ async function fetchDolarBitcoinItems() {
 /* =========================================================================
    ENTRETENIMENTO — Esportes / Jogos
    ========================================================================= */
-async function fetchEsportesItems(time) {
-  if (!time) return [];
-  try {
-    const { items } = await callEdgeFunction('sports', { time });
-    return items || [];
-  } catch (e) { return []; }
+async function fetchEsportesItems(timesStr) {
+  const times = parseList(timesStr);
+  let all = [];
+  for (const time of times) {
+    try {
+      const { items } = await callEdgeFunction('sports', { time });
+      all = all.concat(items || []);
+    } catch (e) {}
+  }
+  return all;
 }
 
 /* =========================================================================
@@ -839,13 +846,13 @@ async function buildQueue() {
       else if (s.catId === 'pessoal' && s.featId === 'agenda') items = await fetchAgendaItems(limit);
       else if (s.catId === 'pessoal' && s.featId === 'aniversarios') items = await fetchAniversariosItems(limit);
       else if (s.catId === 'clima' && s.featId === 'previsao') items = (await fetchWeatherItems(s.fields.cidade)).items;
-      else if (s.catId === 'noticias' && s.featId === 'keyword') items = await fetchNewsItems(s.fields.termo, limit);
-      else if (s.catId === 'noticias' && s.featId === 'reddit') items = await fetchRedditItems(s.fields.subreddit, limit);
+      else if (s.catId === 'noticias' && s.featId === 'keyword') items = await fetchNewsItems(s.fields.termos, limit);
+      else if (s.catId === 'noticias' && s.featId === 'reddit') items = await fetchRedditItems(s.fields.subreddits, limit);
       else if (s.catId === 'financeiro' && s.featId === 'dolar') items = await fetchDolarBitcoinItems();
-      else if (s.catId === 'financeiro' && s.featId === 'acoes') items = await fetchStockItems(s.fields.ticker, limit);
-      else if (s.catId === 'entretenimento' && s.featId === 'esportes') items = await fetchEsportesItems(s.fields.time);
-      else if (s.catId === 'entretenimento' && s.featId === 'podcasts') items = await fetchPodcastItems(s.fields.rss, limit);
-      else if (s.catId === 'entretenimento' && s.featId === 'midia') items = await fetchMidiaItems(s.fields.rss, limit);
+      else if (s.catId === 'financeiro' && s.featId === 'acoes') items = await fetchStockItems(s.fields.tickers, limit);
+      else if (s.catId === 'entretenimento' && s.featId === 'esportes') items = await fetchEsportesItems(s.fields.times);
+      else if (s.catId === 'entretenimento' && s.featId === 'podcasts') items = await fetchPodcastItems(s.fields.nomes, limit);
+      else if (s.catId === 'entretenimento' && s.featId === 'midia') items = await fetchMidiaItems(s.fields.nomes, limit);
     } catch (e) {
       console.error(`Erro ao buscar ${s.catId}.${s.featId}:`, e);
     }
@@ -889,7 +896,7 @@ function speakQueueItem(i) {
   briefingSub.textContent = `${item.category} · ${i + 1} de ${currentQueue.length}`;
   progressFill.style.width = `${Math.round(((i) / currentQueue.length) * 100)}%`;
 
-  const text = state.quickMode ? (item.quick || item.title) : (item.full || item.title);
+  const text = item.full || item.title;
   const utter = new SpeechSynthesisUtterance(text);
   const voice = getSelectedVoice();
   if (voice) utter.voice = voice;
