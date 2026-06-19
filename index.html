@@ -89,10 +89,6 @@
     background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text);
     border-radius: 8px; padding: 7px 8px; font-size: 0.82rem; font-family: inherit;
   }
-  .limit-row { display: flex; gap: 6px; }
-  .limit-btn { background: var(--c-bg); color: var(--c-text-dim); padding: 6px 10px; border-radius: 8px; font-size: 0.78rem; }
-  .limit-btn.active { background: var(--c-accent-blue); color: var(--c-on-accent); }
-
   /* ===== Category cards ===== */
   .category-card {
     display: flex; align-items: center; gap: 12px; background: var(--c-surface); border-radius: 14px;
@@ -223,20 +219,10 @@
         <div class="label">Velocidade</div>
         <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
       </div>
-      <div class="settings-row">
-        <div class="label">Itens por categoria</div>
-        <div class="limit-row" id="limit-row">
-          <button class="limit-btn" data-limit="1">1</button>
-          <button class="limit-btn" data-limit="3">3</button>
-          <button class="limit-btn active" data-limit="5">5</button>
-          <button class="limit-btn" data-limit="10">10</button>
-          <button class="limit-btn" data-limit="all">Todos</button>
-        </div>
-      </div>
     </div>
 
     <div class="briefing-wrap">
-      <div id="briefing-label">Configure suas categorias na aba Grátis</div>
+      <div id="briefing-label">Configure suas categorias na aba Guia</div>
       <div id="briefing-sub"></div>
       <div class="play-controls">
         <button class="skip-btn" id="prev-btn">⏮</button>
@@ -295,7 +281,7 @@
   <nav class="navbar">
     <div class="navbar-inner">
       <button class="nav-btn active" data-tab="briefing"><span class="ic">▶</span>Meu Dia</button>
-      <button class="nav-btn" data-tab="gratis"><span class="ic">🆓</span>Grátis</button>
+      <button class="nav-btn" data-tab="gratis"><span class="ic">🆓</span>Guia</button>
       <button class="nav-btn" data-tab="premium"><span class="ic">⭐</span>Premium</button>
     </div>
   </nav>
@@ -385,7 +371,7 @@ const CATEGORY_DEFS = [
   {
     id: 'pessoal', icon: '👤', title: 'Pessoal',
     features: [
-      { id: 'email', label: 'Últimos e-mails (resumo)', fields: [], hint: 'Sempre resumo, até 10 mais recentes — conecta em ⚙️ Central de Contas' },
+      { id: 'email', label: 'Últimos e-mails (resumo)', fields: [], hint: 'Sempre resumo, até 5 mais recentes — conecta em ⚙️ Central de Contas' },
       { id: 'agenda', label: 'Agenda de hoje', fields: [], hint: 'Conecta em ⚙️ Central de Contas' },
       { id: 'aniversarios', label: 'Aniversários', fields: [], hint: 'Conecta em ⚙️ Central de Contas' },
     ],
@@ -457,7 +443,6 @@ function loadState() {
   return {
     quickMode: saved.quickMode || false,
     features: saved.features || {}, // { 'pessoal.email': { enabled, fields: {} } }
-    briefingLimit: saved.briefingLimit || 5,
     briefingRate: saved.briefingRate || 1,
     voiceName: saved.voiceName || null,
     activeClimateCity: saved.activeClimateCity || 1,
@@ -502,7 +487,19 @@ const detailView = document.getElementById('gratis-detail-view');
 const categoryCardsEl = document.getElementById('category-cards');
 
 function countEnabled(cat) {
-  return cat.features.filter(f => getFeatureState(cat.id, f.id).enabled).length;
+  let total = 0;
+  cat.features.forEach(f => {
+    const fs = getFeatureState(cat.id, f.id);
+    if (!fs.enabled) return;
+    const buttonFields = f.fields.filter(field => field.kind === 'buttons');
+    if (buttonFields.length === 0) {
+      total += 1;
+      return;
+    }
+    const selectedCount = buttonFields.reduce((sum, field) => sum + (fs.fields[field.id] || []).length, 0);
+    total += selectedCount > 0 ? selectedCount : 1;
+  });
+  return total;
 }
 
 function renderCategoryCards() {
@@ -642,19 +639,6 @@ quickModeToggle.checked = state.quickMode;
 quickModeToggle.addEventListener('change', () => {
   state.quickMode = quickModeToggle.checked;
   saveState();
-});
-
-document.querySelectorAll('.limit-btn').forEach(btn => {
-  if ((state.briefingLimit === 'all' && btn.dataset.limit === 'all') || state.briefingLimit === parseInt(btn.dataset.limit, 10)) {
-    document.querySelectorAll('.limit-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.limit-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.briefingLimit = btn.dataset.limit === 'all' ? 'all' : parseInt(btn.dataset.limit, 10);
-    saveState();
-  });
 });
 
 const briefingRateInput = document.getElementById('briefing-rate');
@@ -873,7 +857,7 @@ function truncateAtBoundary(text, maxLen) {
 
 async function fetchEmailItems() {
   if (!accessToken) return [];
-  const listResp = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&maxResults=10`);
+  const listResp = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&maxResults=5`);
   if (!listResp.messages) return [];
   const items = [];
   for (const m of listResp.messages) {
@@ -1087,7 +1071,7 @@ function getEnabledFeatureSummaries() {
 
 async function buildQueue() {
   const summaries = getEnabledFeatureSummaries();
-  const limit = state.briefingLimit === 'all' ? 50 : state.briefingLimit;
+  const limit = 5;
   let queue = [];
   for (const s of summaries) {
     let items = [];
@@ -1176,7 +1160,7 @@ playCircle.addEventListener('click', async () => {
   }
   const summaries = getEnabledFeatureSummaries();
   if (summaries.length === 0) {
-    briefingLabel.textContent = 'Nenhuma categoria ativa. Vá na aba Grátis e ative algo.';
+    briefingLabel.textContent = 'Nenhuma categoria ativa. Vá na aba Guia e ative algo.';
     return;
   }
   setPlayingVisual(true);
