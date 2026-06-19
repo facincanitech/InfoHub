@@ -149,7 +149,7 @@
   .premium-note { color: var(--c-text-faint); font-size: 0.75rem; text-align: center; margin-top: 10px; }
 
   /* ===== Meu Dia ===== */
-  .briefing-wrap { display: flex; flex-direction: column; align-items: center; padding-top: 30px; }
+  .briefing-wrap { display: flex; flex-direction: column; align-items: center; padding-top: 16px; }
   #briefing-label { font-size: 1.05rem; min-height: 1.4em; text-align: center; margin-bottom: 6px; color: var(--c-text); }
   #briefing-sub { font-size: 0.8rem; color: var(--c-text-dim); min-height: 1.2em; margin-bottom: 24px; text-align: center; }
   .play-circle {
@@ -193,6 +193,38 @@
   <!-- ============ TAB: MEU DIA ============ -->
   <section class="tab active" id="tab-briefing">
     <h1>▶ Meu Dia</h1>
+
+    <div class="settings-panel">
+      <div class="settings-row">
+        <div>
+          <div class="label">⚡ Modo rápido</div>
+          <div class="desc">Lê versões curtas em vez do conteúdo completo</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="quick-mode-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="label">Voz</div>
+        <select id="voice-select"></select>
+      </div>
+      <div class="settings-row">
+        <div class="label">Velocidade</div>
+        <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
+      </div>
+      <div class="settings-row">
+        <div class="label">Itens por categoria</div>
+        <div class="limit-row" id="limit-row">
+          <button class="limit-btn" data-limit="1">1</button>
+          <button class="limit-btn" data-limit="3">3</button>
+          <button class="limit-btn active" data-limit="5">5</button>
+          <button class="limit-btn" data-limit="10">10</button>
+          <button class="limit-btn" data-limit="all">Todos</button>
+        </div>
+      </div>
+    </div>
+
     <div class="briefing-wrap">
       <div id="briefing-label">Configure suas categorias na aba Grátis</div>
       <div id="briefing-sub"></div>
@@ -206,37 +238,6 @@
     <div id="gratis-list-view">
       <h1>🔊 InfoHub</h1>
       <div class="sub">Configure o que você quer ouvir.</div>
-
-      <div class="settings-panel">
-        <div class="settings-row">
-          <div>
-            <div class="label">⚡ Modo rápido</div>
-            <div class="desc">Lê versões curtas em vez do conteúdo completo</div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="quick-mode-toggle">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="settings-row">
-          <div class="label">Voz</div>
-          <select id="voice-select"></select>
-        </div>
-        <div class="settings-row">
-          <div class="label">Velocidade</div>
-          <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
-        </div>
-        <div class="settings-row">
-          <div class="label">Itens por categoria</div>
-          <div class="limit-row" id="limit-row">
-            <button class="limit-btn" data-limit="1">1</button>
-            <button class="limit-btn" data-limit="3">3</button>
-            <button class="limit-btn active" data-limit="5">5</button>
-            <button class="limit-btn" data-limit="10">10</button>
-            <button class="limit-btn" data-limit="all">Todos</button>
-          </div>
-        </div>
-      </div>
 
       <div id="category-cards"></div>
     </div>
@@ -953,16 +954,36 @@ async function fetchRedditItems(subredditsStr, limit) {
   return all;
 }
 
+async function fetchMergedNewsTitles(queries, limit) {
+  const seen = new Set();
+  let all = [];
+  for (const q of queries) {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+    const titles = await fetchRssTitles(url);
+    for (const title of titles) {
+      if (seen.has(title)) continue;
+      seen.add(title);
+      all.push(title);
+      if (all.length >= limit) return all;
+    }
+  }
+  return all;
+}
+
 async function fetchFilmesItems(limit) {
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent('filmes em cartaz cinema Brasil')}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-  const titles = await fetchRssTitles(url);
-  return titles.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Filmes', title, full: `Nos cinemas: ${title}.`, quick: title }));
+  const titles = await fetchMergedNewsTitles([
+    'filmes em cartaz cinema Brasil',
+    'filme mais visto streaming hoje',
+  ], limit);
+  return titles.map(title => ({ category: 'Entretenimento', sub: 'Filmes', title, full: `Sobre filmes: ${title}.`, quick: title }));
 }
 
 async function fetchSeriesItems(limit) {
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent('séries lançamento streaming')}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-  const titles = await fetchRssTitles(url);
-  return titles.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Séries', title, full: `Lançamento de série: ${title}.`, quick: title }));
+  const titles = await fetchMergedNewsTitles([
+    'séries lançamento streaming',
+    'série mais assistida agora novo episódio temporada',
+  ], limit);
+  return titles.map(title => ({ category: 'Entretenimento', sub: 'Séries', title, full: `Sobre séries: ${title}.`, quick: title }));
 }
 
 async function fetchMusicasItems(generos, limit) {
