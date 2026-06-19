@@ -27,23 +27,27 @@ Deno.serve(async (req: Request) => {
 
   try {
     const seen = new Set<string>();
-    const items: string[] = [];
+    const items: { title: string; overview: string }[] = [];
 
     if (type === 'filmes') {
       const nowPlaying = await tmdbGet('/movie/now_playing?region=BR', apiKey);
       const trending = await tmdbGet('/trending/movie/week', apiKey);
       for (const m of [...(nowPlaying.results || []), ...(trending.results || [])]) {
+        if (seen.has(m.title)) continue;
+        seen.add(m.title);
         const year = (m.release_date || '').slice(0, 4);
         const title = year ? `${m.title} (${year})` : m.title;
-        if (!seen.has(m.title)) { seen.add(m.title); items.push(title); }
+        items.push({ title, overview: m.overview || '' });
       }
     } else if (type === 'series') {
       const onTheAir = await tmdbGet('/tv/on_the_air', apiKey);
       const trending = await tmdbGet('/trending/tv/week', apiKey);
       for (const s of [...(onTheAir.results || []), ...(trending.results || [])]) {
+        if (seen.has(s.name)) continue;
+        seen.add(s.name);
         const year = (s.first_air_date || '').slice(0, 4);
         const title = year ? `${s.name} (${year})` : s.name;
-        if (!seen.has(s.name)) { seen.add(s.name); items.push(title); }
+        items.push({ title, overview: s.overview || '' });
       }
     } else {
       return Response.json({ items: [], error: 'Tipo inválido, use filmes ou series.' }, { headers: CORS_HEADERS });

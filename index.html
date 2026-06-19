@@ -856,6 +856,15 @@ function getHeader(headers, name) {
   return h ? h.value : '';
 }
 
+function truncateAtBoundary(text, maxLen) {
+  if (text.length <= maxLen) return text;
+  const slice = text.slice(0, maxLen);
+  const lastSentenceEnd = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('! '), slice.lastIndexOf('? '));
+  if (lastSentenceEnd > maxLen * 0.4) return slice.slice(0, lastSentenceEnd + 1);
+  const lastSpace = slice.lastIndexOf(' ');
+  return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice) + '.';
+}
+
 async function fetchEmailItems() {
   if (!accessToken) return [];
   const listResp = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&maxResults=10`);
@@ -968,7 +977,10 @@ async function fetchFilmesItems(limit) {
   try {
     const { items, error } = await callEdgeFunction('media', { type: 'filmes' });
     if (error) return [];
-    return (items || []).slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Filmes', title, full: `Em cartaz/em alta: ${title}.`, quick: title }));
+    return (items || []).slice(0, limit).map(({ title, overview }) => {
+      const full = overview ? `${title}. ${truncateAtBoundary(overview, 400)}` : `${title}.`;
+      return { category: 'Entretenimento', sub: 'Filmes', title, full, quick: title };
+    });
   } catch (e) { return []; }
 }
 
@@ -976,7 +988,10 @@ async function fetchSeriesItems(limit) {
   try {
     const { items, error } = await callEdgeFunction('media', { type: 'series' });
     if (error) return [];
-    return (items || []).slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Séries', title, full: `No ar/em alta: ${title}.`, quick: title }));
+    return (items || []).slice(0, limit).map(({ title, overview }) => {
+      const full = overview ? `${title}. ${truncateAtBoundary(overview, 400)}` : `${title}.`;
+      return { category: 'Entretenimento', sub: 'Séries', title, full, quick: title };
+    });
   } catch (e) { return []; }
 }
 
