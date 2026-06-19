@@ -268,7 +268,9 @@
       </div>
 
       <button id="subscribe-btn">Assinar com Mercado Pago</button>
-      <div class="premium-note">Pagamento via Mercado Pago.</div>
+      <button id="check-subscription-btn" style="background: var(--c-surface); color: var(--c-text); margin-top: 10px; width: 100%; padding: 12px;">Já assinei, verificar</button>
+      <div class="result" id="subscribe-result" style="text-align:center; margin-top: 8px;"></div>
+      <div class="premium-note">Pagamento via Mercado Pago. Conecte sua conta Google (⚙️ Central de Contas) antes — é assim que identificamos sua assinatura.</div>
     </div>
 
     <div id="premium-unlocked" style="display:none;">
@@ -373,6 +375,7 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/contacts.readonly',
   'https://www.googleapis.com/auth/youtube.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
 // Preencha quando criar o app em https://developer.spotify.com/dashboard
@@ -385,7 +388,9 @@ const MERCADOLIVRE_CLIENT_ID = '';
 const SUPABASE_URL = 'https://xpscjwcqgdldwtmbbzua.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_1bC_g0W2cQ_Sx2b968VFtg_UkeTRUV0';
 
-const MERCADOPAGO_SUBSCRIBE_LINK = '';
+// Chave pública do Mercado Pago — segura pra ficar no navegador (equivalente a uma
+// publishable key). O access token de verdade fica só no secret das Edge Functions.
+const MERCADOPAGO_PUBLIC_KEY = 'APP_USR-b5d01291-3875-4991-a80b-e39753c9748c';
 
 /* =========================================================================
    MODELO DE CATEGORIAS / FEATURES
@@ -736,6 +741,16 @@ async function googleApiFetch(url) {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) throw new Error(`Google API error ${res.status}`);
   return res.json();
+}
+
+async function getGoogleEmail() {
+  if (!accessToken) return null;
+  try {
+    const info = await googleApiFetch('https://www.googleapis.com/oauth2/v2/userinfo');
+    return info.email || null;
+  } catch (e) {
+    return null;
+  }
 }
 
 const gearBtn = document.getElementById('gear-btn');
@@ -1230,17 +1245,44 @@ function renderPremiumLock() {
 }
 renderPremiumLock();
 
-document.getElementById('subscribe-btn').addEventListener('click', () => {
-  if (MERCADOPAGO_SUBSCRIBE_LINK) {
-    window.location.href = MERCADOPAGO_SUBSCRIBE_LINK;
-  } else {
-    // TODO: trocar por verificação real (webhook do Mercado Pago grava em
-    // public.users no Supabase, app confere users_premium_status por e-mail).
-    // Por enquanto, sem link configurado, desbloqueia localmente como demo.
-    alert('Assinatura ainda não configurada — desbloqueando localmente como demonstração.');
-    state.premiumUnlocked = true;
-    saveState();
-    renderPremiumLock();
+document.getElementById('subscribe-btn').addEventListener('click', async () => {
+  const resultEl = document.getElementById('subscribe-result');
+  const email = await getGoogleEmail();
+  if (!email) {
+    resultEl.textContent = 'Conecte sua conta Google em ⚙️ Central de Contas primeiro — usamos o e-mail dela pra identificar sua assinatura.';
+    return;
+  }
+  resultEl.textContent = 'Criando assinatura...';
+  try {
+    const redirectUri = window.location.origin + window.location.pathname;
+    const { init_point, error } = await callEdgeFunction('subscription', { email, back_url: redirectUri });
+    if (error) { resultEl.textContent = error; return; }
+    window.location.href = init_point;
+  } catch (e) {
+    resultEl.textContent = 'Erro ao criar assinatura: ' + e.message;
+  }
+});
+
+document.getElementById('check-subscription-btn').addEventListener('click', async () => {
+  const resultEl = document.getElementById('subscribe-result');
+  const email = await getGoogleEmail();
+  if (!email) {
+    resultEl.textContent = 'Conecte sua conta Google em ⚙️ Central de Contas primeiro.';
+    return;
+  }
+  resultEl.textContent = 'Verificando assinatura...';
+  try {
+    const { isPremiumActive, error } = await callEdgeFunction('premium-status', { email });
+    if (error) { resultEl.textContent = error; return; }
+    if (isPremiumActive) {
+      state.premiumUnlocked = true;
+      saveState();
+      renderPremiumLock();
+    } else {
+      resultEl.textContent = 'Nenhuma assinatura ativa encontrada pra esse e-mail ainda.';
+    }
+  } catch (e) {
+    resultEl.textContent = 'Erro ao verificar: ' + e.message;
   }
 });
 
