@@ -252,8 +252,6 @@ const GOOGLE_SCOPES = [
 const SUPABASE_URL = 'https://xpscjwcqgdldwtmbbzua.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_1bC_g0W2cQ_Sx2b968VFtg_UkeTRUV0';
 
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-
 // Premium (ainda não implementado: checagem de flag fica pra depois)
 const MERCADOPAGO_SUBSCRIBE_LINK = '';
 
@@ -574,6 +572,15 @@ function getHeader(headers, name) {
   return h ? h.value : '';
 }
 
+function truncateAtBoundary(text, maxLen) {
+  if (text.length <= maxLen) return text;
+  const slice = text.slice(0, maxLen);
+  const lastSentenceEnd = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('! '), slice.lastIndexOf('? '));
+  if (lastSentenceEnd > maxLen * 0.4) return slice.slice(0, lastSentenceEnd + 1);
+  const lastSpace = slice.lastIndexOf(' ');
+  return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice) + '.';
+}
+
 async function fetchEmailItems(limit) {
   if (!accessToken) return [];
   const listResp = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&maxResults=${limit}`);
@@ -585,7 +592,7 @@ async function fetchEmailItems(limit) {
     const from = getHeader(headers, 'From').replace(/<.*?>/, '').trim();
     const subject = getHeader(headers, 'Subject') || '(sem assunto)';
     const snippet = msg.snippet || '';
-    const fullBody = cleanBody(stripHtml(extractBody(msg.payload))).slice(0, 600);
+    const fullBody = truncateAtBoundary(cleanBody(stripHtml(extractBody(msg.payload))), 900);
     items.push({
       category: 'Pessoal', sub: 'E-mail',
       title: `${from} — ${subject}`,
@@ -643,66 +650,48 @@ async function fetchWeatherItems(local) {
 }
 
 /* =========================================================================
-   RSS HELPERS (via proxy CORS)
+   RSS — via Supabase Edge Function (busca no servidor, sem CORS/proxy)
    ========================================================================= */
-async function fetchRss(url) {
-  const res = await fetch(CORS_PROXY + encodeURIComponent(url));
-  const text = await res.text();
-  const xml = new DOMParser().parseFromString(text, 'text/xml');
-  return Array.from(xml.querySelectorAll('item'));
-}
-
-function rssText(item, tag) {
-  const el = item.querySelector(tag);
-  return el ? el.textContent.trim() : '';
+async function fetchRssTitles(targetUrl) {
+  try {
+    const { items } = await callEdgeFunction('rss', { url: targetUrl });
+    return items || [];
+  } catch (e) {
+    return [];
+  }
 }
 
 async function fetchNewsItems(termo, limit) {
   if (!termo) return [];
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-  const entries = await fetchRss(url).catch(() => []);
-  return entries.slice(0, limit).map(item => {
-    const title = rssText(item, 'title');
-    return { category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title };
-  });
+  const titles = await fetchRssTitles(url);
+  return titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title }));
 }
 
 async function fetchRedditItems(subreddit, limit) {
   if (!subreddit) return [];
   const url = `https://www.reddit.com/r/${encodeURIComponent(subreddit)}/.rss`;
-  const entries = await fetchRss(url).catch(() => []);
-  return entries.slice(0, limit).map(item => {
-    const title = rssText(item, 'title');
-    return { category: 'Noticias', sub: `r/${subreddit}`, title, full: `No subreddit ${subreddit}: ${title}.`, quick: title };
-  });
+  const titles = await fetchRssTitles(url);
+  return titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: `r/${subreddit}`, title, full: `No subreddit ${subreddit}: ${title}.`, quick: title }));
 }
 
 async function fetchPodcastItems(rssUrl, limit) {
   if (!rssUrl) return [];
-  const entries = await fetchRss(rssUrl).catch(() => []);
-  return entries.slice(0, limit).map(item => {
-    const title = rssText(item, 'title');
-    return { category: 'Entretenimento', sub: 'Podcast', title, full: `Novo episódio de podcast: ${title}.`, quick: title };
-  });
+  const titles = await fetchRssTitles(rssUrl);
+  return titles.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Podcast', title, full: `Novo episódio de podcast: ${title}.`, quick: title }));
 }
 
 async function fetchMidiaItems(rssUrl, limit) {
   if (!rssUrl) return [];
-  const entries = await fetchRss(rssUrl).catch(() => []);
-  return entries.slice(0, limit).map(item => {
-    const title = rssText(item, 'title');
-    return { category: 'Entretenimento', sub: 'Filmes/Séries', title, full: `Lançamento: ${title}.`, quick: title };
-  });
+  const titles = await fetchRssTitles(rssUrl);
+  return titles.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Filmes/Séries', title, full: `Lançamento: ${title}.`, quick: title }));
 }
 
 async function fetchStockItems(ticker, limit) {
   if (!ticker) return [];
   const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(ticker)}&region=US&lang=en-US`;
-  const entries = await fetchRss(url).catch(() => []);
-  return entries.slice(0, limit).map(item => {
-    const title = rssText(item, 'title');
-    return { category: 'Financeiro', sub: ticker, title, full: `Sobre ${ticker}: ${title}.`, quick: title };
-  });
+  const titles = await fetchRssTitles(url);
+  return titles.slice(0, limit).map(title => ({ category: 'Financeiro', sub: ticker, title, full: `Sobre ${ticker}: ${title}.`, quick: title }));
 }
 
 /* =========================================================================
