@@ -166,6 +166,7 @@
   .history-item { background: var(--c-surface); border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; }
   .history-item .cat { color: var(--c-text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
   .history-item.current { border: 1px solid var(--c-accent-blue); }
+  .history-link { display: block; margin-top: 4px; color: var(--c-accent-blue); font-size: 0.78rem; text-decoration: none; }
 
   /* ===== Central de Contas (overlay) ===== */
   .overlay { position: fixed; inset: 0; background: var(--c-bg); z-index: 100; display: none; overflow-y: auto; }
@@ -1220,13 +1221,31 @@ async function fetchRssTitles(targetUrl) {
   }
 }
 
+async function fetchNewsItemsFallback(termo, limit) {
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+  const titles = await fetchRssTitles(url);
+  return titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title }));
+}
+
 async function fetchNewsItems(termosStr, limit) {
   const termos = parseList(termosStr);
   let all = [];
   for (const termo of termos) {
-    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-    const titles = await fetchRssTitles(url);
-    all = all.concat(titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title })));
+    try {
+      const { items, error } = await callEdgeFunction('news', { q: termo });
+      if (error) {
+        console.error('news:', error);
+        all = all.concat(await fetchNewsItemsFallback(termo, limit));
+        continue;
+      }
+      all = all.concat((items || []).slice(0, limit).map(({ title, description, link }) => {
+        const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
+        return { category: 'Noticias', sub: termo, title, full, quick: title, link };
+      }));
+    } catch (e) {
+      console.error('news:', e);
+      all = all.concat(await fetchNewsItemsFallback(termo, limit));
+    }
   }
   return all;
 }
@@ -1387,7 +1406,24 @@ function renderHistory(currentIndex) {
     const item = currentQueue[i];
     const div = document.createElement('div');
     div.className = 'history-item' + (i === currentIndex ? ' current' : '');
-    div.innerHTML = `<div class="cat">${item.category}${item.sub ? ' · ' + item.sub : ''}</div>${item.title}`;
+
+    const catEl = document.createElement('div');
+    catEl.className = 'cat';
+    catEl.textContent = item.category + (item.sub ? ' · ' + item.sub : '');
+    div.appendChild(catEl);
+
+    div.appendChild(document.createTextNode(item.title));
+
+    if (item.link) {
+      const linkEl = document.createElement('a');
+      linkEl.href = item.link;
+      linkEl.target = '_blank';
+      linkEl.rel = 'noopener noreferrer';
+      linkEl.className = 'history-link';
+      linkEl.textContent = '🔗 Abrir notícia';
+      div.appendChild(linkEl);
+    }
+
     historyListEl.appendChild(div);
   }
   historyListEl.scrollTop = historyListEl.scrollHeight;
