@@ -319,17 +319,22 @@
     </div>
 
     <div class="account-tabs">
-      <button class="account-tab-btn active" data-account="google">Google</button>
+      <button class="account-tab-btn active" data-account="google">Email</button>
       <button class="account-tab-btn" data-account="spotify">Spotify</button>
       <button class="account-tab-btn" data-account="youtube">YouTube</button>
       <button class="account-tab-btn" data-account="tema">Tema</button>
     </div>
 
     <div class="account-panel active" id="account-google">
-      <div class="account-card">
+      <div class="account-card" style="margin-bottom: 12px;">
         <div class="status"><span class="status-dot" id="google-status-dot"></span><span id="google-status-text">Desconectado</span></div>
-        <div class="scope-list">Acesso a: e-mail, agenda e contatos (aniversários).</div>
+        <div class="scope-list">Google — também dá acesso a agenda e contatos (aniversários).</div>
         <button class="btn-connect" id="google-connect-btn">Entrar com Google</button>
+      </div>
+      <div class="account-card">
+        <div class="status"><span class="status-dot" id="outlook-status-dot"></span><span id="outlook-status-text">Desconectado</span></div>
+        <div class="scope-list">Hotmail / Outlook.</div>
+        <button class="btn-connect" id="outlook-connect-btn">Entrar com Hotmail</button>
       </div>
     </div>
 
@@ -451,6 +456,10 @@ const SPOTIFY_SCOPES = 'user-library-read user-top-read playlist-read-private';
 // Preencha quando criar o app em https://developers.mercadolivre.com.br
 const MERCADOLIVRE_CLIENT_ID = '';
 
+// Preencha quando criar o app (tipo SPA) em https://portal.azure.com
+const OUTLOOK_CLIENT_ID = '';
+const OUTLOOK_SCOPES = 'openid email Mail.Read offline_access';
+
 const SUPABASE_URL = 'https://xpscjwcqgdldwtmbbzua.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_1bC_g0W2cQ_Sx2b968VFtg_UkeTRUV0';
 
@@ -465,7 +474,9 @@ const CATEGORY_DEFS = [
   {
     id: 'pessoal', icon: '👤', title: 'Pessoal',
     features: [
-      { id: 'email', label: 'Últimos e-mails (resumo)', fields: [], hint: 'Sempre resumo, até 5 mais recentes — conecta em ⚙️ Central de Contas' },
+      { id: 'email', label: 'Últimos e-mails (resumo)', fields: [
+        { id: 'contas', kind: 'buttons', options: ['Google', 'Hotmail'] },
+      ], hint: 'Sempre resumo, até 5 mais recentes de cada conta selecionada — conecta em ⚙️ Central de Contas' },
       { id: 'agenda', label: 'Agenda de hoje', fields: [], hint: 'Conecta em ⚙️ Central de Contas' },
       { id: 'aniversarios', label: 'Aniversários', fields: [], hint: 'Conecta em ⚙️ Central de Contas' },
     ],
@@ -922,6 +933,12 @@ function updateAccountsUI() {
   document.getElementById('spotify-status-text').textContent = spotifyOn ? 'Conectado' : 'Desconectado';
   document.getElementById('spotify-connect-btn').textContent = spotifyOn ? 'Desconectar' : 'Entrar com Spotify';
   document.getElementById('spotify-connect-btn').className = spotifyOn ? 'btn-disconnect' : 'btn-connect';
+
+  const outlookOn = !!localStorage.getItem('infohub_outlook_token');
+  document.getElementById('outlook-status-dot').classList.toggle('on', outlookOn);
+  document.getElementById('outlook-status-text').textContent = outlookOn ? 'Conectado' : 'Desconectado';
+  document.getElementById('outlook-connect-btn').textContent = outlookOn ? 'Desconectar' : 'Entrar com Hotmail';
+  document.getElementById('outlook-connect-btn').className = outlookOn ? 'btn-disconnect' : 'btn-connect';
 }
 
 document.getElementById('google-connect-btn').addEventListener('click', () => {
@@ -966,39 +983,87 @@ async function startSpotifyLogin() {
     code_challenge_method: 'S256',
     code_challenge: challenge,
     scope: SPOTIFY_SCOPES,
+    state: 'spotify',
   });
   window.location.href = `https://accounts.spotify.com/authorize?${params}`;
 }
 
-async function handleSpotifyRedirect() {
+async function startOutlookLogin() {
+  if (!OUTLOOK_CLIENT_ID) {
+    alert('Configure o OUTLOOK_CLIENT_ID no topo do index.html primeiro (crie o app tipo SPA em portal.azure.com).');
+    return;
+  }
+  const verifier = randomString(64);
+  localStorage.setItem('infohub_outlook_verifier', verifier);
+  const challenge = base64UrlEncode(await sha256(verifier));
+  const redirectUri = window.location.origin + window.location.pathname;
+  const params = new URLSearchParams({
+    client_id: OUTLOOK_CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: redirectUri,
+    response_mode: 'query',
+    code_challenge_method: 'S256',
+    code_challenge: challenge,
+    scope: OUTLOOK_SCOPES,
+    state: 'outlook',
+  });
+  window.location.href = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`;
+}
+
+async function handleOAuthRedirect() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
+  const state = params.get('state');
   if (!code) return;
-  const verifier = localStorage.getItem('infohub_spotify_verifier');
-  if (!verifier) return;
   const redirectUri = window.location.origin + window.location.pathname;
-  try {
-    const res = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: SPOTIFY_CLIENT_ID,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: redirectUri,
-        code_verifier: verifier,
-      }),
-    });
-    const data = await res.json();
-    if (data.access_token) {
-      localStorage.setItem('infohub_spotify_token', data.access_token);
+
+  if (state === 'outlook') {
+    const verifier = localStorage.getItem('infohub_outlook_verifier');
+    if (verifier) {
+      try {
+        const res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: OUTLOOK_CLIENT_ID,
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: redirectUri,
+            code_verifier: verifier,
+            scope: OUTLOOK_SCOPES,
+          }),
+        });
+        const data = await res.json();
+        if (data.access_token) localStorage.setItem('infohub_outlook_token', data.access_token);
+      } catch (e) {
+        console.error('Falha no login do Outlook:', e);
+      }
     }
-  } catch (e) {
-    console.error('Falha no login do Spotify:', e);
+  } else {
+    const verifier = localStorage.getItem('infohub_spotify_verifier');
+    if (verifier) {
+      try {
+        const res = await fetch('https://accounts.spotify.com/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: SPOTIFY_CLIENT_ID,
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: redirectUri,
+            code_verifier: verifier,
+          }),
+        });
+        const data = await res.json();
+        if (data.access_token) localStorage.setItem('infohub_spotify_token', data.access_token);
+      } catch (e) {
+        console.error('Falha no login do Spotify:', e);
+      }
+    }
   }
   window.history.replaceState({}, document.title, redirectUri);
 }
-handleSpotifyRedirect();
+handleOAuthRedirect();
 
 document.getElementById('spotify-connect-btn').addEventListener('click', () => {
   if (localStorage.getItem('infohub_spotify_token')) {
@@ -1006,6 +1071,15 @@ document.getElementById('spotify-connect-btn').addEventListener('click', () => {
     updateAccountsUI();
   } else {
     startSpotifyLogin();
+  }
+});
+
+document.getElementById('outlook-connect-btn').addEventListener('click', () => {
+  if (localStorage.getItem('infohub_outlook_token')) {
+    localStorage.removeItem('infohub_outlook_token');
+    updateAccountsUI();
+  } else {
+    startOutlookLogin();
   }
 });
 
@@ -1031,7 +1105,7 @@ function truncateAtBoundary(text, maxLen) {
   return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice) + '.';
 }
 
-async function fetchEmailItems() {
+async function fetchGmailEmailItems() {
   if (!accessToken) return [];
   const listResp = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&maxResults=5`);
   if (!listResp.messages) return [];
@@ -1042,10 +1116,39 @@ async function fetchEmailItems() {
     const from = getHeader(headers, 'From').replace(/<.*?>/, '').trim();
     const subject = getHeader(headers, 'Subject') || '(sem assunto)';
     const snippet = msg.snippet || '';
-    const text = `E-mail de ${from}, assunto: ${subject}. ${snippet}`;
-    items.push({ category: 'Pessoal', sub: 'E-mail', title: `${from} — ${subject}`, full: text, quick: text });
+    const text = `E-mail (Google) de ${from}, assunto: ${subject}. ${snippet}`;
+    items.push({ category: 'Pessoal', sub: 'E-mail (Google)', title: `${from} — ${subject}`, full: text, quick: text });
   }
   return items;
+}
+
+async function fetchOutlookEmailItems() {
+  const token = localStorage.getItem('infohub_outlook_token');
+  if (!token) return [];
+  try {
+    const resp = await fetch('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=5&$select=from,subject,bodyPreview', {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.json());
+    if (!resp.value) return [];
+    return resp.value.map(msg => {
+      const from = (msg.from && msg.from.emailAddress && msg.from.emailAddress.name) || 'Desconhecido';
+      const subject = msg.subject || '(sem assunto)';
+      const preview = msg.bodyPreview || '';
+      const text = `E-mail (Hotmail) de ${from}, assunto: ${subject}. ${preview}`;
+      return { category: 'Pessoal', sub: 'E-mail (Hotmail)', title: `${from} — ${subject}`, full: text, quick: text };
+    });
+  } catch (e) {
+    console.error('Outlook email:', e);
+    return [];
+  }
+}
+
+async function fetchEmailItems(contas) {
+  const selected = contas && contas.length ? contas : ['Google', 'Hotmail'];
+  let all = [];
+  if (selected.includes('Google')) all = all.concat(await fetchGmailEmailItems());
+  if (selected.includes('Hotmail')) all = all.concat(await fetchOutlookEmailItems());
+  return all;
 }
 
 async function fetchAgendaItems(limit) {
@@ -1243,7 +1346,7 @@ async function buildQueue() {
   for (const s of summaries) {
     let items = [];
     try {
-      if (s.catId === 'pessoal' && s.featId === 'email') items = await fetchEmailItems();
+      if (s.catId === 'pessoal' && s.featId === 'email') items = await fetchEmailItems(s.fields.contas);
       else if (s.catId === 'pessoal' && s.featId === 'agenda') items = await fetchAgendaItems(limit);
       else if (s.catId === 'pessoal' && s.featId === 'aniversarios') items = await fetchAniversariosItems(limit);
       else if (s.catId === 'clima' && s.featId === 'previsao') items = (await fetchWeatherItems(s.fields.cidade1, s.fields.cidade2)).items;
