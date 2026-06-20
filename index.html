@@ -1494,21 +1494,28 @@ async function fetchNewsItemsFallback(termo, limit) {
 async function fetchNewsItems(termosStr, limit) {
   const termos = parseList(termosStr);
   let all = [];
+  const seenTitles = new Set();
   for (const termo of termos) {
+    let termoItems = [];
     try {
       const { items, error } = await callEdgeFunction('news', { q: termo });
       if (error) {
         console.error('news:', error);
-        all = all.concat(await fetchNewsItemsFallback(termo, limit));
-        continue;
+        termoItems = await fetchNewsItemsFallback(termo, limit);
+      } else {
+        termoItems = (items || []).slice(0, limit).map(({ title, description, link }) => {
+          const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
+          return { category: 'Noticias', sub: termo, title, full, quick: title, link };
+        });
       }
-      all = all.concat((items || []).slice(0, limit).map(({ title, description, link }) => {
-        const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
-        return { category: 'Noticias', sub: termo, title, full, quick: title, link };
-      }));
     } catch (e) {
       console.error('news:', e);
-      all = all.concat(await fetchNewsItemsFallback(termo, limit));
+      termoItems = await fetchNewsItemsFallback(termo, limit);
+    }
+    for (const item of termoItems) {
+      if (seenTitles.has(item.title)) continue;
+      seenTitles.add(item.title);
+      all.push(item);
     }
   }
   return all;
