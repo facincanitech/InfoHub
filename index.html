@@ -1402,7 +1402,7 @@ function setPlayingVisual(playing) {
 
 function renderHistory(currentIndex) {
   historyListEl.innerHTML = '';
-  for (let i = 0; i <= currentIndex && i < currentQueue.length; i++) {
+  for (let i = Math.min(currentIndex, currentQueue.length - 1); i >= 0; i--) {
     const item = currentQueue[i];
     const div = document.createElement('div');
     div.className = 'history-item' + (i === currentIndex ? ' current' : '');
@@ -1426,7 +1426,7 @@ function renderHistory(currentIndex) {
 
     historyListEl.appendChild(div);
   }
-  historyListEl.scrollTop = historyListEl.scrollHeight;
+  historyListEl.scrollTop = 0;
 }
 
 function speakQueueItem(i) {
