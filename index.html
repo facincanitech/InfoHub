@@ -632,7 +632,9 @@ const CATEGORY_DEFS = [
   {
     id: 'midias', icon: '📺', title: 'Mídias',
     features: [
-      { id: 'youtube', label: 'Canais favoritos (YouTube)', fields: [], hint: 'Vídeo mais recente dos canais que você segue — conecta em ⚙️ Central de Contas' },
+      { id: 'youtube', label: 'Canais do YouTube', fields: [
+        { id: 'canais', kind: 'tags', placeholder: 'Nome do canal — digite e aperte Enter (até 5)' },
+      ], hint: 'Vídeo mais recente de cada canal. Cuidado com erro de digitação — se o nome não bater certinho, o canal não é encontrado.' },
       { id: 'podcasts', label: 'Podcasts', fields: [
         { id: 'nomes', kind: 'tags', placeholder: 'Digite e aperte Enter (até 5)' },
       ], hint: 'Busca pelo nome, sem precisar de link de RSS' },
@@ -1606,33 +1608,37 @@ async function fetchJogosItems(limit) {
   });
 }
 
-async function fetchYoutubeItems(limit) {
-  if (!accessToken) return [];
-  try {
-    const subsResp = await googleApiFetch(`https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&order=relevance&maxResults=${limit}`);
-    if (!subsResp.items) return [];
-    const items = [];
-    for (const sub of subsResp.items) {
-      const channelId = sub.snippet.resourceId.channelId;
-      const channelTitle = sub.snippet.title;
-      try {
-        const searchResp = await googleApiFetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&maxResults=1&type=video`);
-        const video = searchResp.items && searchResp.items[0];
-        if (!video) continue;
-        const videoTitle = video.snippet.title;
-        const desc = video.snippet.description || '';
-        const link = `https://www.youtube.com/watch?v=${video.id.videoId}`;
-        const full = desc ? `Novo vídeo de ${channelTitle}: ${videoTitle}. ${truncateAtBoundary(desc, 300)}` : `Novo vídeo de ${channelTitle}: ${videoTitle}.`;
-        items.push({ category: 'Entretenimento', sub: `YouTube: ${channelTitle}`, title: `${channelTitle} — ${videoTitle}`, full, quick: videoTitle, link });
-      } catch (e) {
-        console.error('youtube(video):', e);
+async function fetchYoutubeItems(canaisStr, fields) {
+  const canais = parseList(canaisStr);
+  if (canais.length === 0) return [];
+  if (!fields.canalIds) fields.canalIds = {};
+  const items = [];
+  for (const nome of canais) {
+    try {
+      const cachedId = fields.canalIds[nome];
+      const params = cachedId ? { name: nome, channelId: cachedId } : { name: nome };
+      const { channelId, channelTitle, video, error } = await callEdgeFunction('youtube-channel', params);
+      if (error) {
+        console.error('youtube:', error);
+        if (cachedId) delete fields.canalIds[nome]; // ID em cache pode ter ficado inválido, tenta resolver de novo na próxima
+        saveState();
+        continue;
       }
+      if (channelId && fields.canalIds[nome] !== channelId) {
+        fields.canalIds[nome] = channelId;
+        saveState();
+      }
+      if (!video) continue;
+      const link = `https://www.youtube.com/watch?v=${video.videoId}`;
+      const full = video.description
+        ? `Novo vídeo de ${channelTitle}: ${video.title}. ${truncateAtBoundary(video.description, 300)}`
+        : `Novo vídeo de ${channelTitle}: ${video.title}.`;
+      items.push({ category: 'Mídias', sub: `YouTube: ${channelTitle}`, title: `${channelTitle} — ${video.title}`, full, quick: video.title, link });
+    } catch (e) {
+      console.error('youtube:', e);
     }
-    return items;
-  } catch (e) {
-    console.error('youtube:', e);
-    return [];
   }
+  return items;
 }
 
 async function fetchPodcastItems(nomesStr, limit) {
@@ -1731,7 +1737,7 @@ async function buildQueue() {
       else if (s.catId === 'entretenimento' && s.featId === 'series') items = await fetchSeriesItems(limit);
       else if (s.catId === 'midias' && s.featId === 'musicas') items = await fetchMusicasItems(s.fields.generos, limit);
       else if (s.catId === 'entretenimento' && s.featId === 'jogos') items = await fetchJogosItems(limit);
-      else if (s.catId === 'midias' && s.featId === 'youtube') items = await fetchYoutubeItems(limit);
+      else if (s.catId === 'midias' && s.featId === 'youtube') items = await fetchYoutubeItems(s.fields.canais, s.fields);
       else if (s.catId === 'midias' && s.featId === 'podcasts') items = await fetchPodcastItems(s.fields.nomes, limit);
       else if (s.catId === 'esportes' && s.featId === 'jogo') items = await fetchEsportesItems(s.fields.competicao, s.fields.time);
     } catch (e) {
