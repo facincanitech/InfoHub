@@ -55,9 +55,11 @@
   button { border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; font-weight: 600; font-family: inherit; }
 
   /* ===== Top bar / gear ===== */
-  .topbar { display: flex; justify-content: flex-end; gap: 10px; max-width: 420px; margin: 0 auto; padding: 10px 16px 0; }
-  .gear-btn { background: var(--c-surface); color: var(--c-text); width: 40px; height: 40px; border-radius: 50%; font-size: 1.1rem; }
-  .gear-btn:hover { background: var(--c-border); }
+  .screen-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .screen-header h1 { flex: 1; }
+  .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .icon-btn { background: var(--c-surface); color: var(--c-text); width: 34px; height: 34px; border-radius: 50%; font-size: 0.95rem; flex-shrink: 0; }
+  .icon-btn:hover { background: var(--c-border); }
 
   /* ===== Bottom nav ===== */
   .navbar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; background: var(--c-navbar); border-top: 1px solid var(--c-border); z-index: 50; }
@@ -214,7 +216,7 @@
   [data-theme='high-contrast'] .history-item,
   [data-theme='high-contrast'] .help-section,
   [data-theme='high-contrast'] .alarm-item,
-  [data-theme='high-contrast'] .gear-btn,
+  [data-theme='high-contrast'] .icon-btn,
   [data-theme='high-contrast'] .back-btn,
   [data-theme='high-contrast'] .skip-btn,
   [data-theme='high-contrast'] .btn-opt,
@@ -226,16 +228,17 @@
 </head>
 <body>
 
-<div class="topbar">
-  <button class="gear-btn" id="help-btn">❓</button>
-  <button class="gear-btn" id="gear-btn">⚙️</button>
-</div>
-
 <div id="app">
 
   <!-- ============ TAB: MEU DIA ============ -->
   <section class="tab active" id="tab-briefing">
-    <h1>▶ Meu Dia</h1>
+    <div class="screen-header">
+      <h1>▶ Meu Dia</h1>
+      <div class="header-actions">
+        <button class="icon-btn" data-action="help">❓</button>
+        <button class="icon-btn" data-action="gear">⚙️</button>
+      </div>
+    </div>
 
     <div class="settings-panel">
       <div class="settings-row">
@@ -290,7 +293,13 @@
   <!-- ============ TAB: GRATIS (Configurar) ============ -->
   <section class="tab" id="tab-gratis">
     <div id="gratis-list-view">
-      <h1>🔊 InfoHub</h1>
+      <div class="screen-header">
+        <h1>🔊 InfoHub</h1>
+        <div class="header-actions">
+          <button class="icon-btn" data-action="help">❓</button>
+          <button class="icon-btn" data-action="gear">⚙️</button>
+        </div>
+      </div>
       <div class="sub">Configure o que você quer ouvir.</div>
 
       <div id="category-cards"></div>
@@ -302,7 +311,13 @@
   <!-- ============ TAB: PREMIUM ============ -->
   <section class="tab" id="tab-premium">
     <div id="premium-locked">
-      <h1>⭐ Premium</h1>
+      <div class="screen-header">
+        <h1>⭐ Premium</h1>
+        <div class="header-actions">
+          <button class="icon-btn" data-action="help">❓</button>
+          <button class="icon-btn" data-action="gear">⚙️</button>
+        </div>
+      </div>
       <div class="sub">Mais automação, mais conveniência.</div>
 
       <div class="price-card">
@@ -326,7 +341,13 @@
     </div>
 
     <div id="premium-unlocked" style="display:none;">
-      <h1>⭐ Premium</h1>
+      <div class="screen-header">
+        <h1>⭐ Premium</h1>
+        <div class="header-actions">
+          <button class="icon-btn" data-action="help">❓</button>
+          <button class="icon-btn" data-action="gear">⚙️</button>
+        </div>
+      </div>
       <div class="sub">Assinatura ativa.</div>
 
       <div class="premium-feature">
@@ -1035,13 +1056,16 @@ async function getGoogleEmail() {
   }
 }
 
-const gearBtn = document.getElementById('gear-btn');
 const accountsOverlay = document.getElementById('accounts-overlay');
-gearBtn.addEventListener('click', () => { accountsOverlay.classList.add('open'); updateAccountsUI(); });
+document.querySelectorAll('[data-action="gear"]').forEach(btn => {
+  btn.addEventListener('click', () => { accountsOverlay.classList.add('open'); updateAccountsUI(); });
+});
 document.getElementById('accounts-close-btn').addEventListener('click', () => accountsOverlay.classList.remove('open'));
 
 const helpOverlay = document.getElementById('help-overlay');
-document.getElementById('help-btn').addEventListener('click', () => helpOverlay.classList.add('open'));
+document.querySelectorAll('[data-action="help"]').forEach(btn => {
+  btn.addEventListener('click', () => helpOverlay.classList.add('open'));
+});
 document.getElementById('help-close-btn').addEventListener('click', () => {
   helpOverlay.classList.remove('open');
   localStorage.setItem('infohub_onboarded', '1');
