@@ -485,9 +485,6 @@ const CATEGORY_DEFS = [
       { id: 'keyword', label: 'Notícias por palavra-chave', fields: [
         { id: 'termos', kind: 'tags', placeholder: 'Digite e aperte Enter (até 5)' },
       ], hint: 'Google News RSS' },
-      { id: 'reddit', label: 'Reddit', fields: [
-        { id: 'subreddits', kind: 'tags', placeholder: 'Digite e aperte Enter (até 5)' },
-      ], hint: 'Posts recentes do subreddit (RSS)' },
     ],
   },
   {
@@ -1124,19 +1121,6 @@ async function fetchNewsItems(termosStr, limit) {
   return all;
 }
 
-async function fetchRedditItems(subredditsStr, limit) {
-  const subreddits = parseList(subredditsStr);
-  let all = [];
-  for (const subreddit of subreddits) {
-    try {
-      const { items, error } = await callEdgeFunction('reddit', { subreddit });
-      if (error) { console.error('reddit:', error); continue; }
-      all = all.concat((items || []).slice(0, limit).map(title => ({ category: 'Noticias', sub: `r/${subreddit}`, title, full: `No subreddit ${subreddit}: ${title}.`, quick: title })));
-    } catch (e) { console.error('reddit:', e); }
-  }
-  return all;
-}
-
 async function fetchFilmesItems(limit) {
   try {
     const { items, error } = await callEdgeFunction('media', { type: 'filmes' });
@@ -1257,7 +1241,6 @@ async function buildQueue() {
       else if (s.catId === 'pessoal' && s.featId === 'aniversarios') items = await fetchAniversariosItems(limit);
       else if (s.catId === 'clima' && s.featId === 'previsao') items = (await fetchWeatherItems(s.fields.cidade1, s.fields.cidade2)).items;
       else if (s.catId === 'noticias' && s.featId === 'keyword') items = await fetchNewsItems(s.fields.termos, limit);
-      else if (s.catId === 'noticias' && s.featId === 'reddit') items = await fetchRedditItems(s.fields.subreddits, limit);
       else if (s.catId === 'financeiro' && s.featId === 'cotacoes') items = await fetchCotacoesItems(s.fields.moedas, s.fields.criptos);
       else if (s.catId === 'entretenimento' && s.featId === 'filmes') items = await fetchFilmesItems(limit);
       else if (s.catId === 'entretenimento' && s.featId === 'series') items = await fetchSeriesItems(limit);
