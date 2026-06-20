@@ -422,8 +422,8 @@
       <div class="account-card">
         <div class="scope-list">
           Canais do YouTube não precisam de login — é só digitar o nome do canal
-          direto na categoria <b>Mídias</b>, na aba Guia. Essa aba aqui não controla
-          nada do YouTube, é só informativa.
+          direto na categoria <b>Entretenimento</b>, na aba Guia. Essa aba aqui não
+          controla nada do YouTube, é só informativa.
         </div>
       </div>
     </div>
@@ -496,7 +496,7 @@
           aniversários.<br><br>
           <b>Status atual:</b> Google (Gmail, agenda, aniversários) está funcionando.
           Canais do YouTube também funcionam, mas não precisam de login — é só digitar
-          o nome do canal direto na categoria Mídias. <b>Spotify e Hotmail ainda não
+          o nome do canal direto na categoria Entretenimento. <b>Spotify e Hotmail ainda não
           estão disponíveis</b> (Spotify exige conta Premium na conta que criou o app,
           e o Hotmail ficou travado num problema de cadastro no Azure) — os botões
           aparecem na tela, mas não fazem nada por enquanto.
@@ -523,8 +523,8 @@
           <span class="chev">›</span>
         </div>
         <div class="help-section-body">
-          Na aba Guia, clica em cada categoria (Pessoal, Clima, Mídias, Entretenimento,
-          Esportes, Notícias, Financeiro, Horóscopo) e ativa só o que você quer ouvir.
+          Na aba Guia, clica em cada categoria (Pessoal, Clima, Entretenimento,
+          Notícias e Curiosidades, Financeiro, Horóscopo) e ativa só o que você quer ouvir.
           Cada feature tem um toggle — quando ligado, aparecem os campos pra configurar
           (cidade, time, palavras-chave, etc).
         </div>
@@ -532,7 +532,7 @@
 
       <div class="help-section">
         <div class="help-section-header">
-          <span class="title">📺 Canais do YouTube (Mídias)</span>
+          <span class="title">📺 Canais do YouTube (Entretenimento)</span>
           <span class="chev">›</span>
         </div>
         <div class="help-section-body">
@@ -668,8 +668,11 @@ const CATEGORY_DEFS = [
     ],
   },
   {
-    id: 'midias', icon: '📺', title: 'Mídias',
+    id: 'entretenimento', icon: '🎮', title: 'Entretenimento',
     features: [
+      { id: 'filmes', label: 'Filmes em cartaz', fields: [], hint: 'Estreias de cinema' },
+      { id: 'series', label: 'Séries lançamentos', fields: [], hint: 'Lançamentos de streaming' },
+      { id: 'jogos', label: 'Jogos (lançamentos)', fields: [], hint: 'IGN Brasil' },
       { id: 'youtube', label: 'Canais do YouTube', fields: [
         { id: 'canais', kind: 'tags', placeholder: 'Nome do canal — digite e aperte Enter (até 5)' },
       ], hint: 'Vídeo mais recente de cada canal. Cuidado com erro de digitação — se o nome não bater certinho, o canal não é encontrado.' },
@@ -679,20 +682,7 @@ const CATEGORY_DEFS = [
       { id: 'musicas', label: 'Músicas por categoria', fields: [
         { id: 'generos', kind: 'buttons', options: ['Pop', 'Rap', 'Eletrônico', 'Sertanejo', 'Rock'] },
       ], hint: 'Via Spotify se conectado (⚙️ Central de Contas), senão notícias musicais' },
-    ],
-  },
-  {
-    id: 'entretenimento', icon: '🎮', title: 'Entretenimento',
-    features: [
-      { id: 'filmes', label: 'Filmes em cartaz', fields: [], hint: 'Estreias de cinema' },
-      { id: 'series', label: 'Séries lançamentos', fields: [], hint: 'Lançamentos de streaming' },
-      { id: 'jogos', label: 'Jogos (lançamentos)', fields: [], hint: 'IGN Brasil' },
-    ],
-  },
-  {
-    id: 'esportes', icon: '⚽', title: 'Esportes',
-    features: [
-      { id: 'jogo', label: 'Resultado e próximo jogo', fields: [
+      { id: 'jogo-esportivo', label: 'Esportes: resultado e próximo jogo', fields: [
         { id: 'competicao', kind: 'text', placeholder: 'Competição, ex: Brasileirão, Copa do Mundo' },
         { id: 'time', kind: 'text', placeholder: 'Time/seleção, ex: Flamengo, Brasil' },
       ], hint: 'API-Football' },
@@ -1580,7 +1570,7 @@ async function fetchSpotifyGenreItems(genero, limit) {
     if (error) { console.error('spotify(musicas):', error); return null; }
     return (items || []).map(({ artist, name, url }) => {
       const title = `${artist} — ${name}`;
-      return { category: 'Mídias', sub: `Música ${genero}`, title, full: `Em ${genero}: ${artist} com a música ${name}.`, quick: title, link: url };
+      return { category: 'Entretenimento', sub: `Música ${genero}`, title, full: `Em ${genero}: ${artist} com a música ${name}.`, quick: title, link: url };
     });
   } catch (e) {
     console.error('spotify(musicas):', e);
@@ -1603,13 +1593,13 @@ async function fetchMusicasItems(generos, limit) {
       if (error) throw new Error(error);
       all = all.concat((items || []).slice(0, limit).map(({ title, description, link }) => {
         const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
-        return { category: 'Mídias', sub: `Música ${genero}`, title, full, quick: title, link };
+        return { category: 'Entretenimento', sub: `Música ${genero}`, title, full, quick: title, link };
       }));
     } catch (e) {
       console.error('musicas:', e);
       const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
       const items = await fetchRssItems(url);
-      all = all.concat(items.slice(0, limit).map(({ title }) => ({ category: 'Mídias', sub: `Música ${genero}`, title, full: `Em ${genero}: ${title}.`, quick: title })));
+      all = all.concat(items.slice(0, limit).map(({ title }) => ({ category: 'Entretenimento', sub: `Música ${genero}`, title, full: `Em ${genero}: ${title}.`, quick: title })));
     }
   }
   return all;
@@ -1651,7 +1641,7 @@ async function fetchYoutubeItems(canaisStr, fields) {
       const full = video.description
         ? `Novo vídeo de ${channelTitle}: ${video.title}. ${truncateAtBoundary(video.description, 300)}`
         : `Novo vídeo de ${channelTitle}: ${video.title}.`;
-      items.push({ category: 'Mídias', sub: `YouTube: ${channelTitle}`, title: `${channelTitle} — ${video.title}`, full, quick: video.title, link });
+      items.push({ category: 'Entretenimento', sub: `YouTube: ${channelTitle}`, title: `${channelTitle} — ${video.title}`, full, quick: video.title, link });
     } catch (e) {
       console.error('youtube:', e);
     }
@@ -1753,11 +1743,11 @@ async function buildQueue() {
       else if (s.catId === 'financeiro' && s.featId === 'cotacoes') items = await fetchCotacoesItems(s.fields.moedas, s.fields.criptos);
       else if (s.catId === 'entretenimento' && s.featId === 'filmes') items = await fetchFilmesItems(limit);
       else if (s.catId === 'entretenimento' && s.featId === 'series') items = await fetchSeriesItems(limit);
-      else if (s.catId === 'midias' && s.featId === 'musicas') items = await fetchMusicasItems(s.fields.generos, limit);
+      else if (s.catId === 'entretenimento' && s.featId === 'musicas') items = await fetchMusicasItems(s.fields.generos, limit);
       else if (s.catId === 'entretenimento' && s.featId === 'jogos') items = await fetchJogosItems(limit);
-      else if (s.catId === 'midias' && s.featId === 'youtube') items = await fetchYoutubeItems(s.fields.canais, s.fields);
-      else if (s.catId === 'midias' && s.featId === 'podcasts') items = await fetchPodcastItems(s.fields.nomes, limit);
-      else if (s.catId === 'esportes' && s.featId === 'jogo') items = await fetchEsportesItems(s.fields.competicao, s.fields.time);
+      else if (s.catId === 'entretenimento' && s.featId === 'youtube') items = await fetchYoutubeItems(s.fields.canais, s.fields);
+      else if (s.catId === 'entretenimento' && s.featId === 'podcasts') items = await fetchPodcastItems(s.fields.nomes, limit);
+      else if (s.catId === 'entretenimento' && s.featId === 'jogo-esportivo') items = await fetchEsportesItems(s.fields.competicao, s.fields.time);
     } catch (e) {
       console.error(`Erro ao buscar ${s.catId}.${s.featId}:`, e);
     }
