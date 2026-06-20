@@ -184,6 +184,16 @@
   .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-text-faint); }
   .status-dot.on { background: var(--c-green); }
   .account-card .scope-list { color: var(--c-text-dim); font-size: 0.8rem; margin-bottom: 14px; line-height: 1.6; }
+
+  .help-section { background: var(--c-surface); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+  .help-section-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; }
+  .help-section-header .title { flex: 1; font-weight: 600; font-size: 0.92rem; }
+  .help-section-header .chev { color: var(--c-text-faint2); transition: transform .2s; }
+  .help-section.open .help-section-header .chev { transform: rotate(90deg); }
+  .help-section-body {
+    display: none; padding: 0 16px 16px; color: var(--c-text-dim); font-size: 0.8rem; line-height: 1.6;
+  }
+  .help-section.open .help-section-body { display: block; }
   .account-card button { width: 100%; padding: 12px; font-size: 0.9rem; }
   .btn-connect { background: var(--c-google-blue); color: #fff; }
   .btn-disconnect { background: var(--c-border2); color: var(--c-text); }
@@ -427,65 +437,85 @@
       </div>
     </div>
 
-    <div class="account-card" style="margin-bottom: 14px;">
-      <div class="title" style="font-weight:600; margin-bottom: 8px;">1. Conecte suas contas</div>
-      <div class="scope-list">
-        Primeiro, vá em ⚙️ no canto superior direito e conecte as contas que for usar
-        (Google, Spotify, YouTube). É por ali que o app acessa e-mail, agenda,
-        aniversários, música e canais favoritos.
+    <div id="help-accordion">
+      <div class="help-section">
+        <div class="help-section-header">
+          <span class="title">1. Conecte suas contas</span>
+          <span class="chev">›</span>
+        </div>
+        <div class="help-section-body">
+          Primeiro, vá em ⚙️ no canto superior direito e conecte as contas que for usar
+          (Google, Spotify, YouTube). É por ali que o app acessa e-mail, agenda,
+          aniversários, música e canais favoritos.
+        </div>
       </div>
-    </div>
 
-    <div class="account-card" style="margin-bottom: 14px;">
-      <div class="title" style="font-weight:600; margin-bottom: 8px;">⚠️ "O Google não verificou este app"</div>
-      <div class="scope-list">
-        Como o app ainda está em teste, o Google mostra um aviso de segurança ao
-        entrar com a conta Google. É esperado — clica em <b>Avançar</b>
-        (ou "Acessar [nome do app] (não seguro)") e depois em <b>Continuar</b> pra
-        seguir com o login normalmente. Isso não significa que o app é perigoso, é
-        só porque ele ainda não passou pela revisão oficial do Google.
+      <div class="help-section">
+        <div class="help-section-header">
+          <span class="title">⚠️ "O Google não verificou este app"</span>
+          <span class="chev">›</span>
+        </div>
+        <div class="help-section-body">
+          Como o app ainda está em teste, o Google mostra um aviso de segurança ao
+          entrar com a conta Google. É esperado — clica em <b>Avançar</b>
+          (ou "Acessar [nome do app] (não seguro)") e depois em <b>Continuar</b> pra
+          seguir com o login normalmente. Isso não significa que o app é perigoso, é
+          só porque ele ainda não passou pela revisão oficial do Google.
+        </div>
       </div>
-    </div>
 
-    <div class="account-card" style="margin-bottom: 14px;">
-      <div class="title" style="font-weight:600; margin-bottom: 8px;">2. Configure suas categorias (aba Guia)</div>
-      <div class="scope-list">
-        Na aba Guia, clica em cada categoria (Pessoal, Clima, Notícias, Financeiro,
-        Entretenimento, Esportes) e ativa só o que você quer ouvir. Cada feature tem
-        um toggle — quando ligado, aparecem os campos pra configurar (cidade, time,
-        palavras-chave, etc).
+      <div class="help-section">
+        <div class="help-section-header">
+          <span class="title">2. Configure suas categorias (aba Guia)</span>
+          <span class="chev">›</span>
+        </div>
+        <div class="help-section-body">
+          Na aba Guia, clica em cada categoria (Pessoal, Clima, Notícias, Financeiro,
+          Entretenimento, Esportes) e ativa só o que você quer ouvir. Cada feature tem
+          um toggle — quando ligado, aparecem os campos pra configurar (cidade, time,
+          palavras-chave, etc).
+        </div>
       </div>
-    </div>
 
-    <div class="account-card" style="margin-bottom: 14px;">
-      <div class="title" style="font-weight:600; margin-bottom: 8px;">3. Ouça o seu briefing (aba Meu Dia)</div>
-      <div class="scope-list">
-        Aperte o play central pra ouvir tudo que você configurou, em sequência. Dá
-        pra ajustar voz, velocidade e modo rápido ali mesmo, usar ⏮/⏭ pra navegar
-        entre os itens, e acompanhar pela lista que vai aparecendo embaixo.
+      <div class="help-section">
+        <div class="help-section-header">
+          <span class="title">3. Ouça o seu briefing (aba Meu Dia)</span>
+          <span class="chev">›</span>
+        </div>
+        <div class="help-section-body">
+          Aperte o play central pra ouvir tudo que você configurou, em sequência. Dá
+          pra ajustar voz, velocidade e modo rápido ali mesmo, usar ⏮/⏭ pra navegar
+          entre os itens, e acompanhar pela lista que vai aparecendo embaixo.
+        </div>
       </div>
-    </div>
 
-    <div class="account-card" style="margin-bottom: 14px;">
-      <div class="title" style="font-weight:600; margin-bottom: 8px;">🔁 Repetir automaticamente</div>
-      <div class="scope-list">
-        Em Meu Dia, ative "Repetir automaticamente" e escolha o intervalo (15min,
-        30min, 1h ou 3h). Depois de apertar o play <b>uma vez</b>, o app busca tudo de
-        novo e toca sozinho a cada intervalo, sem precisar abrir o app de novo — bom
-        pra deixar tocando enquanto você joga ou trabalha com o navegador minimizado.<br><br>
-        Funciona bem no <b>PC</b> (o navegador continua rodando minimizado). No
-        <b>celular</b>, depende do aparelho: se o Android suspender o navegador em
-        segundo plano pra economizar bateria, a repetição pode atrasar ou parar até
-        você abrir o app de novo.
+      <div class="help-section">
+        <div class="help-section-header">
+          <span class="title">🔁 Repetir automaticamente</span>
+          <span class="chev">›</span>
+        </div>
+        <div class="help-section-body">
+          Em Meu Dia, ative "Repetir automaticamente" e escolha o intervalo (15min,
+          30min, 1h ou 3h). Depois de apertar o play <b>uma vez</b>, o app busca tudo de
+          novo e toca sozinho a cada intervalo, sem precisar abrir o app de novo — bom
+          pra deixar tocando enquanto você joga ou trabalha com o navegador minimizado.<br><br>
+          Funciona bem no <b>PC</b> (o navegador continua rodando minimizado). No
+          <b>celular</b>, depende do aparelho: se o Android suspender o navegador em
+          segundo plano pra economizar bateria, a repetição pode atrasar ou parar até
+          você abrir o app de novo.
+        </div>
       </div>
-    </div>
 
-    <div class="account-card">
-      <div class="title" style="font-weight:600; margin-bottom: 8px;">⭐ Premium</div>
-      <div class="scope-list">
-        Na aba Premium você vê o que vem na assinatura (GPS auditivo e rastreio de
-        encomenda) antes de assinar. Depois de pagar, conecte sua conta Google e
-        clique em "Já assinei, verificar" pra desbloquear as features.
+      <div class="help-section">
+        <div class="help-section-header">
+          <span class="title">⭐ Premium</span>
+          <span class="chev">›</span>
+        </div>
+        <div class="help-section-body">
+          Na aba Premium você vê o que vem na assinatura (GPS auditivo e rastreio de
+          encomenda) antes de assinar. Depois de pagar, conecte sua conta Google e
+          clique em "Já assinei, verificar" pra desbloquear as features.
+        </div>
       </div>
     </div>
   </div>
@@ -991,6 +1021,12 @@ document.getElementById('help-btn').addEventListener('click', () => helpOverlay.
 document.getElementById('help-close-btn').addEventListener('click', () => {
   helpOverlay.classList.remove('open');
   localStorage.setItem('infohub_onboarded', '1');
+});
+
+document.querySelectorAll('.help-section-header').forEach(header => {
+  header.addEventListener('click', () => {
+    header.parentElement.classList.toggle('open');
+  });
 });
 
 if (!localStorage.getItem('infohub_onboarded')) {
