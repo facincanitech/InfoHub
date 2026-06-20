@@ -607,6 +607,17 @@ const CATEGORY_DEFS = [
     ],
   },
   {
+    id: 'entretenimento', icon: '🎮', title: 'Entretenimento',
+    features: [
+      { id: 'filmes', label: 'Filmes em cartaz', fields: [], hint: 'Estreias de cinema' },
+      { id: 'series', label: 'Séries lançamentos', fields: [], hint: 'Lançamentos de streaming' },
+      { id: 'musicas', label: 'Músicas por categoria', fields: [
+        { id: 'generos', kind: 'buttons', options: ['Pop', 'Rap', 'Eletrônico', 'Sertanejo', 'Rock'] },
+      ], hint: 'Via Spotify se conectado, senão notícias musicais' },
+      { id: 'jogos', label: 'Jogos (lançamentos)', fields: [], hint: 'IGN Brasil' },
+    ],
+  },
+  {
     id: 'esportes', icon: '⚽', title: 'Esportes',
     features: [
       { id: 'jogo', label: 'Resultado e próximo jogo', fields: [
@@ -630,17 +641,6 @@ const CATEGORY_DEFS = [
         { id: 'moedas', kind: 'buttons', options: ['Dólar', 'Euro', 'Libra', 'Peso'] },
         { id: 'criptos', kind: 'buttons', options: ['Bitcoin', 'Ethereum', 'Solana', 'BNB'] },
       ], hint: 'Moedas via Banco Central, criptos via CoinGecko — sem chave' },
-    ],
-  },
-  {
-    id: 'entretenimento', icon: '🎮', title: 'Entretenimento',
-    features: [
-      { id: 'filmes', label: 'Filmes em cartaz', fields: [], hint: 'Estreias de cinema' },
-      { id: 'series', label: 'Séries lançamentos', fields: [], hint: 'Lançamentos de streaming' },
-      { id: 'musicas', label: 'Músicas por categoria', fields: [
-        { id: 'generos', kind: 'buttons', options: ['Pop', 'Rap', 'Eletrônico', 'Sertanejo', 'Rock'] },
-      ], hint: 'Via Spotify se conectado, senão notícias musicais' },
-      { id: 'jogos', label: 'Jogos (lançamentos)', fields: [], hint: 'IGN Brasil' },
     ],
   },
   {
