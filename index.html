@@ -85,6 +85,12 @@
   .settings-row .label { font-weight: 600; font-size: 0.9rem; }
   .settings-row .desc { color: var(--c-text-dim); font-size: 0.75rem; margin-top: 2px; }
   .settings-row select, .settings-row input[type=range] { flex: 1; max-width: 160px; }
+  .alarm-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--c-border);
+  }
+  .alarm-item .time { font-size: 0.95rem; font-weight: 600; }
+  .alarm-item button { background: var(--c-bg); color: var(--c-text-dim); width: 30px; height: 30px; border-radius: 50%; font-size: 0.85rem; padding: 0; }
   select {
     background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text);
     border-radius: 8px; padding: 7px 8px; font-size: 0.82rem; font-family: inherit;
@@ -231,38 +237,20 @@
         <div class="label">Velocidade</div>
         <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
       </div>
-      <div class="settings-row" id="notify-row" style="display:none;">
+      <div class="settings-row">
         <div>
-          <div class="label">🔔 Notificar todo dia</div>
+          <div class="label">⏰ Alarmes do briefing</div>
           <div class="desc">Toca sozinho se a aba já estiver aberta; senão, manda notificação pra abrir. Precisa do app aberto em alguma aba pra funcionar.</div>
         </div>
         <label class="switch">
-          <input type="checkbox" id="notify-toggle">
+          <input type="checkbox" id="alarms-active-toggle">
           <span class="slider"></span>
         </label>
       </div>
-      <div class="settings-row" id="notify-time-row" style="display:none;">
-        <div class="label">Horário</div>
-        <input type="time" id="notify-time-input" value="07:00">
-      </div>
+      <div id="alarms-list"></div>
       <div class="settings-row">
-        <div>
-          <div class="label">🔁 Repetir automaticamente</div>
-          <div class="desc">Depois de terminar, espera o intervalo e toca tudo de novo sozinho (precisa dar play uma vez antes)</div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="auto-repeat-toggle">
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="settings-row" id="auto-repeat-interval-row" style="display:none;">
-        <div class="label">Intervalo</div>
-        <select id="auto-repeat-interval-select">
-          <option value="15">15 minutos</option>
-          <option value="30">30 minutos</option>
-          <option value="60">1 hora</option>
-          <option value="180">3 horas</option>
-        </select>
+        <input type="time" id="new-alarm-time-input" value="07:00" style="flex:1; max-width: 160px;">
+        <button type="button" id="add-alarm-btn" style="background: var(--c-accent-blue); color: var(--c-on-accent); padding: 8px 14px; font-size: 0.85rem;">+ Adicionar horário</button>
       </div>
     </div>
 
@@ -491,18 +479,27 @@
 
       <div class="help-section">
         <div class="help-section-header">
-          <span class="title">🔁 Repetir automaticamente</span>
+          <span class="title">⏰ Alarmes do briefing</span>
           <span class="chev">›</span>
         </div>
         <div class="help-section-body">
-          Em Meu Dia, ative "Repetir automaticamente" e escolha o intervalo (15min,
-          30min, 1h ou 3h). Depois de apertar o play <b>uma vez</b>, o app busca tudo de
-          novo e toca sozinho a cada intervalo, sem precisar abrir o app de novo — bom
-          pra deixar tocando enquanto você joga ou trabalha com o navegador minimizado.<br><br>
+          Em Meu Dia, adicione quantos horários quiser (ex: 07:00, 12:00, 20:00) com
+          o botão "+ Adicionar horário" — cada um vira um item na lista, com um ✕ pra
+          remover. Isso por si só não faz nada ainda: você precisa <b>ativar</b> o
+          toggle "Alarmes do briefing" pra ligar o cronômetro interno que de fato
+          dispara nesses horários.<br><br>
+          Quando um horário chega: se a aba do InfoHub já estiver aberta e em foco,
+          ele toca <b>direto</b>, sem precisar de nada. Se estiver minimizada ou em
+          segundo plano, ele manda uma <b>notificação</b> — toca nela pra abrir o app
+          e já tentar dar o play sozinho.<br><br>
+          Bom pra deixar tocando em horários fixos do dia, ou pra simular uma
+          repetição (ex: adicionar 08h, 11h, 14h, 17h pra ouvir de 3 em 3 horas
+          enquanto joga ou trabalha com o navegador minimizado).<br><br>
           Funciona bem no <b>PC</b> (o navegador continua rodando minimizado). No
           <b>celular</b>, depende do aparelho: se o Android suspender o navegador em
-          segundo plano pra economizar bateria, a repetição pode atrasar ou parar até
-          você abrir o app de novo.
+          segundo plano pra economizar bateria, o alarme pode atrasar ou não disparar
+          até você abrir o app de novo. Em ambos os casos, <b>precisa de uma aba do
+          InfoHub aberta</b> — fechando o navegador por completo, os alarmes param.
         </div>
       </div>
 
@@ -648,11 +645,9 @@ function loadState() {
     activeClimateCity: saved.activeClimateCity || 1,
     theme: saved.theme || 'dark',
     premiumUnlocked: saved.premiumUnlocked || false,
-    notifyEnabled: saved.notifyEnabled || false,
-    notifyTime: saved.notifyTime || '07:00',
-    lastAutoPlayDate: saved.lastAutoPlayDate || '',
-    autoRepeatEnabled: saved.autoRepeatEnabled || false,
-    autoRepeatInterval: saved.autoRepeatInterval || 30,
+    alarmsActive: saved.alarmsActive || false,
+    alarmTimes: saved.alarmTimes || [],
+    alarmLastFired: saved.alarmLastFired || {},
   };
 }
 
@@ -1624,15 +1619,8 @@ function renderHistory(currentIndex) {
 function speakQueueItem(i) {
   if (i >= currentQueue.length) {
     setPlayingVisual(false);
-    if (state.autoRepeatEnabled) {
-      const mins = state.autoRepeatInterval;
-      briefingLabel.textContent = `Concluído — repete em ${mins} min`;
-      briefingSub.textContent = '';
-      autoRepeatTimeoutId = setTimeout(() => { if (state.autoRepeatEnabled) startBriefingPlayback(); }, mins * 60000);
-    } else {
-      briefingLabel.textContent = 'Meu Dia concluído';
-      briefingSub.textContent = '';
-    }
+    briefingLabel.textContent = 'Meu Dia concluído';
+    briefingSub.textContent = '';
     return;
   }
   currentQueueIndex = i;
@@ -1656,10 +1644,7 @@ function speakQueueItem(i) {
   speechSynthesis.speak(utter);
 }
 
-let autoRepeatTimeoutId = null;
-
 async function startBriefingPlayback() {
-  if (autoRepeatTimeoutId) { clearTimeout(autoRepeatTimeoutId); autoRepeatTimeoutId = null; }
   const summaries = getEnabledFeatureSummaries();
   if (summaries.length === 0) {
     briefingLabel.textContent = 'Nenhuma categoria ativa. Vá na aba Guia e ative algo.';
@@ -1681,7 +1666,6 @@ async function startBriefingPlayback() {
 }
 
 playCircle.addEventListener('click', () => {
-  if (autoRepeatTimeoutId) { clearTimeout(autoRepeatTimeoutId); autoRepeatTimeoutId = null; }
   if (isPlaying) {
     speechSynthesis.cancel();
     setPlayingVisual(false);
@@ -1900,105 +1884,105 @@ document.getElementById('rastreio-email-btn').addEventListener('click', async ()
 });
 
 /* =========================================================================
-   NOTIFICAÇÃO DIÁRIA (local, via Service Worker — sem servidor)
+   ALARMES DO BRIEFING (local, via Service Worker — sem servidor)
+   Lista de horários + botão "Ativar" que liga um cronômetro interno pra
+   cada um. Ao disparar: toca direto se a aba estiver visível, senão manda
+   notificação. Guarda por horário evita disparar 2x no mesmo dia.
    ========================================================================= */
-const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const notifyRow = document.getElementById('notify-row');
-const notifyToggle = document.getElementById('notify-toggle');
-const notifyTimeRow = document.getElementById('notify-time-row');
-const notifyTimeInput = document.getElementById('notify-time-input');
-let notifyTimeoutId = null;
+const alarmsActiveToggle = document.getElementById('alarms-active-toggle');
+const alarmsListEl = document.getElementById('alarms-list');
+const newAlarmTimeInput = document.getElementById('new-alarm-time-input');
+let alarmTimeoutIds = [];
 
-function updateNotifyUI() {
-  notifyRow.style.display = isMobileDevice ? 'flex' : 'none';
-  notifyToggle.checked = state.notifyEnabled;
-  notifyTimeInput.value = state.notifyTime;
-  notifyTimeRow.style.display = isMobileDevice && state.notifyEnabled ? 'flex' : 'none';
+function renderAlarmsList() {
+  alarmsListEl.innerHTML = '';
+  state.alarmTimes.slice().sort().forEach((time) => {
+    const row = document.createElement('div');
+    row.className = 'alarm-item';
+    const span = document.createElement('span');
+    span.className = 'time';
+    span.textContent = time;
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => {
+      state.alarmTimes = state.alarmTimes.filter((t) => t !== time);
+      saveState();
+      renderAlarmsList();
+      scheduleAllAlarms();
+    });
+    row.appendChild(span);
+    row.appendChild(delBtn);
+    alarmsListEl.appendChild(row);
+  });
 }
-updateNotifyUI();
 
-function scheduleNextNotification() {
-  if (notifyTimeoutId) { clearTimeout(notifyTimeoutId); notifyTimeoutId = null; }
-  if (!state.notifyEnabled) return;
-  const [h, m] = state.notifyTime.split(':').map(Number);
+function clearAllAlarmTimeouts() {
+  alarmTimeoutIds.forEach((id) => clearTimeout(id));
+  alarmTimeoutIds = [];
+}
+
+function scheduleAlarm(time) {
+  const [h, m] = time.split(':').map(Number);
   const now = new Date();
   const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
   if (target <= now) target.setDate(target.getDate() + 1);
   const ms = target - now;
-  notifyTimeoutId = setTimeout(async () => {
+  const id = setTimeout(async () => {
     const today = new Date().toISOString().slice(0, 10);
-    if (state.lastAutoPlayDate !== today) {
-      state.lastAutoPlayDate = today;
+    if (state.alarmLastFired[time] !== today) {
+      state.alarmLastFired[time] = today;
       saveState();
       if (document.visibilityState === 'visible') {
-        // Aba já aberta e em foco: toca direto, sem precisar de notificação.
         startBriefingPlayback();
       } else {
         try {
           const reg = await navigator.serviceWorker.ready;
           reg.showNotification('InfoHub — Meu Dia', {
-            body: 'Seu briefing de hoje está pronto. Toca aqui pra ouvir.',
+            body: `Seu briefing das ${time} está pronto. Toca aqui pra ouvir.`,
             icon: 'icon.svg',
-            tag: 'infohub-briefing',
+            tag: 'infohub-briefing-' + time,
           });
         } catch (e) {
           console.error('notify:', e);
         }
       }
     }
-    scheduleNextNotification(); // reagenda pro dia seguinte
+    if (state.alarmsActive && state.alarmTimes.includes(time)) scheduleAlarm(time); // reagenda pro dia seguinte
   }, ms);
+  alarmTimeoutIds.push(id);
 }
 
-notifyToggle.addEventListener('change', async () => {
-  if (notifyToggle.checked) {
+function scheduleAllAlarms() {
+  clearAllAlarmTimeouts();
+  if (!state.alarmsActive) return;
+  state.alarmTimes.forEach(scheduleAlarm);
+}
+
+alarmsActiveToggle.checked = state.alarmsActive;
+renderAlarmsList();
+
+alarmsActiveToggle.addEventListener('change', async () => {
+  if (alarmsActiveToggle.checked) {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      notifyToggle.checked = false;
-      alert('Permissão de notificação negada — não vai dar pra avisar no horário sem isso.');
+      alarmsActiveToggle.checked = false;
+      alert('Permissão de notificação negada — não vai dar pra avisar nos horários sem isso.');
       return;
     }
   }
-  state.notifyEnabled = notifyToggle.checked;
+  state.alarmsActive = alarmsActiveToggle.checked;
   saveState();
-  updateNotifyUI();
-  scheduleNextNotification();
+  scheduleAllAlarms();
 });
 
-notifyTimeInput.addEventListener('change', () => {
-  state.notifyTime = notifyTimeInput.value;
+document.getElementById('add-alarm-btn').addEventListener('click', () => {
+  const time = newAlarmTimeInput.value;
+  if (!time || state.alarmTimes.includes(time)) return;
+  state.alarmTimes.push(time);
   saveState();
-  scheduleNextNotification();
-});
-
-/* =========================================================================
-   REPETIÇÃO AUTOMÁTICA — toca a fila inteira em loop após o usuário dar play
-   ao menos uma vez (necessário pra liberar autoplay no navegador)
-   ========================================================================= */
-const autoRepeatToggle = document.getElementById('auto-repeat-toggle');
-const autoRepeatIntervalRow = document.getElementById('auto-repeat-interval-row');
-const autoRepeatIntervalSelect = document.getElementById('auto-repeat-interval-select');
-
-function updateAutoRepeatUI() {
-  autoRepeatToggle.checked = state.autoRepeatEnabled;
-  autoRepeatIntervalSelect.value = String(state.autoRepeatInterval);
-  autoRepeatIntervalRow.style.display = state.autoRepeatEnabled ? 'flex' : 'none';
-}
-updateAutoRepeatUI();
-
-autoRepeatToggle.addEventListener('change', () => {
-  state.autoRepeatEnabled = autoRepeatToggle.checked;
-  saveState();
-  updateAutoRepeatUI();
-  if (!state.autoRepeatEnabled && autoRepeatTimeoutId) {
-    clearTimeout(autoRepeatTimeoutId);
-    autoRepeatTimeoutId = null;
-  }
-});
-
-autoRepeatIntervalSelect.addEventListener('change', () => {
-  state.autoRepeatInterval = parseInt(autoRepeatIntervalSelect.value, 10);
-  saveState();
+  renderAlarmsList();
+  scheduleAllAlarms();
 });
 
 /* =========================================================================
@@ -2013,7 +1997,7 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
-if (isMobileDevice && state.notifyEnabled) scheduleNextNotification();
+if (state.alarmsActive) scheduleAllAlarms();
 
 if (new URLSearchParams(window.location.search).get('autoplay') === '1') {
   window.addEventListener('load', () => setTimeout(() => playCircle.click(), 600));
