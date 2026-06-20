@@ -886,7 +886,14 @@ document.getElementById('accounts-close-btn').addEventListener('click', () => ac
 
 const helpOverlay = document.getElementById('help-overlay');
 document.getElementById('help-btn').addEventListener('click', () => helpOverlay.classList.add('open'));
-document.getElementById('help-close-btn').addEventListener('click', () => helpOverlay.classList.remove('open'));
+document.getElementById('help-close-btn').addEventListener('click', () => {
+  helpOverlay.classList.remove('open');
+  localStorage.setItem('infohub_onboarded', '1');
+});
+
+if (!localStorage.getItem('infohub_onboarded')) {
+  helpOverlay.classList.add('open');
+}
 
 document.querySelectorAll('.account-tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
