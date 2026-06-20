@@ -259,20 +259,26 @@
         <div class="label">Velocidade</div>
         <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
       </div>
-      <div class="settings-row">
-        <div>
-          <div class="label">⏰ Alarmes do briefing</div>
-          <div class="desc">Toca sozinho se a aba já estiver aberta; senão, manda notificação pra abrir. Precisa do app aberto em alguma aba pra funcionar.</div>
+      <div class="help-section" id="alarms-section" style="background:none; margin-bottom:0;">
+        <div class="help-section-header" style="padding: 8px 0;">
+          <span class="title">⏰ Alarmes do briefing</span>
+          <span class="chev">›</span>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="alarms-active-toggle">
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div id="alarms-list"></div>
-      <div class="settings-row">
-        <input type="time" id="new-alarm-time-input" value="07:00" style="flex:1; max-width: 160px;">
-        <button type="button" id="add-alarm-btn" style="background: var(--c-accent-blue); color: var(--c-on-accent); padding: 8px 14px; font-size: 0.85rem;">+ Adicionar horário</button>
+        <div class="help-section-body" style="padding: 0 0 8px;">
+          <div class="desc" style="margin-bottom: 10px;">Toca sozinho se a aba já estiver aberta; senão, manda notificação pra abrir. Precisa do app aberto em alguma aba pra funcionar.</div>
+          <div class="settings-row">
+            <div class="label">Ativar</div>
+            <label class="switch">
+              <input type="checkbox" id="alarms-active-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div id="alarms-list"></div>
+          <div class="settings-row">
+            <input type="time" id="new-alarm-time-input" value="07:00" style="flex:1; max-width: 160px;">
+            <button type="button" id="add-alarm-btn" style="background: var(--c-accent-blue); color: var(--c-on-accent); padding: 8px 14px; font-size: 0.85rem;">+ Adicionar horário</button>
+          </div>
+        </div>
       </div>
     </div>
 
