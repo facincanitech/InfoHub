@@ -1232,7 +1232,7 @@ async function fetchWeatherItems(cidade1, cidade2) {
 /* =========================================================================
    RSS — via Supabase Edge Function
    ========================================================================= */
-async function fetchRssTitles(targetUrl) {
+async function fetchRssItems(targetUrl) {
   try {
     const { items } = await callEdgeFunction('rss', { url: targetUrl });
     return items || [];
@@ -1243,8 +1243,8 @@ async function fetchRssTitles(targetUrl) {
 
 async function fetchNewsItemsFallback(termo, limit) {
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-  const titles = await fetchRssTitles(url);
-  return titles.slice(0, limit).map(title => ({ category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title }));
+  const items = await fetchRssItems(url);
+  return items.slice(0, limit).map(({ title }) => ({ category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title }));
 }
 
 async function fetchNewsItems(termosStr, limit) {
@@ -1301,19 +1301,33 @@ async function fetchMusicasItems(generos, limit) {
       // TODO: trocar por chamada real à Spotify Web API quando SPOTIFY_CLIENT_ID estiver configurado.
       continue;
     }
-    const url = `https://news.google.com/rss/search?q=${encodeURIComponent('música ' + genero + ' lançamentos')}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-    const titles = await fetchRssTitles(url);
-    all = all.concat(titles.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: `Música ${genero}`, title, full: `Em ${genero}: ${title}.`, quick: title })));
+    const termo = `música ${genero} lançamento`;
+    try {
+      const { items, error } = await callEdgeFunction('news', { q: termo });
+      if (error) throw new Error(error);
+      all = all.concat((items || []).slice(0, limit).map(({ title, description, link }) => {
+        const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
+        return { category: 'Entretenimento', sub: `Música ${genero}`, title, full, quick: title, link };
+      }));
+    } catch (e) {
+      console.error('musicas:', e);
+      const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+      const items = await fetchRssItems(url);
+      all = all.concat(items.slice(0, limit).map(({ title }) => ({ category: 'Entretenimento', sub: `Música ${genero}`, title, full: `Em ${genero}: ${title}.`, quick: title })));
+    }
   }
   return all;
 }
 
 async function fetchJogosItems(limit) {
-  const titles = await fetchRssTitles('https://br.ign.com/feed.xml');
+  const items = await fetchRssItems('https://br.ign.com/feed.xml');
   const keywordRe = /lan[çc]a|chega|anunciad|revelad|estreia|dispon[íi]vel|data de lan[çc]amento/i;
-  let filtered = titles.filter(t => keywordRe.test(t));
-  if (filtered.length === 0) filtered = titles; // fallback: feed do IGN raramente usa essas palavras exatas
-  return filtered.slice(0, limit).map(title => ({ category: 'Entretenimento', sub: 'Jogos', title, full: `${title}.`, quick: title }));
+  let filtered = items.filter(i => keywordRe.test(i.title));
+  if (filtered.length === 0) filtered = items; // fallback: feed do IGN raramente usa essas palavras exatas
+  return filtered.slice(0, limit).map(({ title, description }) => {
+    const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
+    return { category: 'Entretenimento', sub: 'Jogos', title, full, quick: title };
+  });
 }
 
 /* =========================================================================

@@ -1,6 +1,6 @@
 // Supabase Edge Function — busca um RSS/Atom no servidor (sem depender de proxy CORS
-// de terceiro) e devolve só os títulos. Suporta tanto <item> (RSS) quanto <entry> (Atom,
-// usado pelo feed do Reddit).
+// de terceiro) e devolve título + resumo de cada item. Suporta tanto <item> (RSS)
+// quanto <entry> (Atom).
 // Deploy: cole esse código numa function chamada "rss" no painel do Supabase.
 
 const CORS_HEADERS = {
@@ -17,12 +17,16 @@ function decodeEntities(text: string) {
     .replace(/&#39;/g, "'");
 }
 
-function extractTitle(block: string) {
-  const m = block.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+function extractTag(block: string, tag: string) {
+  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i'));
   if (!m) return '';
   let t = m[1].trim();
   t = t.replace(/^<!\[CDATA\[/, '').replace(/\]\]>$/, '');
   return decodeEntities(t).trim();
+}
+
+function stripHtmlTags(html: string) {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 Deno.serve(async (req: Request) => {
@@ -42,7 +46,14 @@ Deno.serve(async (req: Request) => {
     const text = await res.text();
     let blocks = text.match(/<item[\s\S]*?<\/item>/gi);
     if (!blocks || blocks.length === 0) blocks = text.match(/<entry[\s\S]*?<\/entry>/gi) || [];
-    const items = blocks.map(extractTitle).filter(Boolean);
+    const items = blocks
+      .map(block => {
+        const title = extractTag(block, 'title');
+        const rawDescription = extractTag(block, 'description') || extractTag(block, 'summary');
+        const description = stripHtmlTags(rawDescription);
+        return { title, description };
+      })
+      .filter(item => item.title);
     return Response.json({ items, error: null }, { headers: CORS_HEADERS });
   } catch (e) {
     return Response.json({ items: [], error: 'Falha ao buscar o feed: ' + e.message }, { headers: CORS_HEADERS });
