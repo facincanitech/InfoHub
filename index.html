@@ -203,6 +203,25 @@
   .account-card button { width: 100%; padding: 12px; font-size: 0.9rem; }
   .btn-connect { background: var(--c-google-blue); color: #fff; }
   .btn-disconnect { background: var(--c-border2); color: var(--c-text); }
+
+  /* Alto contraste: --c-surface e --c-bg são o mesmo preto, então sem borda os
+     blocos somem visualmente. Aqui devolvemos a delimitação via borda branca. */
+  [data-theme='high-contrast'] .category-card,
+  [data-theme='high-contrast'] .feature,
+  [data-theme='high-contrast'] .account-card,
+  [data-theme='high-contrast'] .premium-feature,
+  [data-theme='high-contrast'] .settings-panel,
+  [data-theme='high-contrast'] .history-item,
+  [data-theme='high-contrast'] .help-section,
+  [data-theme='high-contrast'] .alarm-item,
+  [data-theme='high-contrast'] .gear-btn,
+  [data-theme='high-contrast'] .back-btn,
+  [data-theme='high-contrast'] .skip-btn,
+  [data-theme='high-contrast'] .btn-opt,
+  [data-theme='high-contrast'] select,
+  [data-theme='high-contrast'] .feature-fields input {
+    border: 1px solid var(--c-border);
+  }
 </style>
 </head>
 <body>
