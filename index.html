@@ -221,7 +221,7 @@
         <div class="label">Velocidade</div>
         <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
       </div>
-      <div class="settings-row">
+      <div class="settings-row" id="notify-row" style="display:none;">
         <div>
           <div class="label">🔔 Notificar todo dia</div>
           <div class="desc">Toca a notificação no horário; ao abrir, já tenta dar o play</div>
@@ -1815,15 +1815,18 @@ document.getElementById('rastreio-email-btn').addEventListener('click', async ()
 /* =========================================================================
    NOTIFICAÇÃO DIÁRIA (local, via Service Worker — sem servidor)
    ========================================================================= */
+const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const notifyRow = document.getElementById('notify-row');
 const notifyToggle = document.getElementById('notify-toggle');
 const notifyTimeRow = document.getElementById('notify-time-row');
 const notifyTimeInput = document.getElementById('notify-time-input');
 let notifyTimeoutId = null;
 
 function updateNotifyUI() {
+  notifyRow.style.display = isMobileDevice ? 'flex' : 'none';
   notifyToggle.checked = state.notifyEnabled;
   notifyTimeInput.value = state.notifyTime;
-  notifyTimeRow.style.display = state.notifyEnabled ? 'flex' : 'none';
+  notifyTimeRow.style.display = isMobileDevice && state.notifyEnabled ? 'flex' : 'none';
 }
 updateNotifyUI();
 
@@ -1883,7 +1886,7 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
-if (state.notifyEnabled) scheduleNextNotification();
+if (isMobileDevice && state.notifyEnabled) scheduleNextNotification();
 
 if (new URLSearchParams(window.location.search).get('autoplay') === '1') {
   window.addEventListener('load', () => setTimeout(() => playCircle.click(), 600));
