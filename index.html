@@ -483,10 +483,10 @@ const CATEGORY_DEFS = [
     id: 'noticias', icon: '📰', title: 'Noticias',
     features: [
       { id: 'keyword', label: 'Notícias por palavra-chave', fields: [
-        { id: 'termos', kind: 'text', placeholder: 'Até 5, separadas por vírgula. Ex: tecnologia, futebol' },
+        { id: 'termos', kind: 'tags', placeholder: 'Digite e aperte Enter (até 5)' },
       ], hint: 'Google News RSS' },
       { id: 'reddit', label: 'Reddit', fields: [
-        { id: 'subreddits', kind: 'text', placeholder: 'Até 5, separados por vírgula. Ex: brasil, technology' },
+        { id: 'subreddits', kind: 'tags', placeholder: 'Digite e aperte Enter (até 5)' },
       ], hint: 'Posts recentes do subreddit (RSS)' },
     ],
   },
@@ -523,6 +523,7 @@ const CATEGORY_DEFS = [
 
 function parseList(value) {
   if (!value) return [];
+  if (Array.isArray(value)) return value.slice(0, 5);
   return value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 5);
 }
 
@@ -586,12 +587,12 @@ function countEnabled(cat) {
   cat.features.forEach(f => {
     const fs = getFeatureState(cat.id, f.id);
     if (!fs.enabled) return;
-    const buttonFields = f.fields.filter(field => field.kind === 'buttons');
-    if (buttonFields.length === 0) {
+    const multiFields = f.fields.filter(field => field.kind === 'buttons' || field.kind === 'tags');
+    if (multiFields.length === 0) {
       total += 1;
       return;
     }
-    const selectedCount = buttonFields.reduce((sum, field) => sum + (fs.fields[field.id] || []).length, 0);
+    const selectedCount = multiFields.reduce((sum, field) => sum + parseList(fs.fields[field.id]).length, 0);
     total += selectedCount > 0 ? selectedCount : 1;
   });
   return total;
@@ -635,6 +636,53 @@ function renderButtonGroup(field, fs, onChange) {
   return wrap;
 }
 
+function renderTagsInput(field, fs) {
+  const wrap = document.createElement('div');
+  const list = parseList(fs.fields[field.id]);
+  fs.fields[field.id] = list;
+
+  const chipsEl = document.createElement('div');
+  chipsEl.className = 'btn-group';
+  chipsEl.style.marginBottom = '8px';
+
+  function renderChips() {
+    chipsEl.innerHTML = '';
+    list.forEach((tag, idx) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'btn-opt selected';
+      chip.textContent = `#${tag} ✕`;
+      chip.title = 'Clique para remover';
+      chip.addEventListener('click', () => {
+        list.splice(idx, 1);
+        saveState();
+        renderChips();
+      });
+      chipsEl.appendChild(chip);
+    });
+  }
+  renderChips();
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = field.placeholder;
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    const val = input.value.trim();
+    if (val && list.length < 5 && !list.includes(val)) {
+      list.push(val);
+      saveState();
+      renderChips();
+    }
+    input.value = '';
+  });
+
+  wrap.appendChild(chipsEl);
+  wrap.appendChild(input);
+  return wrap;
+}
+
 function openCategoryDetail(catId) {
   openCategoryId = catId;
   const cat = CATEGORY_DEFS.find(c => c.id === catId);
@@ -674,6 +722,8 @@ function openCategoryDetail(catId) {
     feat.fields.forEach(field => {
       if (field.kind === 'buttons') {
         fieldsEl.appendChild(renderButtonGroup(field, fs));
+      } else if (field.kind === 'tags') {
+        fieldsEl.appendChild(renderTagsInput(field, fs));
       } else {
         const fieldInput = document.createElement('input');
         fieldInput.type = 'text';
@@ -746,29 +796,33 @@ briefingRateInput.addEventListener('input', () => {
 let voices = [];
 const voiceSelect = document.getElementById('voice-select');
 
+const PREFERRED_VOICE_NAMES = /Francisca|Luciana|Camila|Antonio|Aria|Guy/i;
+const CONFIRMED_ONLINE_VOICES = /Francisca|Antonio|Aria|Guy/i;
+
 function voiceRank(v) {
   const isBr = v.lang.toLowerCase().startsWith('pt-br');
   const isNatural = /Online.*Natural/i.test(v.name);
+  const isPreferredName = PREFERRED_VOICE_NAMES.test(v.name);
   if (isBr && isNatural) return 0;
-  if (isBr) return 1;
-  if (v.lang.toLowerCase().startsWith('en')) return 2;
-  return 3;
+  if (isBr && isPreferredName) return 1;
+  if (isBr) return 2;
+  if (v.lang.toLowerCase().startsWith('en')) return 3;
+  return 4;
 }
 
-const CONFIRMED_ONLINE_VOICES = /Francisca|Antonio|Aria|Guy/i;
-
 function populateVoices() {
-  voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('pt') || v.lang.startsWith('en'));
+  const allVoices = speechSynthesis.getVoices();
+  if (allVoices.length === 0) return; // mobile às vezes demora — o retry abaixo tenta de novo
+  voices = allVoices.filter(v => v.lang.startsWith('pt') || v.lang.startsWith('en'));
   voices = voices.filter(v => !/Online.*Natural/i.test(v.name) || CONFIRMED_ONLINE_VOICES.test(v.name));
-  if (voices.length === 0) voices = speechSynthesis.getVoices();
+  if (voices.length === 0) voices = allVoices;
   voices.sort((a, b) => voiceRank(a) - voiceRank(b));
   voiceSelect.innerHTML = voices.map((v, i) => `<option value="${i}">${v.name} (${v.lang})</option>`).join('');
   const savedIndex = state.voiceName ? voices.findIndex(v => v.name === state.voiceName) : -1;
   if (savedIndex !== -1) {
     voiceSelect.value = savedIndex;
-  } else {
-    const preferredIndex = voices.findIndex(v => /Francisca.*Online.*Natural/i.test(v.name));
-    if (preferredIndex !== -1) voiceSelect.value = preferredIndex;
+  } else if (voices.length > 0) {
+    voiceSelect.value = 0; // já ordenado por prioridade, o melhor fica em 1º
   }
 }
 
@@ -778,6 +832,15 @@ voiceSelect.addEventListener('change', () => {
 });
 speechSynthesis.onvoiceschanged = populateVoices;
 populateVoices();
+
+// Retry pro Android/iOS, onde getVoices() costuma vir vazio no primeiro load
+// e onvoiceschanged nem sempre dispara de forma confiável.
+let voicePopulateAttempts = 0;
+const voicePopulateRetry = setInterval(() => {
+  voicePopulateAttempts++;
+  if (voices.length > 0 || voicePopulateAttempts > 15) { clearInterval(voicePopulateRetry); return; }
+  populateVoices();
+}, 400);
 
 function getSelectedVoice() {
   return voices[voiceSelect.value];
