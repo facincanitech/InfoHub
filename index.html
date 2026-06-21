@@ -1528,7 +1528,7 @@ async function fetchNewsItems(termosStr, limit) {
         termoItems = await fetchNewsItemsFallback(termo, limit);
       } else {
         termoItems = (items || []).slice(0, limit).map(({ title, description, link }) => {
-          const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
+          const full = description ? `${title}. ${truncateAtBoundary(description, 600)}` : `${title}.`;
           return { category: 'Noticias', sub: termo, title, full, quick: title, link };
         });
       }
@@ -1551,7 +1551,7 @@ async function fetchFilmesItems(limit) {
     const { items, error } = await callEdgeFunction('media', { type: 'filmes' });
     if (error) { console.error('media(filmes):', error); return []; }
     return (items || []).slice(0, limit).map(({ title, overview }) => {
-      const full = overview ? `${title}. ${truncateAtBoundary(overview, 400)}` : `${title}.`;
+      const full = overview ? `${title}. ${truncateAtBoundary(overview, 600)}` : `${title}.`;
       return { category: 'Entretenimento', sub: 'Filmes', title, full, quick: title };
     });
   } catch (e) { console.error('media(filmes):', e); return []; }
@@ -1562,7 +1562,7 @@ async function fetchSeriesItems(limit) {
     const { items, error } = await callEdgeFunction('media', { type: 'series' });
     if (error) { console.error('media(series):', error); return []; }
     return (items || []).slice(0, limit).map(({ title, overview }) => {
-      const full = overview ? `${title}. ${truncateAtBoundary(overview, 400)}` : `${title}.`;
+      const full = overview ? `${title}. ${truncateAtBoundary(overview, 600)}` : `${title}.`;
       return { category: 'Entretenimento', sub: 'Séries', title, full, quick: title };
     });
   } catch (e) { console.error('media(series):', e); return []; }
@@ -1607,7 +1607,7 @@ async function fetchMusicasItems(generos, limit) {
       const { items, error } = await callEdgeFunction('news', { q: termo });
       if (error) throw new Error(error);
       all = all.concat((items || []).slice(0, limit).map(({ title, description, link }) => {
-        const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
+        const full = description ? `${title}. ${truncateAtBoundary(description, 600)}` : `${title}.`;
         return { category: 'Entretenimento', sub: `Música ${genero}`, title, full, quick: title, link };
       }));
     } catch (e) {
@@ -1626,7 +1626,7 @@ async function fetchJogosItems(limit) {
   let filtered = items.filter(i => keywordRe.test(i.title));
   if (filtered.length === 0) filtered = items; // fallback: feed do IGN raramente usa essas palavras exatas
   return filtered.slice(0, limit).map(({ title, description }) => {
-    const full = description ? `${title}. ${truncateAtBoundary(description, 400)}` : `${title}.`;
+    const full = description ? `${title}. ${truncateAtBoundary(description, 600)}` : `${title}.`;
     return { category: 'Entretenimento', sub: 'Jogos', title, full, quick: title };
   });
 }
@@ -1654,7 +1654,7 @@ async function fetchYoutubeItems(canaisStr, fields) {
       if (!video) continue;
       const link = `https://www.youtube.com/watch?v=${video.videoId}`;
       const full = video.description
-        ? `Novo vídeo de ${channelTitle}: ${video.title}. ${truncateAtBoundary(video.description, 300)}`
+        ? `Novo vídeo de ${channelTitle}: ${video.title}. ${truncateAtBoundary(video.description, 600)}`
         : `Novo vídeo de ${channelTitle}: ${video.title}.`;
       items.push({ category: 'Entretenimento', sub: `YouTube: ${channelTitle}`, title: `${channelTitle} — ${video.title}`, full, quick: video.title, link });
     } catch (e) {
