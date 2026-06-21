@@ -60,7 +60,7 @@
   button { border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; font-weight: 600; font-family: inherit; }
 
   /* ===== Top bar / gear ===== */
-  .screen-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .screen-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 18px; }
   .screen-header h1 { flex: 1; }
   .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
   .icon-btn { background: var(--c-surface); color: var(--c-text); width: 34px; height: 34px; border-radius: 50%; font-size: 0.95rem; flex-shrink: 0; }
@@ -2635,6 +2635,48 @@ async function tryAnswerNoticias(texto) {
   return items[0].full;
 }
 
+// Mesmo sistema usado no briefing automático (CATEGORY_DEFS + fetchXItems com os
+// campos já salvos pelo usuário na aba Guia), só que disparado ativamente pela
+// pergunta de voz em vez de passivamente pela fila do play.
+const GUIA_VOICE_TOPICS = [
+  { keywords: ['e-mail', 'email', 'caixa de entrada'], catId: 'pessoal', featId: 'email',
+    fetch: (fields) => fetchEmailItems(fields.contas, fields.quantidade || '5') },
+  { keywords: ['agenda', 'compromisso'], catId: 'pessoal', featId: 'agenda',
+    fetch: () => fetchAgendaItems(3) },
+  { keywords: ['aniversário', 'aniversario', 'aniversariante'], catId: 'pessoal', featId: 'aniversarios',
+    fetch: () => fetchAniversariosItems(3) },
+  { keywords: ['feriado'], catId: 'pessoal', featId: 'feriados',
+    fetch: () => fetchFeriadosItems(3) },
+  { keywords: ['fase da lua', 'lua hoje', 'horóscopo', 'horoscopo'], catId: 'horoscopo', featId: 'fase-lua',
+    fetch: () => fetchFaseLuaItems() },
+  { keywords: ['filme', 'cinema'], catId: 'entretenimento', featId: 'filmes',
+    fetch: () => fetchFilmesItems(2) },
+  { keywords: ['série', 'series', 'séries'], catId: 'entretenimento', featId: 'series',
+    fetch: () => fetchSeriesItems(2) },
+  { keywords: ['lançamento de jogo', 'jogos novos', 'jogo lançado', 'lançamentos de jogos'], catId: 'entretenimento', featId: 'jogos',
+    fetch: () => fetchJogosItems(2) },
+  { keywords: ['youtube', 'canal', 'vídeo novo', 'video novo'], catId: 'entretenimento', featId: 'youtube',
+    fetch: (fields) => fetchYoutubeItems(fields.canais, fields) },
+  { keywords: ['podcast'], catId: 'entretenimento', featId: 'podcasts',
+    fetch: (fields) => fetchPodcastItems(fields.nomes, 2) },
+  { keywords: ['música', 'musica', 'playlist'], catId: 'entretenimento', featId: 'musicas',
+    fetch: (fields) => fetchMusicasItems(fields.generos, 2) },
+];
+
+async function tryAnswerGuia(texto) {
+  const lower = texto.toLowerCase();
+  const topic = GUIA_VOICE_TOPICS.find((t) => t.keywords.some((k) => lower.includes(k)));
+  if (!topic) return null;
+  try {
+    const fields = getFeatureState(topic.catId, topic.featId).fields;
+    const items = await topic.fetch(fields);
+    if (!items || items.length === 0) return 'Não encontrei nada sobre isso agora, talvez precise configurar essa categoria na aba Guia.';
+    return items.slice(0, 2).map((it) => it.full).join(' ');
+  } catch (e) {
+    return 'Erro ao buscar essa informação agora.';
+  }
+}
+
 async function tryAnswerEsportes(texto) {
   let m;
   let time = null;
@@ -2745,6 +2787,7 @@ async function handleVoiceQuery(textoOriginal) {
     if (!resposta) resposta = await tryAnswerCotacao(semSaudacao);
     if (!resposta) resposta = await tryAnswerClima(semSaudacao);
     if (!resposta) resposta = await tryAnswerEsportes(semSaudacao);
+    if (!resposta) resposta = await tryAnswerGuia(semSaudacao);
     if (!resposta) resposta = await tryAnswerNoticias(semSaudacao);
     if (!resposta) resposta = await tryAnswerWikipedia(semSaudacao);
   }
