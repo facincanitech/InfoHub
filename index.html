@@ -1508,7 +1508,11 @@ async function fetchRssItems(targetUrl) {
 async function fetchNewsItemsFallback(termo, limit) {
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
   const items = await fetchRssItems(url);
-  return items.slice(0, limit).map(({ title }) => ({ category: 'Noticias', sub: termo, title, full: `Notícia sobre ${termo}: ${title}.`, quick: title }));
+  return items.slice(0, limit).map(({ title }) => ({ category: 'Noticias', sub: termo, title, full: `${title}.`, quick: title }));
+}
+
+function normalizeTitleForDedupe(title) {
+  return title.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 async function fetchNewsItems(termosStr, limit) {
@@ -1533,8 +1537,9 @@ async function fetchNewsItems(termosStr, limit) {
       termoItems = await fetchNewsItemsFallback(termo, limit);
     }
     for (const item of termoItems) {
-      if (seenTitles.has(item.title)) continue;
-      seenTitles.add(item.title);
+      const normalized = normalizeTitleForDedupe(item.title);
+      if (seenTitles.has(normalized)) continue;
+      seenTitles.add(normalized);
       all.push(item);
     }
   }
