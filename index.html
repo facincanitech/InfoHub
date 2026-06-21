@@ -328,7 +328,7 @@
       <div class="sub">Mais automação, mais conveniência.</div>
 
       <div class="price-card">
-        <div class="price">R$ 9,90 <span>/ mês</span></div>
+        <div class="price">R$ 19,90 <span>/ mês</span></div>
       </div>
 
       <div class="premium-feature">
@@ -766,6 +766,8 @@ function loadState() {
     theme: saved.theme || 'dark',
     premiumUnlocked: saved.premiumUnlocked || false,
     gpsPoiCategory: saved.gpsPoiCategory || null,
+    gpsAmbientCycleMonth: saved.gpsAmbientCycleMonth || '',
+    gpsAmbientCycleCount: saved.gpsAmbientCycleCount || 0,
     alarmsActive: saved.alarmsActive || false,
     alarmTimes: saved.alarmTimes || [],
     alarmLastFired: saved.alarmLastFired || {},
@@ -2110,8 +2112,27 @@ function stopGps() {
   speechSynthesis.cancel();
 }
 
+const GPS_AMBIENT_MONTHLY_LIMIT = 300; // ciclos/mês (1 ciclo = 1 chamada de trânsito), protege o custo de API
+
+function checkAndCountGpsAmbientCycle() {
+  const mesAtual = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  if (state.gpsAmbientCycleMonth !== mesAtual) {
+    state.gpsAmbientCycleMonth = mesAtual;
+    state.gpsAmbientCycleCount = 0;
+  }
+  if (state.gpsAmbientCycleCount >= GPS_AMBIENT_MONTHLY_LIMIT) return false;
+  state.gpsAmbientCycleCount++;
+  saveState();
+  return true;
+}
+
 async function narrateTrafficOnce() {
   const resultEl = document.getElementById('gps-result');
+  if (!checkAndCountGpsAmbientCycle()) {
+    resultEl.textContent = `Limite mensal do modo trânsito atingido (${GPS_AMBIENT_MONTHLY_LIMIT} ciclos). Volta a funcionar no próximo mês.`;
+    stopGps();
+    return;
+  }
   try {
     const pos = await getCurrentPosition();
     const lat = pos.coords.latitude;
