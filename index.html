@@ -134,47 +134,62 @@
     background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text);
     border-radius: 8px; padding: 7px 8px; font-size: 0.82rem; font-family: inherit;
   }
-  /* ===== Category cards (assinatura sonora: borda colorida + onda) ===== */
+  /* ===== Category cards: "heróis" com cena/banner animado de fundo ===== */
   #category-cards { display: flex; flex-direction: column; }
-  #category-cards.bento { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-  .category-card {
-    display: flex; align-items: center; gap: 12px; background: var(--c-surface); border-radius: 14px;
-    padding: 14px 16px; margin-bottom: 10px; cursor: pointer;
-    border-left: 4px solid color-mix(in srgb, var(--cat-color, var(--c-accent-blue)) 55%, transparent);
-    transition: transform .12s ease, background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
+  .cat-hero {
+    position: relative; border-radius: 16px; overflow: hidden; height: 100px;
+    margin-bottom: 12px; border-left: 4px solid var(--cat-color, var(--c-accent-blue));
+    cursor: pointer; transition: transform .12s ease;
   }
-  .category-card:hover { background: var(--c-surface-hover); }
-  .category-card:active { transform: scale(0.97); }
-  .category-card.tapped {
-    background: color-mix(in srgb, var(--cat-color, var(--c-accent-blue)) 12%, var(--c-surface));
-    border-left-color: var(--cat-color, var(--c-accent-blue));
-    box-shadow: -2px 0 10px -2px color-mix(in srgb, var(--cat-color, var(--c-accent-blue)) 60%, transparent);
+  .cat-hero:active { transform: scale(0.98); }
+  .cat-hero .overlay {
+    position: absolute; inset: 0; z-index: 1;
+    background: linear-gradient(0deg, rgba(0,0,0,0.85) 15%, rgba(0,0,0,0.25) 65%, rgba(0,0,0,0.05) 100%);
   }
-  .category-card .ic { font-size: 1.4rem; }
-  .category-card .title { flex: 1; font-weight: 600; font-size: 0.95rem; }
-  .category-card .count { color: var(--c-text-faint); font-size: 0.74rem; margin-right: 2px; }
-  .category-card .wave { display: flex; align-items: center; gap: 2px; height: 18px; flex-shrink: 0; }
-  .category-card .wave span {
-    width: 3px; border-radius: 2px; background: var(--cat-color, var(--c-accent-blue));
-    opacity: 0.85; transform-origin: bottom; transition: transform .2s ease;
+  .cat-hero .content {
+    position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column;
+    justify-content: flex-end; padding: 12px 14px;
   }
-  .category-card .wave.animating span { animation: cat-wave-bounce 0.45s ease-in-out infinite; }
-  .category-card .wave.animating span:nth-child(1) { animation-delay: 0s; }
-  .category-card .wave.animating span:nth-child(2) { animation-delay: .09s; }
-  .category-card .wave.animating span:nth-child(3) { animation-delay: .04s; }
-  .category-card .wave.animating span:nth-child(4) { animation-delay: .14s; }
-  @keyframes cat-wave-bounce {
-    0%, 100% { transform: scaleY(0.35); }
-    50% { transform: scaleY(1.15); }
-  }
+  .cat-hero .name { color: #fff; font-weight: 700; font-size: 0.95rem; }
+  .cat-hero .count { color: rgba(255,255,255,0.72); font-size: 0.72rem; margin-top: 2px; }
 
-  #category-cards.bento .category-card {
-    flex-direction: column; align-items: flex-start; gap: 8px;
-    margin-bottom: 0; min-height: 92px; justify-content: space-between;
+  @keyframes cat-hero-cycle {
+    0%, 4% { opacity: 0; }
+    9%, 28% { opacity: 1; }
+    33%, 100% { opacity: 0; }
   }
-  #category-cards.bento .category-card .title { font-size: 0.85rem; }
-  #category-cards.bento .category-card .wave { align-self: flex-end; }
+  .banner-bg, .weather-scene, .icon-vignette {
+    position: absolute; inset: 0; opacity: 0; animation: cat-hero-cycle 9s infinite;
+  }
+  .banner-bg:nth-child(1), .weather-scene:nth-child(1), .icon-vignette:nth-child(1) { animation-delay: 0s; }
+  .banner-bg:nth-child(2), .weather-scene:nth-child(2), .icon-vignette:nth-child(2) { animation-delay: 3s; }
+  .banner-bg:nth-child(3), .weather-scene:nth-child(3), .icon-vignette:nth-child(3) { animation-delay: 6s; }
+  .icon-vignette { display: flex; align-items: center; justify-content: center; font-size: 2.3rem; }
+  .banner-bg { background-size: cover; background-position: center; }
+
+  .chart-wrap { position: absolute; inset: 0; overflow: hidden; }
+  .chart-track { position: absolute; top: 0; left: 0; width: 200%; height: 100%; animation: cat-chart-scroll 4.5s linear infinite; }
+  @keyframes cat-chart-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  .cat-star { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: cat-star-twinkle 2.4s ease-in-out infinite; }
+  @keyframes cat-star-twinkle { 0%, 100% { opacity: 0.15; } 50% { opacity: 1; } }
+
+  /* Sem animação no alto contraste/movimento reduzido: cena fixa e legível, sem competir com leitor de tela ou sensibilidade a movimento. */
+  [data-theme='high-contrast'] .cat-hero { height: auto; background: var(--c-bg) !important; border: 1px solid var(--c-border); }
+  [data-theme='high-contrast'] .cat-hero .banner-bg,
+  [data-theme='high-contrast'] .cat-hero .weather-scene,
+  [data-theme='high-contrast'] .cat-hero .icon-vignette,
+  [data-theme='high-contrast'] .cat-hero .chart-wrap,
+  [data-theme='high-contrast'] .cat-hero .cat-star,
+  [data-theme='high-contrast'] .cat-hero .overlay { display: none; }
+  [data-theme='high-contrast'] .cat-hero .content { position: static; padding: 14px 16px; }
+  [data-theme='high-contrast'] .cat-hero .name,
+  [data-theme='high-contrast'] .cat-hero .count { color: var(--c-text); }
+  @media (prefers-reduced-motion: reduce) {
+    .banner-bg, .weather-scene, .icon-vignette, .chart-track, .cat-star { animation: none; }
+    .banner-bg:first-child, .weather-scene:first-child, .icon-vignette:first-child { opacity: 1; }
+  }
 
   /* ===== Detail screen ===== */
   .detail-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
@@ -330,7 +345,6 @@
 
   /* Alto contraste: --c-surface e --c-bg são o mesmo preto, então sem borda os
      blocos somem visualmente. Aqui devolvemos a delimitação via borda branca. */
-  [data-theme='high-contrast'] .category-card,
   [data-theme='high-contrast'] .feature,
   [data-theme='high-contrast'] .account-card,
   [data-theme='high-contrast'] .premium-feature,
@@ -1012,29 +1026,82 @@ function countEnabled(cat) {
   return total;
 }
 
-const CAT_WAVE_HEIGHTS = [
-  [6, 14, 9, 16], [8, 5, 13, 7], [15, 6, 11, 8], [9, 16, 6, 12], [11, 7, 14, 5], [7, 12, 9, 6],
-];
+// Cena animada de fundo de cada "herói" de categoria. Entretenimento e Notícias
+// usam gradientes placeholder por ora — troque o background dos .banner-bg por
+// background-image: url(...) quando tiver pôster/thumbnail real (TMDB/YouTube/GNews).
+function getCategoryHeroScene(cat) {
+  if (cat.id === 'pessoal') {
+    const icons = cat.features.map((f) => f.icon).filter(Boolean).slice(0, 3);
+    return icons.map((ic) => `<div class="icon-vignette">${ic}</div>`).join('');
+  }
+  if (cat.id === 'clima') {
+    return `
+      <div class="weather-scene" style="background:linear-gradient(180deg,#4a90d9,#87ceeb);">
+        <div style="position:absolute; top:14px; right:24px; width:30px; height:30px; border-radius:50%; background:#ffd54f; box-shadow:0 0 20px #ffd54f;"></div>
+      </div>
+      <div class="weather-scene" style="background:linear-gradient(180deg,#5c6f7d,#8a9aa5);">
+        <div style="position:absolute; top:20px; right:26px; width:48px; height:22px; border-radius:20px; background:rgba(255,255,255,0.85);"></div>
+        <div style="position:absolute; top:13px; right:44px; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.85);"></div>
+      </div>
+      <div class="weather-scene" style="background:linear-gradient(180deg,#37474f,#546e7a);">
+        <div style="position:absolute; top:16px; right:28px; width:42px; height:20px; border-radius:18px; background:rgba(220,230,235,0.85);"></div>
+      </div>
+    `;
+  }
+  if (cat.id === 'entretenimento') {
+    return `
+      <div class="banner-bg" style="background:linear-gradient(135deg,#4527a0,#6a1b9a);"></div>
+      <div class="banner-bg" style="background:linear-gradient(135deg,#311b92,#4a148c);"></div>
+      <div class="banner-bg" style="background:linear-gradient(135deg,#512da8,#7b1fa2);"></div>
+    `;
+  }
+  if (cat.id === 'noticias') {
+    return `
+      <div class="banner-bg" style="background:linear-gradient(135deg,#bf360c,#e64a19);"></div>
+      <div class="banner-bg" style="background:linear-gradient(135deg,#d84315,#ff7043);"></div>
+      <div class="banner-bg" style="background:linear-gradient(135deg,#a52714,#c1440e);"></div>
+    `;
+  }
+  if (cat.id === 'financeiro') {
+    return `
+      <div class="chart-wrap">
+        <svg class="chart-track" viewBox="0 0 600 100" preserveAspectRatio="none">
+          <polyline points="0,60 30,40 60,70 90,30 120,55 150,20 180,50 210,35 240,65 270,25 300,45 300,60 330,40 360,70 390,30 420,55 450,20 480,50 510,35 540,65 570,25 600,45"
+            fill="none" stroke="#66bb6a" stroke-width="2.5" />
+        </svg>
+      </div>
+    `;
+  }
+  if (cat.id === 'horoscopo') {
+    const positions = [[12, 24], [26, 64], [18, 110], [38, 150], [15, 200], [32, 240], [20, 280], [40, 320]];
+    return positions.map(([top, left], i) => `<div class="cat-star" style="top:${top}px; left:${left}px; animation-delay:${(i * 0.4).toFixed(1)}s;"></div>`).join('');
+  }
+  return '';
+}
+
+const CAT_HERO_BG = {
+  pessoal: 'linear-gradient(135deg,#1a2a4a,#2c3e6b)',
+  financeiro: 'linear-gradient(180deg,#0d2818,#16331f)',
+  horoscopo: 'linear-gradient(180deg,#0f0c29,#24243e)',
+};
 
 function renderCategoryCards() {
   categoryCardsEl.innerHTML = '';
-  CATEGORY_DEFS.forEach((cat, i) => {
+  CATEGORY_DEFS.forEach((cat) => {
     const card = document.createElement('div');
-    card.className = 'category-card';
+    card.className = 'cat-hero';
     card.style.setProperty('--cat-color', cat.color);
+    if (CAT_HERO_BG[cat.id]) card.style.background = CAT_HERO_BG[cat.id];
     const enabledCount = countEnabled(cat);
-    const heights = CAT_WAVE_HEIGHTS[i % CAT_WAVE_HEIGHTS.length];
     card.innerHTML = `
-      <span class="ic">${cat.icon}</span>
-      <span class="title">${cat.title}</span>
-      ${enabledCount > 0 ? `<span class="count">${enabledCount} ativa${enabledCount > 1 ? 's' : ''}</span>` : ''}
-      <div class="wave">${heights.map(h => `<span style="height:${h}px;"></span>`).join('')}</div>
+      ${getCategoryHeroScene(cat)}
+      <div class="overlay"></div>
+      <div class="content">
+        <div class="name">${cat.icon} ${cat.title}</div>
+        ${enabledCount > 0 ? `<div class="count">${enabledCount} ativa${enabledCount > 1 ? 's' : ''}</div>` : ''}
+      </div>
     `;
-    card.addEventListener('click', () => {
-      const wave = card.querySelector('.wave');
-      wave.classList.add('animating');
-      setTimeout(() => openCategoryDetail(cat.id), 140);
-    });
+    card.addEventListener('click', () => openCategoryDetail(cat.id));
     categoryCardsEl.appendChild(card);
   });
 }
