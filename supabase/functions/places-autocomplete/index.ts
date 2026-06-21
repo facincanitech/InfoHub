@@ -1,58 +1,61 @@
-// Supabase Edge Function — autocompletar de endereço (Google Places API Autocomplete,
-// New) pro campo de destino do GPS auditivo. Resolve o problema de digitar rua/número
-// solto e não bater com nada real — aqui você escolhe de uma lista de endereços de
-// verdade enquanto digita.
+// Supabase Edge Function — autocompletar de endereço via Photon (OpenStreetMap),
+// 100% gratuito, sem chave nenhuma. Substituiu o Google Places Autocomplete pra
+// cortar custo — essa parte (Places) é cara no Google, diferente do Routes
+// (trânsito/navegação), que continua no Google por não ter alternativa gratuita
+// com trânsito em tempo real.
 // Deploy: cole essa função numa function chamada "places-autocomplete" no painel do Supabase.
-// Secret: GOOGLE_MAPS_API_KEY (mesma chave das outras functions de GPS — precisa ter
-// "Places API (New)" habilitada, já usada pelo places-nearby)
+// Sem secret necessário.
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function formatAddress(props: any) {
+  const parts: string[] = [];
+  if (props.street) {
+    parts.push(props.housenumber ? `${props.street}, ${props.housenumber}` : props.street);
+  } else if (props.name) {
+    parts.push(props.name);
+  }
+  const local = [props.district, props.city, props.state].filter(Boolean).join(', ');
+  if (local) parts.push(local);
+  return parts.join(' - ');
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
 
-  const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
   const url = new URL(req.url);
   const input = (url.searchParams.get('input') || '').trim();
   const lat = parseFloat(url.searchParams.get('lat') || '');
   const lng = parseFloat(url.searchParams.get('lng') || '');
-  const sessionToken = (url.searchParams.get('sessionToken') || '').trim();
 
-  if (!apiKey || !input) {
-    return Response.json({ suggestions: [], error: 'Faltando texto digitado ou chave do Google Maps no servidor.' }, { headers: CORS_HEADERS });
+  if (!input) {
+    return Response.json({ suggestions: [], error: 'Faltando texto digitado.' }, { headers: CORS_HEADERS });
   }
 
   try {
-    const body: any = {
-      input,
-      languageCode: 'pt-BR',
-      regionCode: 'BR',
-    };
-    if (sessionToken) body.sessionToken = sessionToken;
+    const params = new URLSearchParams({ q: input, limit: '5' });
     if (!isNaN(lat) && !isNaN(lng)) {
-      body.locationBias = { circle: { center: { latitude: lat, longitude: lng }, radius: 50000 } };
+      params.set('lat', String(lat));
+      params.set('lon', String(lng));
     }
-
-    const resp = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': apiKey },
-      body: JSON.stringify(body),
+    const resp = await fetch(`https://photon.komoot.io/api/?${params}`, {
+      headers: { 'User-Agent': 'InfoHub/1.0 (briefing app)' },
     });
-    const data = await resp.json();
     if (!resp.ok) {
-      const msg = (data.error && data.error.message) || `HTTP ${resp.status}`;
-      return Response.json({ suggestions: [], error: `Google Places: ${msg}` }, { headers: CORS_HEADERS });
+      return Response.json({ suggestions: [], error: `Photon: HTTP ${resp.status}` }, { headers: CORS_HEADERS });
     }
-
-    const suggestions = (data.suggestions || [])
-      .map((s: any) => s.placePrediction)
-      .filter(Boolean)
-      .map((p: any) => ({ text: p.text && p.text.text }))
-      .filter((s: any) => s.text);
-
+    const data = await resp.json();
+    const seen = new Set<string>();
+    const suggestions: { text: string }[] = [];
+    for (const feature of data.features || []) {
+      const text = formatAddress(feature.properties || {});
+      if (!text || seen.has(text)) continue;
+      seen.add(text);
+      suggestions.push({ text });
+    }
     return Response.json({ suggestions, error: null }, { headers: CORS_HEADERS });
   } catch (e) {
     return Response.json({ suggestions: [], error: 'Erro ao buscar endereço: ' + e.message }, { headers: CORS_HEADERS });
