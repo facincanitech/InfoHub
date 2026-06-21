@@ -1458,6 +1458,7 @@ document.querySelectorAll('.account-tab-btn').forEach(btn => {
 });
 
 function updateAccountsUI() {
+  renderPremiumLock();
   const googleOn = !!accessToken;
   document.getElementById('google-status-dot').classList.toggle('on', googleOn);
   document.getElementById('google-status-text').textContent = googleOn ? 'Conectado' : 'Desconectado';
@@ -2221,8 +2222,12 @@ const premiumLockedEl = document.getElementById('premium-locked');
 const premiumUnlockedEl = document.getElementById('premium-unlocked');
 
 function renderPremiumLock() {
-  premiumLockedEl.style.display = state.premiumUnlocked ? 'none' : 'block';
-  premiumUnlockedEl.style.display = state.premiumUnlocked ? 'block' : 'none';
+  // premiumUnlocked é só uma flag salva localmente; sem uma conta Google ativa
+  // no momento não tem como confirmar que é a mesma pessoa que assinou, então
+  // a tela trava mesmo que a flag esteja true de uma verificação anterior.
+  const unlocked = state.premiumUnlocked && !!accessToken;
+  premiumLockedEl.style.display = unlocked ? 'none' : 'block';
+  premiumUnlockedEl.style.display = unlocked ? 'block' : 'none';
 }
 renderPremiumLock();
 
