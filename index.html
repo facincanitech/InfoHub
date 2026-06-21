@@ -2526,33 +2526,32 @@ async function tryAnswerWikipedia(texto) {
 
 const VOICE_QA = [
   {
-    triggers: ['oi', 'olá', 'ola', 'e aí', 'eae', 'opa'],
+    triggers: ['oi', 'olá', 'e aí', 'eae', 'opa'],
     response: 'Oi! Pode falar.',
   },
   {
-    triggers: ['o que você pode fazer', 'o que voce pode fazer', 'quais suas funções', 'quais suas funcoes', 'me ajuda com o quê', 'me ajuda com o que', 'o que você faz', 'o que voce faz', 'o que você sabe fazer', 'o que voce sabe fazer'],
+    triggers: ['o que você pode fazer', 'quais suas funções', 'me ajuda com o quê', 'o que você faz', 'o que você sabe fazer'],
     response: 'Eu leio seu briefing do dia, calculo contas, converto unidades, falo cotação, clima, hora e notícias, e dou rota e trânsito se você ativar o Premium. É só perguntar.',
   },
   {
-    triggers: ['você é uma ia', 'voce e uma ia', 'você é inteligência artificial', 'voce e inteligencia artificial', 'isso é ia', 'isso e ia', 'você é um robô', 'voce e um robo', 'você é a alexa', 'voce e a alexa', 'você é a siri', 'voce e a siri', 'você usa inteligência artificial', 'voce usa inteligencia artificial'],
+    triggers: ['você é uma ia', 'você é inteligência artificial', 'isso é ia', 'você é um robô', 'você é a alexa', 'você é a siri', 'você usa inteligência artificial'],
     response: 'Não, eu não sou uma inteligência artificial. Sou um assistente de voz com comandos fixos — entendo só o que foi programado pra eu entender.',
   },
   {
-    triggers: ['quem te criou', 'quem fez você', 'quem fez voce', 'quem é o desenvolvedor', 'quem e o desenvolvedor', 'quem criou esse app', 'quem criou o app'],
+    triggers: ['quem te criou', 'quem fez você', 'quem é o desenvolvedor', 'quem criou esse app', 'quem criou o app'],
     response: 'Fui criado pela FacincaniTech.',
   },
   {
-    triggers: ['qual seu nome', 'qual é seu nome', 'qual e seu nome', 'qual o seu nome', 'você tem nome', 'voce tem nome', 'como você se chama', 'como voce se chama', 'seu nome é', 'seu nome e'],
+    triggers: ['qual seu nome', 'qual é seu nome', 'qual o seu nome', 'você tem nome', 'como você se chama', 'seu nome é'],
     response: 'Eu sou o assistente de voz do InfoHub. Pode me chamar assim mesmo.',
   },
   {
     triggers: [
-      'você pode me ajudar', 'voce pode me ajudar', 'pode me ajudar', 'me ajuda', 'preciso de ajuda',
+      'você pode me ajudar', 'pode me ajudar', 'me ajuda', 'preciso de ajuda',
       'como usa isso', 'como usa o app', 'como usar o app', 'como usar isso', 'como funciona o app', 'como funciona isso',
-      'o que esse app faz', 'o que o app faz', 'oq o app faz', 'o que esse aplicativo faz', 'o que o aplicativo faz',
+      'o que esse app faz', 'o que o app faz', 'o que esse aplicativo faz', 'o que o aplicativo faz',
       'pra que serve esse app', 'pra que serve o app', 'pra que serve isso', 'pra que serve esse aplicativo',
-      'o que é esse app', 'o que e esse app', 'o que é o app', 'o que e o app', 'o que é o infohub', 'o que e o infohub',
-      'o que é esse aplicativo', 'o que e esse aplicativo',
+      'o que é esse app', 'o que é o app', 'o que é o infohub', 'o que é esse aplicativo',
     ],
     response: 'Esse app lê seu briefing diário em voz alta — e-mail, agenda, clima, notícias, financeiro e mais — e ainda responde perguntas simples por voz, sem usar IA. Pra ver tudo que dá pra configurar, toca no ícone de ajuda, o ponto de interrogação, no topo da tela.',
   },
