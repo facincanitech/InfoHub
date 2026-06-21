@@ -99,6 +99,26 @@
 
   /* ===== Settings panel (topo da tela Configurar) ===== */
   .settings-panel { background: var(--c-surface); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
+
+  /* ===== Meu Dia: tiles bento (Customização / Briefing automático) ===== */
+  .md-settings-bento { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .md-bento-tile {
+    background: linear-gradient(155deg, var(--c-surface-alt), var(--c-surface));
+    border: 1px solid var(--c-border2); border-left: 3px solid var(--tile-color, var(--c-accent-blue));
+    border-radius: 16px; padding: 16px 14px;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03);
+    cursor: pointer; min-height: 90px; display: flex; flex-direction: column; justify-content: space-between;
+    transition: transform .12s ease;
+  }
+  .md-bento-tile:active { transform: scale(0.97); }
+  .md-bento-tile .top-row { display: flex; align-items: center; justify-content: space-between; }
+  .md-bento-tile .ic { font-size: 1.3rem; }
+  .md-bento-tile .chev { color: var(--c-text-faint); font-size: 0.85rem; transition: transform .2s; }
+  .md-bento-tile.open .chev { transform: rotate(90deg); }
+  .md-bento-tile .title { font-weight: 600; font-size: 0.86rem; margin-top: 8px; }
+  .md-bento-tile .status { font-size: 0.7rem; color: var(--c-text-dim); margin-top: 3px; }
+  .md-bento-detail { display: none; margin: -6px 0 16px; }
+  .md-bento-detail.open { display: block; }
   .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; }
   .settings-row:not(:last-child) { border-bottom: 1px solid var(--c-border); }
   .settings-row .label { font-weight: 600; font-size: 0.9rem; }
@@ -272,6 +292,7 @@
   [data-theme='high-contrast'] .account-card,
   [data-theme='high-contrast'] .premium-feature,
   [data-theme='high-contrast'] .settings-panel,
+  [data-theme='high-contrast'] .md-bento-tile,
   [data-theme='high-contrast'] .history-item,
   [data-theme='high-contrast'] .help-section,
   [data-theme='high-contrast'] .alarm-item,
@@ -300,44 +321,54 @@
       </div>
     </div>
 
-    <div class="settings-panel">
-      <div class="settings-row">
-        <div>
-          <div class="label">⚡ Modo rápido</div>
-          <div class="desc">Lê versões curtas em vez do conteúdo completo</div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="quick-mode-toggle">
-          <span class="slider"></span>
-        </label>
+    <div class="md-settings-bento">
+      <div class="md-bento-tile" id="custom-tile" style="--tile-color: var(--c-accent-blue);">
+        <div class="top-row"><span class="ic">🎛️</span><span class="chev">›</span></div>
+        <div><div class="title">Customização</div><div class="status">Voz · velocidade · modo rápido</div></div>
       </div>
-      <div class="settings-row">
-        <div class="label">Voz</div>
-        <select id="voice-select"></select>
+      <div class="md-bento-tile" id="alarms-tile" style="--tile-color: var(--c-yellow);">
+        <div class="top-row"><span class="ic">⏰</span><span class="chev">›</span></div>
+        <div><div class="title">Briefing automático</div><div class="status" id="alarms-tile-status">Desativado</div></div>
       </div>
-      <div class="settings-row">
-        <div class="label">Velocidade</div>
-        <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
-      </div>
-      <div class="help-section" id="alarms-section" style="background:none; margin-bottom:0;">
-        <div class="help-section-header" style="padding: 8px 0;">
-          <span class="title">⏰ Briefing automático</span>
-          <span class="chev">›</span>
-        </div>
-        <div class="help-section-body" style="padding: 0 0 8px;">
-          <div class="desc" style="margin-bottom: 10px;">Toca sozinho se a aba já estiver aberta; senão, manda notificação pra abrir. Precisa do app aberto em alguma aba pra funcionar.</div>
-          <div class="settings-row">
-            <div class="label">Ativar</div>
-            <label class="switch">
-              <input type="checkbox" id="alarms-active-toggle">
-              <span class="slider"></span>
-            </label>
+    </div>
+
+    <div class="md-bento-detail" id="custom-detail">
+      <div class="settings-panel">
+        <div class="settings-row">
+          <div>
+            <div class="label">⚡ Modo rápido</div>
+            <div class="desc">Lê versões curtas em vez do conteúdo completo</div>
           </div>
-          <div id="alarms-list"></div>
-          <div class="settings-row">
-            <input type="time" id="new-alarm-time-input" value="07:00" style="flex:1; max-width: 160px;">
-            <button type="button" id="add-alarm-btn" style="background: var(--c-accent-blue); color: var(--c-on-accent); padding: 8px 14px; font-size: 0.85rem;">+ Adicionar horário</button>
-          </div>
+          <label class="switch">
+            <input type="checkbox" id="quick-mode-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div class="label">Voz</div>
+          <select id="voice-select"></select>
+        </div>
+        <div class="settings-row">
+          <div class="label">Velocidade</div>
+          <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
+        </div>
+      </div>
+    </div>
+
+    <div class="md-bento-detail" id="alarms-detail">
+      <div class="settings-panel">
+        <div class="desc" style="margin-bottom: 10px;">Toca sozinho se a aba já estiver aberta; senão, manda notificação pra abrir. Precisa do app aberto em alguma aba pra funcionar.</div>
+        <div class="settings-row">
+          <div class="label">Ativar</div>
+          <label class="switch">
+            <input type="checkbox" id="alarms-active-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div id="alarms-list"></div>
+        <div class="settings-row">
+          <input type="time" id="new-alarm-time-input" value="07:00" style="flex:1; max-width: 160px;">
+          <button type="button" id="add-alarm-btn" style="background: var(--c-accent-blue); color: var(--c-on-accent); padding: 8px 14px; font-size: 0.85rem;">+ Adicionar horário</button>
         </div>
       </div>
     </div>
@@ -2482,8 +2513,13 @@ function scheduleAllAlarms() {
   state.alarmTimes.forEach(scheduleAlarm);
 }
 
+function updateAlarmsTileStatus() {
+  document.getElementById('alarms-tile-status').textContent = state.alarmsActive ? 'Ativado' : 'Desativado';
+}
+
 alarmsActiveToggle.checked = state.alarmsActive;
 renderAlarmsList();
+updateAlarmsTileStatus();
 
 alarmsActiveToggle.addEventListener('change', async () => {
   if (alarmsActiveToggle.checked) {
@@ -2497,6 +2533,15 @@ alarmsActiveToggle.addEventListener('change', async () => {
   state.alarmsActive = alarmsActiveToggle.checked;
   saveState();
   scheduleAllAlarms();
+  updateAlarmsTileStatus();
+});
+
+document.querySelectorAll('.md-bento-tile').forEach((tile) => {
+  tile.addEventListener('click', () => {
+    const detail = document.getElementById(tile.id === 'custom-tile' ? 'custom-detail' : 'alarms-detail');
+    tile.classList.toggle('open');
+    detail.classList.toggle('open');
+  });
 });
 
 document.getElementById('add-alarm-btn').addEventListener('click', () => {
