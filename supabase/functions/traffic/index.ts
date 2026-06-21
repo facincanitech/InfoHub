@@ -1,7 +1,7 @@
 // Supabase Edge Function — checagem de trânsito ambiente pro "modo trânsito" do GPS
-// auditivo (sem destino definido). Usa o Google Directions com departure_time=now
-// pra comparar duração normal vs duração com trânsito num trecho curto adiante da
-// posição atual, e classifica a condição.
+// auditivo (sem destino definido). Usa a Google Routes API com routingPreference
+// TRAFFIC_AWARE pra comparar duração normal (staticDuration) vs duração com trânsito
+// (duration) num trecho curto adiante da posição atual, e classifica a condição.
 // Deploy: cole essa função numa function chamada "traffic" no painel do Supabase.
 // Secret: GOOGLE_MAPS_API_KEY (mesma chave usada pela function "directions")
 
@@ -9,6 +9,11 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+function parseLatLng(value: string) {
+  const [lat, lng] = value.split(',').map(Number);
+  return { latitude: lat, longitude: lng };
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -23,15 +28,30 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origem)}&destination=${encodeURIComponent(destino)}&departure_time=now&language=pt-BR&key=${apiKey}`;
-    const resp = await fetch(directionsUrl).then(r => r.json());
-    if (resp.status !== 'OK') {
-      return Response.json({ status: '', error: `Google Directions: ${resp.status}` }, { headers: CORS_HEADERS });
+    const resp = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.duration,routes.staticDuration',
+      },
+      body: JSON.stringify({
+        origin: { location: { latLng: parseLatLng(origem) } },
+        destination: { location: { latLng: parseLatLng(destino) } },
+        travelMode: 'DRIVE',
+        routingPreference: 'TRAFFIC_AWARE',
+        languageCode: 'pt-BR',
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.routes || data.routes.length === 0) {
+      const msg = (data.error && data.error.message) || `HTTP ${resp.status}`;
+      return Response.json({ status: '', error: `Google Routes: ${msg}` }, { headers: CORS_HEADERS });
     }
 
-    const leg = resp.routes[0].legs[0];
-    const normal = leg.duration.value;
-    const comTransito = (leg.duration_in_traffic && leg.duration_in_traffic.value) || normal;
+    const route = data.routes[0];
+    const normal = parseInt((route.staticDuration || route.duration).replace('s', ''), 10);
+    const comTransito = parseInt(route.duration.replace('s', ''), 10);
     const ratio = comTransito / normal;
 
     let status;
