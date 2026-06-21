@@ -364,12 +364,11 @@
         </div>
         <div class="desc">Origem: sua localização atual (GPS). Deixe o destino vazio pra ouvir o trânsito e lugares próximos enquanto dirige, ou preencha pra navegação completa por voz.</div>
         <input type="text" id="gps-destino" placeholder="Destino (opcional — vazio = modo trânsito)">
-        <div class="desc" style="margin-top: 8px;">No modo trânsito, avisar quando aparecer perto (opcional, sem repetir o mesmo lugar):</div>
+        <div class="desc" style="margin-top: 8px;">No modo trânsito, avisar quando aparecer perto (opcional, escolha só 1):</div>
         <div class="btn-group" id="gps-poi-categories" style="margin-bottom: 10px;">
           <button type="button" class="btn-opt" data-poi="gas_station">⛽ Posto</button>
           <button type="button" class="btn-opt" data-poi="restaurant">🍽️ Restaurante</button>
           <button type="button" class="btn-opt" data-poi="pharmacy">💊 Farmácia</button>
-          <button type="button" class="btn-opt" data-poi="atm">🏦 Caixa eletrônico</button>
         </div>
         <div class="result" id="gps-result"></div>
       </div>
@@ -763,7 +762,7 @@ function loadState() {
     activeClimateCity: saved.activeClimateCity || 1,
     theme: saved.theme || 'dark',
     premiumUnlocked: saved.premiumUnlocked || false,
-    gpsPoiCategories: saved.gpsPoiCategories || [],
+    gpsPoiCategory: saved.gpsPoiCategory || null,
     alarmsActive: saved.alarmsActive || false,
     alarmTimes: saved.alarmTimes || [],
     alarmLastFired: saved.alarmLastFired || {},
@@ -1989,25 +1988,22 @@ let gpsActive = false;
 let trafficIntervalId = null;
 let announcedPlaceIds = new Set();
 
-const gpsPoiCategories = new Set(state.gpsPoiCategories || []);
+let gpsPoiCategory = state.gpsPoiCategory || null; // só 1 categoria por vez, pra controlar custo de API
 document.querySelectorAll('#gps-poi-categories .btn-opt').forEach(btn => {
-  if (gpsPoiCategories.has(btn.dataset.poi)) btn.classList.add('selected');
+  if (gpsPoiCategory === btn.dataset.poi) btn.classList.add('selected');
   btn.addEventListener('click', () => {
     const poi = btn.dataset.poi;
-    if (gpsPoiCategories.has(poi)) gpsPoiCategories.delete(poi); else gpsPoiCategories.add(poi);
-    btn.classList.toggle('selected');
-    state.gpsPoiCategories = Array.from(gpsPoiCategories);
+    gpsPoiCategory = gpsPoiCategory === poi ? null : poi;
+    document.querySelectorAll('#gps-poi-categories .btn-opt').forEach(b => b.classList.toggle('selected', b.dataset.poi === gpsPoiCategory));
+    state.gpsPoiCategory = gpsPoiCategory;
     saveState();
   });
 });
 
 async function announceNearbyPlaceIfNew(lat, lng) {
-  if (gpsPoiCategories.size === 0) return;
+  if (!gpsPoiCategory) return;
   try {
-    // Uma chamada só com todas as categorias selecionadas, em vez de uma por categoria —
-    // bem mais barato (a Places API já aceita várias categorias na mesma requisição).
-    const types = Array.from(gpsPoiCategories).join(',');
-    const { places, error } = await callEdgeFunction('places-nearby', { lat, lng, types, radius: 1000 });
+    const { places, error } = await callEdgeFunction('places-nearby', { lat, lng, types: gpsPoiCategory, radius: 2000 });
     if (error || !places) return;
     const novo = places.find(p => !announcedPlaceIds.has(p.id));
     if (novo) {
@@ -2059,12 +2055,12 @@ async function narrateTrafficOnce() {
     if (heading === null || heading === undefined || isNaN(heading)) {
       resultEl.textContent = 'Aguardando direção de movimento (ainda sem dados suficientes)...';
     } else {
-      // Ponto projetado em linha reta a 1km na direção do heading — não segue ruas de
+      // Ponto projetado em linha reta a 2km na direção do heading — não segue ruas de
       // verdade, então em curvas/cruzamentos pode pegar o trânsito de uma via paralela
-      // à que você realmente está. 1km (em vez dos 3km originais) reduz esse erro, mas
-      // não elimina; resolver isso de verdade precisaria da Roads API (snap-to-road).
-      const destLat = lat + (1 / 111) * Math.cos(heading * Math.PI / 180);
-      const destLon = lon + (1 / (111 * Math.cos(lat * Math.PI / 180))) * Math.sin(heading * Math.PI / 180);
+      // à que você realmente está; resolver isso de verdade precisaria da Roads API
+      // (snap-to-road).
+      const destLat = lat + (2 / 111) * Math.cos(heading * Math.PI / 180);
+      const destLon = lon + (2 / (111 * Math.cos(lat * Math.PI / 180))) * Math.sin(heading * Math.PI / 180);
       const { status, error } = await callEdgeFunction('traffic', { origem: `${lat},${lon}`, destino: `${destLat},${destLon}` });
       if (error) {
         resultEl.textContent = error;
