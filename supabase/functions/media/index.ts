@@ -33,7 +33,8 @@ Deno.serve(async (req: Request) => {
 
   try {
     const seen = new Set<string>();
-    const items: { title: string; overview: string; link: string }[] = [];
+    const items: { title: string; overview: string; link: string; poster: string | null }[] = [];
+    const posterUrl = (path: string | null) => path ? `https://image.tmdb.org/t/p/w500${path}` : null;
 
     if (type === 'filmes') {
       let nowPlaying = await tmdbGet('/movie/now_playing?region=BR', apiKey);
@@ -48,13 +49,13 @@ Deno.serve(async (req: Request) => {
       for (const m of (nowPlaying.results || [])) {
         if (seen.has(m.title)) continue;
         seen.add(m.title);
-        items.push({ title: `${m.title} está em cartaz`, overview: m.overview || '', link: `https://www.themoviedb.org/movie/${m.id}` });
+        items.push({ title: `${m.title} está em cartaz`, overview: m.overview || '', link: `https://www.themoviedb.org/movie/${m.id}`, poster: posterUrl(m.poster_path) });
       }
       for (const m of (upcoming.results || [])) {
         if (seen.has(m.title)) continue;
         seen.add(m.title);
         const data = formatDate(m.release_date);
-        items.push({ title: `${m.title} chega aos cinemas${data ? ' em ' + data : ' em breve'}`, overview: m.overview || '', link: `https://www.themoviedb.org/movie/${m.id}` });
+        items.push({ title: `${m.title} chega aos cinemas${data ? ' em ' + data : ' em breve'}`, overview: m.overview || '', link: `https://www.themoviedb.org/movie/${m.id}`, poster: posterUrl(m.poster_path) });
       }
     } else if (type === 'series') {
       const onTheAir = await tmdbGet('/tv/on_the_air', apiKey);
@@ -62,12 +63,12 @@ Deno.serve(async (req: Request) => {
       for (const s of (onTheAir.results || [])) {
         if (seen.has(s.name)) continue;
         seen.add(s.name);
-        items.push({ title: `${s.name} está no ar`, overview: s.overview || '', link: `https://www.themoviedb.org/tv/${s.id}` });
+        items.push({ title: `${s.name} está no ar`, overview: s.overview || '', link: `https://www.themoviedb.org/tv/${s.id}`, poster: posterUrl(s.poster_path) });
       }
       for (const s of (trending.results || [])) {
         if (seen.has(s.name)) continue;
         seen.add(s.name);
-        items.push({ title: `${s.name} está em alta`, overview: s.overview || '', link: `https://www.themoviedb.org/tv/${s.id}` });
+        items.push({ title: `${s.name} está em alta`, overview: s.overview || '', link: `https://www.themoviedb.org/tv/${s.id}`, poster: posterUrl(s.poster_path) });
       }
     } else {
       return Response.json({ items: [], error: 'Tipo inválido, use filmes ou series.' }, { headers: CORS_HEADERS });

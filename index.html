@@ -1032,10 +1032,40 @@ function countEnabled(cat) {
   return total;
 }
 
+// Pôsteres/imagens reais pros heróis de Entretenimento e Notícias. Buscado uma
+// única vez por sessão (não a cada render) pra não bater nas APIs gratuitas
+// repetidamente só pela tela do Guia ser reaberta.
+let heroImageUrls = { entretenimento: [], noticias: [] };
+let heroImagesLoaded = false;
+
+async function loadHeroImages() {
+  if (heroImagesLoaded) return;
+  heroImagesLoaded = true;
+  try {
+    const [filmes, series] = await Promise.all([fetchFilmesItems(3), fetchSeriesItems(3)]);
+    heroImageUrls.entretenimento = [...filmes, ...series].map((it) => it.image).filter(Boolean).slice(0, 3);
+  } catch (e) { console.error('hero(entretenimento):', e); }
+
+  try {
+    const fs = getFeatureState('noticias', 'keyword');
+    const termos = parseList(fs.fields.termos);
+    if (termos.length > 0) {
+      const items = await fetchNewsItems(termos, 1);
+      heroImageUrls.noticias = items.map((it) => it.image).filter(Boolean).slice(0, 3);
+    }
+  } catch (e) { console.error('hero(noticias):', e); }
+
+  renderCategoryCards();
+}
+
 // Cena animada de fundo de cada "herói" de categoria. Entretenimento e Notícias
-// usam gradientes placeholder por ora — troque o background dos .banner-bg por
-// background-image: url(...) quando tiver pôster/thumbnail real (TMDB/YouTube/GNews).
+// usam pôster/capa real quando disponível (carregado por loadHeroImages),
+// caindo pra gradiente placeholder enquanto isso ou se não houver imagem.
 function getCategoryHeroScene(cat) {
+  if ((cat.id === 'entretenimento' || cat.id === 'noticias') && heroImageUrls[cat.id].length > 0) {
+    const urls = heroImageUrls[cat.id];
+    return [0, 1, 2].map((i) => `<div class="banner-bg" style="background-image:url('${urls[i % urls.length]}');"></div>`).join('');
+  }
   if (cat.id === 'pessoal') {
     const icons = cat.features.map((f) => f.icon).filter(Boolean).slice(0, 3);
     return icons.map((ic) => `<div class="icon-vignette">${ic}</div>`).join('');
@@ -1822,9 +1852,9 @@ async function fetchNewsItems(termosStr, limit) {
         console.error('news:', error);
         termoItems = await fetchNewsItemsFallback(termo, limit);
       } else {
-        termoItems = (items || []).slice(0, limit).map(({ title, description, link }) => {
+        termoItems = (items || []).slice(0, limit).map(({ title, description, link, image }) => {
           const full = description ? `${title}. ${truncateAtBoundary(description, 600)}` : `${title}.`;
-          return { category: 'Noticias', sub: termo, title, full, quick: title, link };
+          return { category: 'Noticias', sub: termo, title, full, quick: title, link, image: image || null };
         });
       }
     } catch (e) {
@@ -1845,9 +1875,9 @@ async function fetchFilmesItems(limit) {
   try {
     const { items, error } = await callEdgeFunction('media', { type: 'filmes' });
     if (error) { console.error('media(filmes):', error); return []; }
-    return (items || []).slice(0, limit).map(({ title, overview, link }) => {
+    return (items || []).slice(0, limit).map(({ title, overview, link, poster }) => {
       const full = overview ? `${title}. ${truncateAtBoundary(overview, 600)}` : `${title}.`;
-      return { category: 'Entretenimento', sub: 'Filmes', title, full, quick: title, link };
+      return { category: 'Entretenimento', sub: 'Filmes', title, full, quick: title, link, image: poster || null };
     });
   } catch (e) { console.error('media(filmes):', e); return []; }
 }
@@ -1856,9 +1886,9 @@ async function fetchSeriesItems(limit) {
   try {
     const { items, error } = await callEdgeFunction('media', { type: 'series' });
     if (error) { console.error('media(series):', error); return []; }
-    return (items || []).slice(0, limit).map(({ title, overview, link }) => {
+    return (items || []).slice(0, limit).map(({ title, overview, link, poster }) => {
       const full = overview ? `${title}. ${truncateAtBoundary(overview, 600)}` : `${title}.`;
-      return { category: 'Entretenimento', sub: 'Séries', title, full, quick: title, link };
+      return { category: 'Entretenimento', sub: 'Séries', title, full, quick: title, link, image: poster || null };
     });
   } catch (e) { console.error('media(series):', e); return []; }
 }
@@ -2981,6 +3011,7 @@ document.querySelectorAll('[data-action="voice"]').forEach((btn) => {
    INIT
    ========================================================================= */
 renderCategoryCards();
+loadHeroImages();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
   navigator.serviceWorker.addEventListener('message', (event) => {

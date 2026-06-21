@@ -31,6 +31,7 @@ Deno.serve(async (req: Request) => {
       description: a.description || '',
       link: a.url,
       source: (a.source && a.source.name) || '',
+      image: a.image || null,
     }));
     return Response.json({ items, error: null }, { headers: CORS_HEADERS });
   } catch (e) {
