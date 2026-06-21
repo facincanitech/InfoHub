@@ -358,7 +358,10 @@
       <div class="sub">Assinatura ativa.</div>
 
       <div class="premium-feature">
-        <div class="title">🧭 GPS auditivo</div>
+        <div class="title" style="justify-content: space-between;">
+          <span>🧭 GPS auditivo</span>
+          <button id="gps-start-btn" style="width: auto; padding: 8px 16px; font-size: 0.82rem; background: var(--c-accent-blue); color: var(--c-on-accent);">Ativar</button>
+        </div>
         <div class="desc">Origem: sua localização atual (GPS). Deixe o destino vazio pra ouvir o trânsito e lugares próximos enquanto dirige, ou preencha pra navegação completa por voz.</div>
         <input type="text" id="gps-destino" placeholder="Destino (opcional — vazio = modo trânsito)">
         <div class="desc" style="margin-top: 8px;">No modo trânsito, avisar quando aparecer perto (opcional, sem repetir o mesmo lugar):</div>
@@ -368,7 +371,6 @@
           <button type="button" class="btn-opt" data-poi="pharmacy">💊 Farmácia</button>
           <button type="button" class="btn-opt" data-poi="atm">🏦 Caixa eletrônico</button>
         </div>
-        <button id="gps-start-btn">🔊 Ativar GPS</button>
         <div class="result" id="gps-result"></div>
       </div>
 
@@ -2035,7 +2037,7 @@ function speakAndWait(text) {
 
 function setGpsButtonState(active) {
   gpsActive = active;
-  document.getElementById('gps-start-btn').textContent = active ? '⏹ Parar GPS' : '🔊 Ativar GPS';
+  document.getElementById('gps-start-btn').textContent = active ? 'Parar' : 'Ativar';
 }
 
 function stopGps() {
