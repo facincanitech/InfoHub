@@ -1032,8 +1032,18 @@ function countEnabled(cat) {
 // Pôsteres/imagens reais pros heróis de Entretenimento e Notícias. Buscado uma
 // única vez por sessão (não a cada render) pra não bater nas APIs gratuitas
 // repetidamente só pela tela do Guia ser reaberta.
-let heroImageUrls = { entretenimento: [], noticias: [], clima: [] };
+let heroImageUrls = { entretenimento: [], noticias: [] };
 let heroImagesLoaded = false;
+
+// Fotos reais e verificadas (Wikimedia Commons, domínio público/CC) pro herói
+// de Clima: sol, nublado, chuva, noite — sempre fixas, sem busca dinâmica
+// (a busca por texto livre trazia resultado aleatório, até pintura do Van Gogh).
+const CLIMA_HERO_PHOTOS = [
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Blue_Sky_1.jpg/960px-Blue_Sky_1.jpg',
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Gloomy_Clouds_in_Aguirangan_View.jpg/960px-Gloomy_Clouds_in_Aguirangan_View.jpg',
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Falling_rain_-_geograph.org.uk_-_5674292.jpg/960px-Falling_rain_-_geograph.org.uk_-_5674292.jpg',
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Night_Sky_Stars_Silverthorne_%28Unsplash%29.jpg/960px-Night_Sky_Stars_Silverthorne_%28Unsplash%29.jpg',
+];
 
 async function loadHeroImages() {
   if (heroImagesLoaded) return;
@@ -1050,14 +1060,6 @@ async function loadHeroImages() {
     const items = await fetchNewsItems(NEWS_HERO_KEYWORDS, 3);
     heroImageUrls.noticias = items.map((it) => it.image).filter(Boolean).slice(0, 3);
   } catch (e) { console.error('hero(noticias):', e); }
-
-  try {
-    // Fotos reais (não ícone) de céu de sol/nublado/chuva/noite, via Wikimedia
-    // Commons (sem chave) — sempre as mesmas 4 cenas, em loop fixo.
-    const { images, error } = await callEdgeFunction('weather-images', {});
-    if (error) { console.error('hero(clima):', error); }
-    else heroImageUrls.clima = ['sol', 'nublado', 'chuva', 'noite'].map((k) => images[k]).filter(Boolean);
-  } catch (e) { console.error('hero(clima):', e); }
 
   renderCategoryCards();
 }
@@ -1085,17 +1087,7 @@ function getCategoryHeroScene(cat) {
     return buildHeroTrack(icons.map((ic) => ({ html: ic })));
   }
   if (cat.id === 'clima') {
-    // Fotos reais de céu (sol/nublado/chuva/noite, via Wikimedia Commons), com
-    // fallback pro gradiente desenhado se a busca ainda não carregou ou falhou.
-    if (heroImageUrls.clima.length > 0) {
-      return buildHeroTrack(heroImageUrls.clima.map((url) => ({ style: `background-image:url('${url}');` })));
-    }
-    return buildHeroTrack([
-      { style: 'background:linear-gradient(180deg,#4a90d9,#87ceeb);' },
-      { style: 'background:linear-gradient(180deg,#5c6f7d,#8a9aa5);' },
-      { style: 'background:linear-gradient(180deg,#37474f,#546e7a);' },
-      { style: 'background:linear-gradient(180deg,#0d1b3e,#1c2f5c);' },
-    ]);
+    return buildHeroTrack(CLIMA_HERO_PHOTOS.map((url) => ({ style: `background-image:url('${url}');` })));
   }
   if (cat.id === 'entretenimento') {
     return buildHeroTrack([
