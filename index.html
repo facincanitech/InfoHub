@@ -1688,7 +1688,12 @@ async function fetchPodcastItems(nomesStr, limit) {
     try {
       const { items, error } = await callEdgeFunction('podcast', { name: nome });
       if (error) { console.error('podcast:', error); continue; }
-      all = all.concat((items || []).slice(0, limit).map(title => ({ category: 'Entretenimento', sub: `Podcast: ${nome}`, title, full: `Novo episódio de ${nome}: ${title}.`, quick: title })));
+      all = all.concat((items || []).slice(0, limit).map(({ title, description }) => {
+        const full = description
+          ? `Novo episódio de ${nome}: ${title}. ${truncateAtBoundary(description, 600)}`
+          : `Novo episódio de ${nome}: ${title}.`;
+        return { category: 'Entretenimento', sub: `Podcast: ${nome}`, title, full, quick: title };
+      }));
     } catch (e) {
       console.error('podcast:', e);
     }
