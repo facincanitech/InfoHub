@@ -1866,8 +1866,22 @@ function setPlayingVisual(playing) {
   playCircle.textContent = playing ? '⏹' : '▶';
 }
 
+let voiceHistoryItems = []; // perguntas/respostas do "Pergunte algo", mais recente primeiro
+
 function renderHistory(currentIndex) {
   historyListEl.innerHTML = '';
+
+  for (const item of voiceHistoryItems) {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    const catEl = document.createElement('div');
+    catEl.className = 'cat';
+    catEl.textContent = item.category;
+    div.appendChild(catEl);
+    div.appendChild(document.createTextNode(item.title));
+    historyListEl.appendChild(div);
+  }
+
   for (let i = Math.min(currentIndex, currentQueue.length - 1); i >= 0; i--) {
     const item = currentQueue[i];
     const div = document.createElement('div');
@@ -2592,6 +2606,10 @@ async function handleVoiceQuery(textoOriginal) {
   showVoiceToast(resposta, 0);
   await speakAndWait(resposta);
   showVoiceToast(resposta, 4000);
+
+  voiceHistoryItems.unshift({ category: 'Pergunte algo', title: `"${texto}" — ${resposta}` });
+  voiceHistoryItems = voiceHistoryItems.slice(0, 20);
+  renderHistory(currentQueueIndex);
 }
 
 const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
