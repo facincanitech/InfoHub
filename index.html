@@ -292,6 +292,16 @@
       </div>
       <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
 
+      <div class="settings-panel" style="width:100%; margin-top: 20px;">
+        <div class="settings-row" style="justify-content: center; gap: 12px;">
+          <button id="voice-query-btn" style="background: var(--c-green); color: #fff; width: 56px; height: 56px; border-radius: 50%; font-size: 1.4rem; flex-shrink: 0;">🎤</button>
+          <div style="flex:1;">
+            <div class="label" style="margin-bottom: 2px;">Pergunte algo</div>
+            <div class="desc" id="voice-query-status">Matemática, hora, clima, cotação, notícias ou busca geral</div>
+          </div>
+        </div>
+      </div>
+
       <div id="history-list" class="history-list"></div>
     </div>
   </section>
@@ -2381,6 +2391,147 @@ document.getElementById('add-alarm-btn').addEventListener('click', () => {
   saveState();
   renderAlarmsList();
   scheduleAllAlarms();
+});
+
+/* =========================================================================
+   PERGUNTE ALGO — assistente de voz sem IA. Reconhece padrões específicos
+   (matemática, hora, data, cotação, clima, notícias) e cai numa busca de
+   resumo na Wikipédia como último recurso pra perguntas genéricas.
+   ========================================================================= */
+const NUMBER_WORDS = {
+  zero: 0, um: 1, uma: 1, dois: 2, duas: 2, três: 3, tres: 3, quatro: 4, cinco: 5,
+  seis: 6, sete: 7, oito: 8, nove: 9, dez: 10,
+};
+
+function wordToNumber(token) {
+  const n = parseFloat(token.replace(',', '.'));
+  if (!isNaN(n)) return n;
+  return NUMBER_WORDS[token] !== undefined ? NUMBER_WORDS[token] : null;
+}
+
+function tryAnswerMath(texto) {
+  const m = texto.match(/(-?\d+(?:[.,]\d+)?|\w+)\s*(mais|menos|vezes|multiplicado por|dividido por|x|\+|-|\*|\/)\s*(-?\d+(?:[.,]\d+)?|\w+)/i);
+  if (!m) return null;
+  const a = wordToNumber(m[1].toLowerCase());
+  const b = wordToNumber(m[3].toLowerCase());
+  if (a === null || b === null) return null;
+  const op = m[2].toLowerCase();
+  let resultado, opFalado;
+  if (op === 'mais' || op === '+') { resultado = a + b; opFalado = 'mais'; }
+  else if (op === 'menos' || op === '-') { resultado = a - b; opFalado = 'menos'; }
+  else if (op === 'vezes' || op === 'multiplicado por' || op === 'x' || op === '*') { resultado = a * b; opFalado = 'vezes'; }
+  else if (op === 'dividido por' || op === '/') {
+    if (b === 0) return 'Não dá pra dividir por zero.';
+    resultado = a / b; opFalado = 'dividido por';
+  } else return null;
+  const resultadoFmt = Number.isInteger(resultado) ? resultado : resultado.toFixed(2);
+  return `${a} ${opFalado} ${b} é igual a ${resultadoFmt}.`;
+}
+
+function tryAnswerTime(texto) {
+  if (/que horas? (são|é)|hora atual|horário agora/i.test(texto)) {
+    return `Agora são ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`;
+  }
+  if (/que dia é hoje|data de hoje|qual a data/i.test(texto)) {
+    return `Hoje é ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}.`;
+  }
+  return null;
+}
+
+async function tryAnswerCotacao(texto) {
+  const m = texto.match(/cota[çc][ãa]o (?:do |da |de )?(d[óo]lar|euro|libra|peso|bitcoin|ethereum|solana|bnb)|quanto (?:est[áa]|vale) (?:o |a )?(d[óo]lar|euro|libra|peso|bitcoin|ethereum|solana|bnb)/i);
+  if (!m) return null;
+  const nomeCru = (m[1] || m[2]).toLowerCase();
+  const moedaMap = { 'dólar': 'Dólar', 'dolar': 'Dólar', euro: 'Euro', libra: 'Libra', peso: 'Peso' };
+  const criptoMap = { bitcoin: 'Bitcoin', ethereum: 'Ethereum', solana: 'Solana', bnb: 'BNB' };
+  if (moedaMap[nomeCru]) {
+    const items = await fetchCotacoesItems([moedaMap[nomeCru]], []);
+    return items[0] ? items[0].full : `Não consegui consultar o ${moedaMap[nomeCru]} agora.`;
+  }
+  if (criptoMap[nomeCru]) {
+    const items = await fetchCotacoesItems([], [criptoMap[nomeCru]]);
+    return items[0] ? items[0].full : `Não consegui consultar o ${criptoMap[nomeCru]} agora.`;
+  }
+  return null;
+}
+
+async function tryAnswerClima(texto) {
+  const m = texto.match(/(?:previsão do tempo|clima|temperatura)(?: em| de| no| na)?\s*(.*)/i);
+  if (!m) return null;
+  const cidade = m[1] && m[1].trim();
+  const localAlvo = cidade || (getFeatureState('clima', 'previsao').fields.cidade1);
+  if (!localAlvo) return 'Configure uma cidade em Clima, na aba Guia, ou diga o nome da cidade na pergunta.';
+  const { items, error } = await fetchWeatherItems(localAlvo, '');
+  if (error || !items || items.length === 0) return error || 'Não consegui consultar o clima agora.';
+  return items[0].full;
+}
+
+async function tryAnswerNoticias(texto) {
+  const m = texto.match(/not[íi]cias? (?:sobre|de)\s+(.+)/i);
+  if (!m) return null;
+  const termo = m[1].trim();
+  const items = await fetchNewsItems(termo, 1);
+  if (!items || items.length === 0) return `Não achei notícia sobre ${termo}.`;
+  return items[0].full;
+}
+
+async function tryAnswerWikipedia(texto) {
+  const termo = texto
+    .replace(/^(o que é|o que são|quem foi|quem é|como funciona|defina|definição de|explica)\s+/i, '')
+    .replace(/\?$/, '')
+    .trim();
+  if (!termo) return 'Não entendi a pergunta.';
+  try {
+    const resp = await fetch(`https://pt.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(termo)}`);
+    if (!resp.ok) return `Não achei nada sobre "${termo}".`;
+    const data = await resp.json();
+    if (!data.extract) return `Não achei nada sobre "${termo}".`;
+    return truncateAtBoundary(data.extract, 600);
+  } catch (e) {
+    return 'Erro ao buscar na Wikipédia: ' + e.message;
+  }
+}
+
+async function handleVoiceQuery(textoOriginal) {
+  const statusEl = document.getElementById('voice-query-status');
+  const texto = textoOriginal.trim();
+  statusEl.textContent = `Você disse: "${texto}"`;
+
+  let resposta = tryAnswerMath(texto) || tryAnswerTime(texto);
+  if (!resposta) resposta = await tryAnswerCotacao(texto);
+  if (!resposta) resposta = await tryAnswerClima(texto);
+  if (!resposta) resposta = await tryAnswerNoticias(texto);
+  if (!resposta) resposta = await tryAnswerWikipedia(texto);
+
+  statusEl.textContent = resposta;
+  await speakAndWait(resposta);
+  statusEl.textContent = 'Matemática, hora, clima, cotação, notícias ou busca geral';
+}
+
+const voiceQueryBtn = document.getElementById('voice-query-btn');
+const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+voiceQueryBtn.addEventListener('click', () => {
+  if (!SpeechRecognitionImpl) {
+    document.getElementById('voice-query-status').textContent = 'Reconhecimento de voz não suportado nesse navegador (tenta no Chrome).';
+    return;
+  }
+  const statusEl = document.getElementById('voice-query-status');
+  const recognition = new SpeechRecognitionImpl();
+  recognition.lang = 'pt-BR';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  voiceQueryBtn.textContent = '🔴';
+  statusEl.textContent = 'Ouvindo...';
+  recognition.onresult = (event) => {
+    const texto = event.results[0][0].transcript;
+    handleVoiceQuery(texto);
+  };
+  recognition.onerror = (event) => {
+    statusEl.textContent = 'Erro ao ouvir: ' + event.error;
+  };
+  recognition.onend = () => { voiceQueryBtn.textContent = '🎤'; };
+  recognition.start();
 });
 
 /* =========================================================================
