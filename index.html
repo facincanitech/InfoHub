@@ -115,13 +115,6 @@
     border-radius: 8px; padding: 7px 8px; font-size: 0.82rem; font-family: inherit;
   }
   /* ===== Category cards (assinatura sonora: borda colorida + onda) ===== */
-  .category-cards-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
-  .category-cards-toggle button {
-    background: var(--c-surface); border: 1px solid var(--c-border2); color: var(--c-text-dim);
-    padding: 7px 14px; border-radius: 16px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
-  }
-  .category-cards-toggle button.active { background: var(--c-accent-blue); color: var(--c-on-accent); border-color: var(--c-accent-blue); }
-
   #category-cards { display: flex; flex-direction: column; }
   #category-cards.bento { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -380,12 +373,7 @@
       </div>
       <div class="sub">Configure o que você quer ouvir.</div>
 
-      <div class="category-cards-toggle">
-        <button type="button" class="active" data-view="list">Lista</button>
-        <button type="button" data-view="bento">Bento</button>
-      </div>
-
-      <div id="category-cards"></div>
+      <div id="category-cards" class="bento"></div>
       <div style="text-align:center; color: var(--c-text-faint); font-size: 0.75rem; margin-top: 24px;">2026, criado por FacincaniTech</div>
     </div>
 
@@ -2719,14 +2707,6 @@ document.querySelectorAll('[data-action="voice"]').forEach((btn) => {
       btn.classList.remove('listening');
     };
     recognition.start();
-  });
-});
-
-document.querySelectorAll('.category-cards-toggle button').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.category-cards-toggle button').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    categoryCardsEl.classList.toggle('bento', btn.dataset.view === 'bento');
   });
 });
 
