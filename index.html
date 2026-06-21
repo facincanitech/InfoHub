@@ -363,7 +363,10 @@
           <button id="gps-start-btn" style="width: auto; padding: 8px 16px; font-size: 0.82rem; background: var(--c-accent-blue); color: var(--c-on-accent);">Ativar</button>
         </div>
         <div class="desc">Origem: sua localização atual (GPS). Deixe o destino vazio pra ouvir o trânsito e lugares próximos enquanto dirige, ou preencha pra navegação completa por voz.</div>
-        <input type="text" id="gps-destino" placeholder="Destino (opcional — vazio = modo trânsito)">
+        <div style="position: relative;">
+          <input type="text" id="gps-destino" placeholder="Destino (opcional) — digite e escolha um endereço" autocomplete="off">
+          <div id="gps-destino-suggestions" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:10; background: var(--c-surface); border: 1px solid var(--c-border2); border-radius: 8px; margin-top: 2px; overflow: hidden;"></div>
+        </div>
         <div class="desc" style="margin-top: 8px;">No modo trânsito, avisar quando aparecer perto (opcional, escolha só 1):</div>
         <div class="btn-group" id="gps-poi-categories" style="margin-bottom: 10px;">
           <button type="button" class="btn-opt" data-poi="gas_station">⛽ Posto</button>
@@ -2022,6 +2025,59 @@ function getCurrentPosition() {
     navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
   });
 }
+
+/* ----- Autocompletar de endereço pro destino do GPS ----- */
+const gpsDestinoInput = document.getElementById('gps-destino');
+const gpsDestinoSuggestions = document.getElementById('gps-destino-suggestions');
+let gpsAutocompleteTimeoutId = null;
+
+function hideGpsSuggestions() {
+  gpsDestinoSuggestions.style.display = 'none';
+  gpsDestinoSuggestions.innerHTML = '';
+}
+
+function renderGpsSuggestions(suggestions) {
+  gpsDestinoSuggestions.innerHTML = '';
+  if (!suggestions || suggestions.length === 0) { hideGpsSuggestions(); return; }
+  suggestions.forEach(s => {
+    const item = document.createElement('div');
+    item.textContent = s.text;
+    item.style.padding = '10px 12px';
+    item.style.fontSize = '0.85rem';
+    item.style.cursor = 'pointer';
+    item.style.borderBottom = '1px solid var(--c-border)';
+    item.addEventListener('mousedown', (ev) => {
+      ev.preventDefault(); // evita perder o clique pro blur do input
+      gpsDestinoInput.value = s.text;
+      hideGpsSuggestions();
+    });
+    gpsDestinoSuggestions.appendChild(item);
+  });
+  gpsDestinoSuggestions.style.display = 'block';
+}
+
+gpsDestinoInput.addEventListener('input', () => {
+  clearTimeout(gpsAutocompleteTimeoutId);
+  const texto = gpsDestinoInput.value.trim();
+  if (texto.length < 4) { hideGpsSuggestions(); return; }
+  gpsAutocompleteTimeoutId = setTimeout(async () => {
+    try {
+      const params = { input: texto };
+      try {
+        const pos = await getCurrentPosition();
+        params.lat = pos.coords.latitude;
+        params.lng = pos.coords.longitude;
+      } catch (e) { /* sem localização ainda, segue sem bias */ }
+      const { suggestions, error } = await callEdgeFunction('places-autocomplete', params);
+      if (error) { console.error('places-autocomplete:', error); return; }
+      renderGpsSuggestions(suggestions);
+    } catch (e) {
+      console.error('places-autocomplete:', e);
+    }
+  }, 400); // debounce — evita 1 chamada de API por tecla digitada
+});
+
+gpsDestinoInput.addEventListener('blur', () => setTimeout(hideGpsSuggestions, 150));
 
 function speakAndWait(text) {
   return new Promise(resolve => {
