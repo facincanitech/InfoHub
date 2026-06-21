@@ -272,7 +272,15 @@
   .status-dot.on { background: var(--c-green); }
   .account-card .scope-list { color: var(--c-text-dim); font-size: 0.8rem; margin-bottom: 14px; line-height: 1.6; }
 
-  .help-section { background: var(--c-surface); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+  .help-section {
+    background: var(--c-surface); border-radius: 12px; margin-bottom: 10px; overflow: hidden;
+    border-left: 4px solid color-mix(in srgb, var(--topic-color, var(--c-accent-blue)) 55%, transparent);
+    transition: border-color .25s ease, box-shadow .25s ease;
+  }
+  .help-section.open {
+    border-left-color: var(--topic-color, var(--c-accent-blue));
+    box-shadow: -2px 0 10px -2px color-mix(in srgb, var(--topic-color, var(--c-accent-blue)) 50%, transparent);
+  }
   .help-section-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; }
   .help-section-header .title { flex: 1; font-weight: 600; font-size: 0.92rem; }
   .help-section-header .chev { color: var(--c-text-faint2); transition: transform .2s; }
@@ -597,7 +605,7 @@
     </div>
 
     <div id="help-accordion">
-      <div class="help-section">
+      <div class="help-section" style="--topic-color: var(--c-accent-blue);">
         <div class="help-section-header">
           <span class="title">🔌 Conecte suas contas</span>
           <span class="chev">›</span>
@@ -615,7 +623,7 @@
         </div>
       </div>
 
-      <div class="help-section">
+      <div class="help-section" style="--topic-color: var(--c-yellow);">
         <div class="help-section-header">
           <span class="title">⚠️ "O Google não verificou este app"</span>
           <span class="chev">›</span>
@@ -629,7 +637,7 @@
         </div>
       </div>
 
-      <div class="help-section">
+      <div class="help-section" style="--topic-color: var(--cat-clima);">
         <div class="help-section-header">
           <span class="title">🗂️ Configure suas categorias (aba Guia)</span>
           <span class="chev">›</span>
@@ -642,7 +650,7 @@
         </div>
       </div>
 
-      <div class="help-section">
+      <div class="help-section" style="--topic-color: var(--cat-entretenimento);">
         <div class="help-section-header">
           <span class="title">🎮 Entretenimento, guia completo</span>
           <span class="chev">›</span>
@@ -671,7 +679,7 @@
         </div>
       </div>
 
-      <div class="help-section">
+      <div class="help-section" style="--topic-color: var(--c-green);">
         <div class="help-section-header">
           <span class="title">▶ Ouça o seu briefing (aba Meu Dia)</span>
           <span class="chev">›</span>
@@ -683,7 +691,7 @@
         </div>
       </div>
 
-      <div class="help-section">
+      <div class="help-section" style="--topic-color: var(--md-voice);">
         <div class="help-section-header">
           <span class="title">🎤 Pergunte algo</span>
           <span class="chev">›</span>
@@ -711,7 +719,7 @@
         </div>
       </div>
 
-      <div class="help-section">
+      <div class="help-section" style="--topic-color: var(--cat-financeiro);">
         <div class="help-section-header">
           <span class="title">⏰ Briefing automático</span>
           <span class="chev">›</span>
@@ -746,7 +754,7 @@
         </div>
       </div>
 
-      <div class="help-section">
+      <div class="help-section" style="--topic-color: var(--c-yellow);">
         <div class="help-section-header">
           <span class="title">⭐ Premium</span>
           <span class="chev">›</span>
