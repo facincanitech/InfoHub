@@ -593,7 +593,16 @@
           <b>celular</b>, depende do aparelho: se o Android suspender o navegador em
           segundo plano pra economizar bateria, o alarme pode atrasar ou não disparar
           até você abrir o app de novo. Em ambos os casos, <b>precisa de uma aba do
-          InfoHub aberta</b> — fechando o navegador por completo, os alarmes param.
+          InfoHub aberta</b> — fechando o navegador por completo, os alarmes param.<br><br>
+          <b>Deu "Permissão de notificação negada"?</b> Isso normalmente significa que o
+          navegador já tinha negado notificação pra esse site antes (de propósito ou não)
+          — uma vez negado, ele não pergunta de novo, só nega direto. Pra resetar:<br><br>
+          1. Clica no ícone de cadeado/informações na barra de endereço, ao lado da URL<br>
+          2. Procura "Notificações" nas permissões do site<br>
+          3. Muda de "Bloquear" pra "Perguntar" (ou "Permitir")<br>
+          4. Atualiza a página e ativa o alarme de novo<br><br>
+          Se não aparecer nem assim, vale checar `edge://settings/content/notifications`
+          (ou o equivalente do seu navegador) e remover o site da lista de bloqueados.
         </div>
       </div>
 
