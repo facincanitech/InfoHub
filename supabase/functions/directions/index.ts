@@ -18,6 +18,16 @@ function formatDuration(seconds: number) {
   return m > 0 ? `${h} horas e ${m} minutos` : `${h} horas`;
 }
 
+// A origem vem como "lat,lng" (geolocalização do navegador) — a Routes API exige um
+// waypoint do tipo location/latLng pra coordenadas, não aceita como Address.
+function toWaypoint(value: string) {
+  const coordMatch = value.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
+  if (coordMatch) {
+    return { location: { latLng: { latitude: parseFloat(coordMatch[1]), longitude: parseFloat(coordMatch[2]) } } };
+  }
+  return { address: value };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
 
@@ -39,8 +49,8 @@ Deno.serve(async (req: Request) => {
         'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs.steps.navigationInstruction',
       },
       body: JSON.stringify({
-        origin: { address: origem },
-        destination: { address: destino },
+        origin: toWaypoint(origem),
+        destination: toWaypoint(destino),
         travelMode: 'DRIVE',
         languageCode: 'pt-BR',
         units: 'METRIC',
