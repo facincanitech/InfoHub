@@ -141,6 +141,7 @@
     position: relative; border-radius: 16px; overflow: hidden; height: 100px;
     margin-bottom: 12px; border-left: 4px solid var(--cat-color, var(--c-accent-blue));
     cursor: pointer; transition: transform .12s ease;
+    background: color-mix(in srgb, var(--cat-color, var(--c-accent-blue)) 22%, var(--c-surface));
   }
   .cat-hero:active { transform: scale(0.98); }
   .cat-hero .overlay {
@@ -154,13 +155,18 @@
   .cat-hero .name { color: #fff; font-weight: 700; font-size: 0.95rem; }
   .cat-hero .count { color: rgba(255,255,255,0.72); font-size: 0.72rem; margin-top: 2px; }
 
+  /* 3 camadas, defasadas 1/3 do ciclo (3s num ciclo de 9s) cada uma: enquanto uma
+     ainda está terminando de sumir a próxima já está aparecendo, sem brecha onde
+     as três ficam transparentes ao mesmo tempo (era isso que piscava pro fundo escuro). */
   @keyframes cat-hero-cycle {
-    0%, 4% { opacity: 0; }
-    9%, 28% { opacity: 1; }
-    33%, 100% { opacity: 0; }
+    0% { opacity: 0; }
+    11% { opacity: 1; }
+    22% { opacity: 1; }
+    33% { opacity: 0; }
+    100% { opacity: 0; }
   }
   .banner-bg, .weather-scene, .icon-vignette {
-    position: absolute; inset: 0; opacity: 0; animation: cat-hero-cycle 9s infinite;
+    position: absolute; inset: 0; opacity: 0; animation: cat-hero-cycle 9s ease-in-out infinite;
   }
   .banner-bg:nth-child(1), .weather-scene:nth-child(1), .icon-vignette:nth-child(1) { animation-delay: 0s; }
   .banner-bg:nth-child(2), .weather-scene:nth-child(2), .icon-vignette:nth-child(2) { animation-delay: 3s; }
