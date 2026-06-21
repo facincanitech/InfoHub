@@ -2161,7 +2161,9 @@ gpsDestinoInput.addEventListener('blur', () => setTimeout(hideGpsSuggestions, 15
 function speakAndWait(text) {
   return new Promise(resolve => {
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'pt-BR';
+    const voice = getSelectedVoice();
+    if (voice) utter.voice = voice;
+    utter.lang = voice ? voice.lang : 'pt-BR';
     utter.onend = resolve;
     utter.onerror = resolve;
     speechSynthesis.speak(utter);
