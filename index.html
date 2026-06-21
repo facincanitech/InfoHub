@@ -261,15 +261,35 @@
   .overlay-inner { max-width: 420px; margin: 0 auto; padding: 18px 16px 40px; }
   .overlay-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
   .overlay-header h2 { font-size: 1.15rem; margin: 0; flex: 1; }
-  .account-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
-  .account-tab-btn { flex: 1; background: var(--c-surface); color: var(--c-text-dim); padding: 10px; border-radius: 10px; font-size: 0.85rem; }
-  .account-tab-btn.active { background: var(--c-accent-blue); color: var(--c-on-accent); }
+  .account-tabs { display: flex; gap: 6px; margin-bottom: 18px; overflow-x: auto; }
+  .account-tab-btn {
+    flex-shrink: 0; background: var(--c-surface); border: none; color: var(--c-text-dim);
+    padding: 9px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;
+    display: flex; align-items: center; gap: 6px; border-bottom: 2px solid transparent;
+  }
+  .account-tab-btn .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand-color, var(--c-text-faint)); flex-shrink: 0; }
+  .account-tab-btn.active { color: var(--c-text); border-bottom-color: var(--brand-color, var(--c-accent-blue)); }
   .account-panel { display: none; }
   .account-panel.active { display: block; }
-  .account-card { background: var(--c-surface); border-radius: 14px; padding: 18px; }
-  .account-card .status { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 0.9rem; }
+  .account-card {
+    background: var(--c-surface); border: 1px solid var(--c-border2); border-left: 4px solid var(--c-border2);
+    border-radius: 14px; padding: 18px;
+    transition: border-color .25s ease, box-shadow .25s ease, opacity .25s ease;
+  }
+  .account-card.connected {
+    border-left-color: var(--brand-color, var(--c-green));
+    box-shadow: -2px 0 12px -3px color-mix(in srgb, var(--brand-color, var(--c-green)) 45%, transparent);
+  }
+  .account-card.unavailable { opacity: 0.42; }
+  .account-card .acc-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .account-card .acc-icon-badge {
+    width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; font-size: 1.15rem;
+    background: color-mix(in srgb, var(--brand-color, var(--c-text-faint)) 18%, var(--c-surface));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .account-card .status { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 600; flex: 1; }
   .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-text-faint); }
-  .status-dot.on { background: var(--c-green); }
+  .status-dot.on { background: var(--brand-color, var(--c-green)); box-shadow: 0 0 8px color-mix(in srgb, var(--brand-color, var(--c-green)) 70%, transparent); }
   .account-card .scope-list { color: var(--c-text-dim); font-size: 0.8rem; margin-bottom: 14px; line-height: 1.6; }
 
   .help-section {
@@ -518,30 +538,40 @@
     </div>
 
     <div class="account-tabs">
-      <button class="account-tab-btn active" data-account="google">Email</button>
-      <button class="account-tab-btn" data-account="youtube">YouTube</button>
-      <button class="account-tab-btn" data-account="spotify">Spotify</button>
-      <button class="account-tab-btn" data-account="tema">Tema</button>
-      <button class="account-tab-btn" data-account="contato">Contato</button>
+      <button class="account-tab-btn active" data-account="google" style="--brand-color:#4285f4;"><span class="dot"></span>Email</button>
+      <button class="account-tab-btn" data-account="youtube" style="--brand-color:#ff0000;"><span class="dot"></span>YouTube</button>
+      <button class="account-tab-btn" data-account="spotify" style="--brand-color:#1db954;"><span class="dot"></span>Spotify</button>
+      <button class="account-tab-btn" data-account="tema" style="--brand-color: var(--c-accent-blue);"><span class="dot"></span>Tema</button>
+      <button class="account-tab-btn" data-account="contato" style="--brand-color: var(--c-accent-blue);"><span class="dot"></span>Contato</button>
     </div>
 
     <div class="account-panel active" id="account-google">
-      <div class="account-card" style="margin-bottom: 12px;">
-        <div class="status"><span class="status-dot" id="google-status-dot"></span><span id="google-status-text">Desconectado</span></div>
+      <div class="account-card" id="google-account-card" style="margin-bottom: 12px; --brand-color:#4285f4;">
+        <div class="acc-top">
+          <div class="acc-icon-badge">📧</div>
+          <div class="status"><span class="status-dot" id="google-status-dot"></span><span id="google-status-text">Desconectado</span></div>
+        </div>
         <div class="scope-list">Google, também dá acesso a agenda e contatos (aniversários).</div>
         <button class="btn-connect" id="google-connect-btn">Entrar com Google</button>
       </div>
-      <div class="account-card">
-        <div class="status"><span class="status-dot" id="outlook-status-dot"></span><span id="outlook-status-text">Indisponível</span></div>
+      <div class="account-card unavailable" style="--brand-color:#0078d4;">
+        <div class="acc-top">
+          <div class="acc-icon-badge">📨</div>
+          <div class="status"><span class="status-dot" id="outlook-status-dot"></span><span id="outlook-status-text">Indisponível</span></div>
+        </div>
         <div class="scope-list">Hotmail / Outlook, indisponível no momento.</div>
         <button class="btn-connect" id="outlook-connect-btn" disabled style="opacity:0.4; cursor:default;">Indisponível no momento</button>
       </div>
     </div>
 
     <div class="account-panel" id="account-youtube">
-      <div class="account-card">
+      <div class="account-card connected" style="--brand-color:#ff0000;">
+        <div class="acc-top">
+          <div class="acc-icon-badge">▶️</div>
+          <div class="status"><span class="status-dot on"></span>YouTube</div>
+        </div>
         <div class="scope-list">
-          Canais do YouTube não precisam de login, é só digitar o nome do canal
+          Não precisa de login, é só digitar o nome do canal
           direto na categoria <b>Entretenimento</b>, na aba Guia. Essa aba aqui não
           controla nada do YouTube, é só informativa.
         </div>
@@ -549,8 +579,11 @@
     </div>
 
     <div class="account-panel" id="account-spotify">
-      <div class="account-card">
-        <div class="status"><span class="status-dot" id="spotify-status-dot"></span><span id="spotify-status-text">Indisponível</span></div>
+      <div class="account-card unavailable" style="--brand-color:#1db954;">
+        <div class="acc-top">
+          <div class="acc-icon-badge">🎵</div>
+          <div class="status"><span class="status-dot" id="spotify-status-dot"></span><span id="spotify-status-text">Indisponível</span></div>
+        </div>
         <div class="scope-list">Acesso a: podcasts e músicas salvas, indisponível no momento.</div>
         <button class="btn-connect" id="spotify-connect-btn" disabled style="opacity:0.4; cursor:default;">Indisponível no momento</button>
       </div>
@@ -1346,6 +1379,7 @@ function updateAccountsUI() {
   document.getElementById('google-status-text').textContent = googleOn ? 'Conectado' : 'Desconectado';
   document.getElementById('google-connect-btn').textContent = googleOn ? 'Desconectar' : 'Entrar com Google';
   document.getElementById('google-connect-btn').className = googleOn ? 'btn-disconnect' : 'btn-connect';
+  document.getElementById('google-account-card').classList.toggle('connected', googleOn);
 
   // Spotify e Hotmail estão indisponíveis no momento, status/botão fixos, sem dinâmica.
 }
