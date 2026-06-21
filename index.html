@@ -2640,11 +2640,11 @@ async function tryAnswerNoticias(texto) {
 // pergunta de voz em vez de passivamente pela fila do play.
 const GUIA_VOICE_TOPICS = [
   { keywords: ['e-mail', 'email', 'caixa de entrada'], catId: 'pessoal', featId: 'email',
-    fetch: (fields) => fetchEmailItems(fields.contas, fields.quantidade || '5') },
+    fetch: (fields) => fetchEmailItems(fields.contas, fields.quantidade || '5'), spokenLimit: Infinity },
   { keywords: ['agenda', 'compromisso'], catId: 'pessoal', featId: 'agenda',
-    fetch: () => fetchAgendaItems(3) },
+    fetch: () => fetchAgendaItems(10), spokenLimit: Infinity },
   { keywords: ['aniversário', 'aniversario', 'aniversariante'], catId: 'pessoal', featId: 'aniversarios',
-    fetch: () => fetchAniversariosItems(3) },
+    fetch: () => fetchAniversariosItems(10), spokenLimit: Infinity },
   { keywords: ['feriado'], catId: 'pessoal', featId: 'feriados',
     fetch: () => fetchFeriadosItems(3) },
   { keywords: ['fase da lua', 'lua hoje', 'horóscopo', 'horoscopo'], catId: 'horoscopo', featId: 'fase-lua',
@@ -2671,7 +2671,8 @@ async function tryAnswerGuia(texto) {
     const fields = getFeatureState(topic.catId, topic.featId).fields;
     const items = await topic.fetch(fields);
     if (!items || items.length === 0) return 'Não encontrei nada sobre isso agora, talvez precise configurar essa categoria na aba Guia.';
-    return items.slice(0, 2).map((it) => it.full).join(' ');
+    const limit = topic.spokenLimit || 2;
+    return items.slice(0, limit).map((it) => it.full).join(' ');
   } catch (e) {
     return 'Erro ao buscar essa informação agora.';
   }
