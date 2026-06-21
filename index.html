@@ -1596,25 +1596,33 @@ async function fetchSpotifyGenreItems(genero, limit) {
 async function fetchMusicasItems(generos, limit) {
   if (!generos || generos.length === 0) return [];
   let all = [];
+  const seenTitles = new Set();
   for (const genero of generos) {
     const spotifyItems = await fetchSpotifyGenreItems(genero, limit);
+    let generoItems = [];
     if (spotifyItems !== null) {
-      all = all.concat(spotifyItems);
-      continue;
+      generoItems = spotifyItems;
+    } else {
+      const termo = `música ${genero} lançamento`;
+      try {
+        const { items, error } = await callEdgeFunction('news', { q: termo });
+        if (error) throw new Error(error);
+        generoItems = (items || []).slice(0, limit).map(({ title, description, link }) => {
+          const full = description ? `${title}. ${truncateAtBoundary(description, 600)}` : `${title}.`;
+          return { category: 'Entretenimento', sub: `Música ${genero}`, title, full, quick: title, link };
+        });
+      } catch (e) {
+        console.error('musicas:', e);
+        const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+        const items = await fetchRssItems(url);
+        generoItems = items.slice(0, limit).map(({ title }) => ({ category: 'Entretenimento', sub: `Música ${genero}`, title, full: `${title}.`, quick: title }));
+      }
     }
-    const termo = `música ${genero} lançamento`;
-    try {
-      const { items, error } = await callEdgeFunction('news', { q: termo });
-      if (error) throw new Error(error);
-      all = all.concat((items || []).slice(0, limit).map(({ title, description, link }) => {
-        const full = description ? `${title}. ${truncateAtBoundary(description, 600)}` : `${title}.`;
-        return { category: 'Entretenimento', sub: `Música ${genero}`, title, full, quick: title, link };
-      }));
-    } catch (e) {
-      console.error('musicas:', e);
-      const url = `https://news.google.com/rss/search?q=${encodeURIComponent(termo)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-      const items = await fetchRssItems(url);
-      all = all.concat(items.slice(0, limit).map(({ title }) => ({ category: 'Entretenimento', sub: `Música ${genero}`, title, full: `Em ${genero}: ${title}.`, quick: title })));
+    for (const item of generoItems) {
+      const normalized = normalizeTitleForDedupe(item.title);
+      if (seenTitles.has(normalized)) continue;
+      seenTitles.add(normalized);
+      all.push(item);
     }
   }
   return all;
