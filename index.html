@@ -2964,9 +2964,15 @@ async function startGpsRouteTo(destino, resultEl) {
   setGpsButtonState(true);
   resultEl.textContent = 'Calculando rota...';
   try {
-    const { summary, steps, totalDistanceMeters, totalDurationSec, error } = await callEdgeFunction('directions', { origem, destino });
+    const { summary, steps, trafficWarnings, totalDistanceMeters, totalDurationSec, error } = await callEdgeFunction('directions', { origem, destino });
     if (error || !steps || steps.length === 0) { resultEl.textContent = error || 'Nenhum passo de rota encontrado.'; stopGps(); return false; }
     await speakAndWait(summary);
+    if (trafficWarnings && trafficWarnings[0]) {
+      const aviso = trafficWarnings[0];
+      const d = formatDistanceFalado(aviso.distanceMeters);
+      const tipo = aviso.severity === 'TRAFFIC_JAM' ? 'parado' : 'lento';
+      await speakAndWait(`Atenção: trânsito ${tipo} daqui a ${d.value} ${d.unit}.`);
+    }
     await startTurnByTurn(steps, resultEl, totalDistanceMeters, totalDurationSec);
   } catch (e) {
     resultEl.textContent = 'Erro ao calcular rota: ' + e.message;

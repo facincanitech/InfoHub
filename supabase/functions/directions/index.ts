@@ -33,6 +33,63 @@ function toWaypoint(value: string) {
   return { address: value };
 }
 
+// Decodifica a polyline codificada do Google (algoritmo padrão, precisão 5).
+function decodePolyline(encoded: string): [number, number][] {
+  let index = 0, lat = 0, lng = 0;
+  const coordinates: [number, number][] = [];
+  while (index < encoded.length) {
+    let shift = 0, result = 0, byte;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    shift = 0; result = 0;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    coordinates.push([lat / 1e5, lng / 1e5]);
+  }
+  return coordinates;
+}
+
+function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Os trechos de trânsito (speedReadingIntervals) vêm como índice de ponto da
+// polyline, não como metro da rota — decodifica a polyline e soma a distância
+// acumulada pra converter "índice X" em "a Y metros do início".
+function trafficWarningsFromLeg(leg: any, encodedPolyline: string) {
+  const intervals = (leg.travelAdvisory && leg.travelAdvisory.speedReadingIntervals) || [];
+  const slow = intervals.filter((i: any) => i.speed === 'SLOW' || i.speed === 'TRAFFIC_JAM');
+  if (slow.length === 0 || !encodedPolyline) return [];
+
+  const points = decodePolyline(encodedPolyline);
+  const cumulative = [0];
+  for (let i = 1; i < points.length; i++) {
+    cumulative.push(cumulative[i - 1] + haversineMeters(points[i - 1][0], points[i - 1][1], points[i][0], points[i][1]));
+  }
+
+  return slow
+    .map((interval: any) => {
+      const idx = Math.min(interval.startPolylinePointIndex || 0, cumulative.length - 1);
+      return { distanceMeters: Math.round(cumulative[idx]), severity: interval.speed };
+    })
+    .sort((a: any, b: any) => a.distanceMeters - b.distanceMeters);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
 
@@ -51,12 +108,16 @@ Deno.serve(async (req: Request) => {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs.steps.navigationInstruction,routes.legs.steps.endLocation,routes.legs.steps.distanceMeters',
+        // routingPreference TRAFFIC_AWARE muda o SKU de cobrança do Google (Essentials
+        // -> Pro, ~2x o preço por chamada) — decisão consciente: o valor de avisar
+        // trânsito compensa, mesmo no uso mais pesado a margem do Premium ainda fecha.
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps.navigationInstruction,routes.legs.steps.endLocation,routes.legs.steps.distanceMeters,routes.legs.travelAdvisory.speedReadingIntervals',
       },
       body: JSON.stringify({
         origin: toWaypoint(origem),
         destination: toWaypoint(destino),
         travelMode: 'DRIVE',
+        routingPreference: 'TRAFFIC_AWARE',
         languageCode: 'pt-BR',
         units: 'METRIC',
       }),
@@ -80,7 +141,9 @@ Deno.serve(async (req: Request) => {
       }
     }
     const summary = `Rota até ${destino}: ${distanceKm} quilômetros, tempo estimado ${formatDuration(durationSec)}.`;
-    return Response.json({ summary, steps, totalDistanceMeters: route.distanceMeters, totalDurationSec: durationSec, error: null }, { headers: CORS_HEADERS });
+    const encodedPolyline = route.polyline && route.polyline.encodedPolyline;
+    const trafficWarnings = (route.legs || []).flatMap((leg: any) => trafficWarningsFromLeg(leg, encodedPolyline));
+    return Response.json({ summary, steps, trafficWarnings, totalDistanceMeters: route.distanceMeters, totalDurationSec: durationSec, error: null }, { headers: CORS_HEADERS });
   } catch (e) {
     return Response.json({ summary: '', steps: [], error: 'Erro ao calcular rota: ' + e.message }, { headers: CORS_HEADERS });
   }
