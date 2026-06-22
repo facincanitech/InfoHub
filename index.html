@@ -301,10 +301,9 @@
     color: var(--c-text); padding: 8px 10px; font-size: 0.76rem; white-space: nowrap;
   }
   .item-action-menu-opt:active { opacity: 0.7; }
-  .saved-item { background: var(--c-surface); border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 8px; }
-  .saved-item .cat { color: var(--c-text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
-  .saved-item .remove-saved-btn {
-    background: none; border: none; color: var(--c-text-dim); font-size: 0.78rem; padding: 0; margin-top: 6px;
+  .remove-saved-btn {
+    display: block; background: none; border: none; color: var(--c-text-dim);
+    font-size: 0.78rem; padding: 0; margin-top: 10px;
   }
 
   /* ===== Central de Contas (overlay) ===== */
@@ -2611,7 +2610,10 @@ function closeAllItemActionMenus() {
 }
 document.addEventListener('click', closeAllItemActionMenus);
 
-function buildItemActionsRow(category, sub, text) {
+// showSave=false na tela de "Salvos" (não tem porque salvar de novo o que já
+// tá salvo) — lá usa só compartilhar/copiar, com remover separado.
+function buildItemActionsRow(category, sub, text, title, showSave) {
+  if (showSave === undefined) showSave = true;
   const wrap = document.createElement('div');
   wrap.className = 'item-actions';
 
@@ -2649,12 +2651,14 @@ function buildItemActionsRow(category, sub, text) {
     await navigator.clipboard.writeText(text);
     showVoiceToast('Copiado.');
   });
-  addMenuOption('💾 Salvar', async () => {
-    state.savedItems.unshift({ category, sub: sub || '', text, savedAt: Date.now() });
-    saveState();
-    renderSavedItems();
-    showVoiceToast('Salvo.');
-  });
+  if (showSave) {
+    addMenuOption('💾 Salvar', async () => {
+      state.savedItems.unshift({ category, sub: sub || '', title: title || text, text, savedAt: Date.now() });
+      saveState();
+      renderSavedItems();
+      showVoiceToast('Salvo.');
+    });
+  }
 
   triggerBtn.addEventListener('click', (ev) => {
     ev.stopPropagation();
@@ -2679,7 +2683,7 @@ function renderHistory(currentIndex) {
     catEl.textContent = item.category;
     div.appendChild(catEl);
     div.appendChild(document.createTextNode(item.title));
-    div.appendChild(buildItemActionsRow(item.category, '', item.full || item.title));
+    div.appendChild(buildItemActionsRow(item.category, '', item.full || item.title, item.title));
     historyListEl.appendChild(div);
   }
 
@@ -2705,7 +2709,7 @@ function renderHistory(currentIndex) {
       div.appendChild(linkEl);
     }
 
-    div.appendChild(buildItemActionsRow(item.category, item.sub, item.full || item.title));
+    div.appendChild(buildItemActionsRow(item.category, item.sub, item.full || item.title, item.title));
     historyListEl.appendChild(div);
   }
   historyListEl.scrollTop = 0;
@@ -3742,6 +3746,8 @@ alarmsActiveToggle.checked = state.alarmsActive;
 renderAlarmsList();
 updateAlarmsTileStatus();
 
+// Mesmo visual do acordeão do tutorial: lista só o título, clica pra abrir o
+// conteúdo completo + ações (sem "salvar" de novo, só compartilhar/copiar/remover).
 function renderSavedItems() {
   const listEl = document.getElementById('saved-items-list');
   listEl.innerHTML = '';
@@ -3752,14 +3758,26 @@ function renderSavedItems() {
     return;
   }
   state.savedItems.forEach((item, index) => {
-    const div = document.createElement('div');
-    div.className = 'saved-item';
-    const catEl = document.createElement('div');
-    catEl.className = 'cat';
-    catEl.textContent = item.category + (item.sub ? ' · ' + item.sub : '');
-    div.appendChild(catEl);
-    div.appendChild(document.createTextNode(item.text));
-    div.appendChild(buildItemActionsRow(item.category, item.sub, item.text));
+    const section = document.createElement('div');
+    section.className = 'help-section saved-item';
+
+    const header = document.createElement('div');
+    header.className = 'help-section-header';
+    const titleEl = document.createElement('span');
+    titleEl.className = 'title';
+    titleEl.textContent = (item.category + (item.sub ? ' · ' + item.sub : '') + ' — ' + (item.title || item.text));
+    const chev = document.createElement('span');
+    chev.className = 'chev';
+    chev.textContent = '›';
+    header.appendChild(titleEl);
+    header.appendChild(chev);
+    header.addEventListener('click', () => section.classList.toggle('open'));
+
+    const body = document.createElement('div');
+    body.className = 'help-section-body';
+    body.appendChild(document.createTextNode(item.text));
+    body.appendChild(buildItemActionsRow(item.category, item.sub, item.text, item.title, false));
+
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'remove-saved-btn';
@@ -3769,8 +3787,11 @@ function renderSavedItems() {
       saveState();
       renderSavedItems();
     });
-    div.appendChild(removeBtn);
-    listEl.appendChild(div);
+    body.appendChild(removeBtn);
+
+    section.appendChild(header);
+    section.appendChild(body);
+    listEl.appendChild(section);
   });
 }
 renderSavedItems();
