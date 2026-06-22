@@ -1846,7 +1846,7 @@ async function startOutlookLogin() {
     client_id: OUTLOOK_CLIENT_ID,
     response_type: 'code',
     redirect_uri: redirectUri,
-    response_mode: 'query',
+    response_mode: 'fragment',
     code_challenge_method: 'S256',
     code_challenge: challenge,
     scope: OUTLOOK_SCOPES,
@@ -1856,7 +1856,10 @@ async function startOutlookLogin() {
 }
 
 async function handleOAuthRedirect() {
-  const params = new URLSearchParams(window.location.search);
+  // Outlook (SPA no Azure) volta via #fragmento; Spotify continua via ?query.
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const queryParams = new URLSearchParams(window.location.search);
+  const params = hashParams.get('code') ? hashParams : queryParams;
   const code = params.get('code');
   const state = params.get('state');
   if (!code) return;
