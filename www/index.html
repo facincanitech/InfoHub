@@ -561,6 +561,7 @@
   </nav>
 
   <div id="voice-toast" class="voice-toast"></div>
+  <div id="yt-snippet-player" style="position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden;"></div>
 </div>
 
 <!-- ============ CENTRAL DE CONTAS (overlay) ============ -->
@@ -985,8 +986,8 @@ const CATEGORY_DEFS = [
       { id: 'podcasts', label: 'Podcasts', icon: '🎧', fields: [
         { id: 'nomes', kind: 'tags', placeholder: 'Digite e aperte Enter (até 5)' },
       ], hint: 'Busca pelo nome, sem precisar de link de RSS' },
-      { id: 'musica', label: 'Música', icon: '🎵', fields: [
-        { id: 'nomes', kind: 'tags', placeholder: 'Nome da banda/artista, digite e aperte Enter (até 5)' },
+      { id: 'musica', label: 'Música', icon: '🎚️', fields: [
+        { id: 'nomes', kind: 'tags', placeholder: 'Nome, artista ou gênero, digite e aperte Enter (até 5)' },
       ], hint: 'Spotify se conectado (ainda desativado), senão YouTube, senão notícia sobre o artista' },
       { id: 'jogo-esportivo', label: 'Esportes: resultado e próximo jogo', icon: '⚽', fields: [
         { id: 'competicao', kind: 'text', placeholder: 'Competição, ex: Brasileirão, Copa do Mundo' },
@@ -2072,7 +2073,7 @@ async function fetchYoutubeMusicItem(nome) {
     if (error || !video) return null;
     const title = `${video.channelTitle}, ${video.title}`;
     const link = `https://www.youtube.com/watch?v=${video.videoId}`;
-    return { category: 'Entretenimento', sub: `Música: ${nome}`, title, full: `${nome}, no YouTube: ${video.title}.`, quick: title, link };
+    return { category: 'Entretenimento', sub: `Música: ${nome}`, title, full: `${nome}, no YouTube: ${video.title}.`, quick: title, link, videoId: video.videoId };
   } catch (e) { console.error('youtube-music:', e); return null; }
 }
 
@@ -2147,7 +2148,7 @@ async function fetchYoutubeItems(canaisStr, fields) {
       const full = video.description
         ? `Novo vídeo de ${channelTitle}: ${video.title}. ${truncateAtBoundary(video.description, 600)}`
         : `Novo vídeo de ${channelTitle}: ${video.title}.`;
-      items.push({ category: 'Entretenimento', sub: `YouTube: ${channelTitle}`, title: `${channelTitle}, ${video.title}`, full, quick: video.title, link });
+      items.push({ category: 'Entretenimento', sub: `YouTube: ${channelTitle}`, title: `${channelTitle}, ${video.title}`, full, quick: video.title, link, videoId: video.videoId });
     } catch (e) {
       console.error('youtube:', e);
     }
@@ -2339,8 +2340,70 @@ function renderHistory(currentIndex) {
 
 let playbackToken = 0;
 
-function speakQueueItem(i) {
-  const myToken = ++playbackToken; // invalida callbacks de utterances anteriores/canceladas
+// Player do YouTube escondido (fora da tela, sem imagem nenhuma) — toca uns
+// segundos de áudio real do vídeo/música no meio do briefing, sem precisar
+// baixar nada, só o embed oficial do YouTube controlado por código.
+let ytPlayerInstance = null;
+let ytApiLoadPromise = null;
+
+function loadYoutubeIframeApi() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (ytApiLoadPromise) return ytApiLoadPromise;
+  ytApiLoadPromise = new Promise((resolve) => {
+    const previous = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (previous) previous(); resolve(); };
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+  });
+  return ytApiLoadPromise;
+}
+
+async function ensureYtPlayer() {
+  await loadYoutubeIframeApi();
+  if (ytPlayerInstance) return ytPlayerInstance;
+  return new Promise((resolve) => {
+    ytPlayerInstance = new YT.Player('yt-snippet-player', {
+      height: '1', width: '1',
+      playerVars: { autoplay: 0, controls: 0 },
+      events: { onReady: () => resolve(ytPlayerInstance) },
+    });
+  });
+}
+
+async function playYoutubeSnippet(videoId, durationMs = 7000) {
+  try {
+    const player = await ensureYtPlayer();
+    player.loadVideoById(videoId);
+    player.setVolume(100);
+    await new Promise((resolve) => setTimeout(resolve, 1200)); // dá tempo do vídeo carregar de fato
+    player.playVideo();
+    await new Promise((resolve) => setTimeout(resolve, durationMs));
+    player.pauseVideo();
+  } catch (e) {
+    console.error('youtube snippet:', e);
+  }
+}
+
+function stopYoutubeSnippetPlayback() {
+  try { if (ytPlayerInstance) ytPlayerInstance.pauseVideo(); } catch (e) {}
+}
+
+function speakQueueText(text, rate) {
+  return new Promise((resolve) => {
+    const utter = new SpeechSynthesisUtterance(text);
+    const voice = getSelectedVoice();
+    if (voice) utter.voice = voice;
+    utter.lang = voice ? voice.lang : 'pt-BR';
+    utter.rate = rate;
+    utter.onend = resolve;
+    utter.onerror = resolve;
+    speechSynthesis.speak(utter);
+  });
+}
+
+async function speakQueueItem(i) {
+  const myToken = ++playbackToken; // invalida callbacks/awaits anteriores/cancelados
   if (i >= currentQueue.length) {
     setPlayingVisual(false);
     briefingLabel.textContent = 'Meu Dia concluído';
@@ -2354,22 +2417,25 @@ function speakQueueItem(i) {
   progressFill.style.width = `${Math.round((i / currentQueue.length) * 100)}%`;
   renderHistory(i);
 
-  const text = state.quickMode ? (item.quick || item.title) : (item.full || item.title);
-  const utter = new SpeechSynthesisUtterance(text);
-  const voice = getSelectedVoice();
-  if (voice) utter.voice = voice;
-  utter.lang = voice ? voice.lang : 'pt-BR';
-  utter.rate = parseFloat(briefingRateInput.value);
-  utter.onend = () => {
-    if (myToken !== playbackToken) return; // já foi cancelada por um clique novo, ignora
-    progressFill.style.width = `${Math.round(((i + 1) / currentQueue.length) * 100)}%`;
-    if (isPlaying) speakQueueItem(i + 1);
-  };
-  utter.onerror = () => {
+  const rate = parseFloat(briefingRateInput.value);
+
+  if (item.videoId) {
+    // Vídeo/música com trecho real: fala o título, toca uns segundos de áudio
+    // de verdade (player escondido, sem imagem), e fala pra abrir o link pro resto.
+    const intro = state.quickMode ? (item.quick || item.title) : item.title;
+    await speakQueueText(intro, rate);
     if (myToken !== playbackToken) return;
-    if (isPlaying) speakQueueItem(i + 1);
-  };
-  speechSynthesis.speak(utter);
+    await playYoutubeSnippet(item.videoId);
+    if (myToken !== playbackToken) return;
+    await speakQueueText('Pra ouvir o resto, clica no link.', rate);
+  } else {
+    const text = state.quickMode ? (item.quick || item.title) : (item.full || item.title);
+    await speakQueueText(text, rate);
+  }
+
+  if (myToken !== playbackToken) return; // já foi cancelada por um clique novo, ignora
+  progressFill.style.width = `${Math.round(((i + 1) / currentQueue.length) * 100)}%`;
+  if (isPlaying) speakQueueItem(i + 1);
 }
 
 function getSaudacaoPorHorario() {
@@ -2417,6 +2483,7 @@ async function startBriefingPlayback(automatic = false) {
 playCircle.addEventListener('click', () => {
   if (isPlaying) {
     speechSynthesis.cancel();
+    stopYoutubeSnippetPlayback();
     setPlayingVisual(false);
     return;
   }
@@ -2427,6 +2494,7 @@ document.getElementById('prev-btn').addEventListener('click', () => {
   if (currentQueue.length === 0) return;
   isPlaying = false;
   speechSynthesis.cancel();
+  stopYoutubeSnippetPlayback();
   setPlayingVisual(true);
   speakQueueItem(Math.max(currentQueueIndex - 1, 0));
 });
@@ -2435,6 +2503,7 @@ document.getElementById('next-btn').addEventListener('click', () => {
   if (currentQueue.length === 0) return;
   isPlaying = false;
   speechSynthesis.cancel();
+  stopYoutubeSnippetPlayback();
   setPlayingVisual(true);
   speakQueueItem(Math.min(currentQueueIndex + 1, currentQueue.length - 1));
 });
@@ -3284,6 +3353,7 @@ async function handleVoiceQuery(textoOriginal) {
   // Usa o mesmo play/stop do briefing: assim o botão mostra "tocando" enquanto o
   // assistente fala, e clicar nele cancela igual cancelaria a fila normal.
   speechSynthesis.cancel(); // se a fila já estava tocando, não deixa sobrepor
+  stopYoutubeSnippetPlayback();
   setPlayingVisual(true);
   await speakAndWait(resposta);
   setPlayingVisual(false);
