@@ -1,0 +1,29 @@
+{
+  "name": "infohub",
+  "version": "1.0.0",
+  "description": "Não reutilizar / projeto proprietário.",
+  "main": "sw.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "sync": "node -e \"const fs=require('fs');['index.html','manifest.json','sw.js','icon.svg'].forEach(f=>fs.copyFileSync(f,'www/'+f))\" && npx cap copy android",
+    "android:run": "npm run sync && npx cap run android",
+    "android:open": "npm run sync && npx cap open android"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/facincanitech/InfoHub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/facincanitech/InfoHub/issues"
+  },
+  "homepage": "https://github.com/facincanitech/InfoHub#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1"
+  }
+}

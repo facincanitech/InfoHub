@@ -1,0 +1,13 @@
+node_modules/
+
+# Android build outputs (gerados pelo Gradle, não precisam ir pro git)
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/captures/
+android/.idea/
+android/app/release/
+android/app/debug/
+*.keystore
+*.jks
