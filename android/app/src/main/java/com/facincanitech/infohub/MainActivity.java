@@ -7,7 +7,14 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginHandle;
 
-public class MainActivity extends BridgeActivity {
+import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin;
+
+public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
+    // Marcador exigido pelo plugin de login social pra liberar o pedido de
+    // escopos extras do Google (Gmail/Calendar/Contacts/YouTube) — sem lógica própria.
+    @Override
+    public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {}
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(BriefingAlarmPlugin.class);
