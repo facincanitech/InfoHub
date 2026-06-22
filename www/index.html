@@ -1001,12 +1001,13 @@ if (typeof window.SpeechSynthesisUtterance === 'undefined') {
    Chaves de verdade (OpenWeatherMap, API-Football, Google Maps) ficam só no
    servidor, como secret das Supabase Edge Functions em supabase/functions/*.
    ========================================================================= */
-// Dois projetos/clients diferentes de propósito: o Gmail é escopo "restrito"
-// (exige avaliação de segurança paga pra liberar em produção pra qualquer
-// pessoa, ~US$500+/ano) — inviável pro app nativo vendido pro público. No
-// navegador/GitHub Pages (uso pessoal, conta de teste) mantém o Gmail; no app
-// nativo (clientes reais) usa outro client sem esse escopo, só os "sensíveis"
-// (Calendar/Contacts/YouTube/Drive), que podem ser verificados de graça.
+// Dois projetos/clients diferentes (web e nativo) — o Gmail é escopo
+// "restrito" do Google (custaria ~US$500+/ano pra verificar em produção pra
+// qualquer cliente real), mas pedir o escopo sem verificar não custa nada:
+// só funciona pra contas cadastradas como teste no Google Cloud Console, e
+// mostra um aviso de "app não verificado" pra qualquer outra conta. Por
+// decisão explícita, o app nativo também pede Gmail agora, sabendo dessa
+// limitação — não é o ideal pra venda em escala, mas sem custo imediato.
 const CLIENT_ID_WEB = '614074980827-7k3u0ugpmk8100chp5m1998b36peajo9.apps.googleusercontent.com';
 const CLIENT_ID_NATIVE = '501409490841-felsdcgkktofluhkt1hg5pg089fuakoi.apps.googleusercontent.com';
 const CLIENT_ID = CLIENT_ID_WEB;
@@ -1016,8 +1017,9 @@ const GOOGLE_SCOPES_BASE = [
   'https://www.googleapis.com/auth/youtube.readonly',
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/gmail.readonly',
 ];
-const GOOGLE_SCOPES = [...GOOGLE_SCOPES_BASE, 'https://www.googleapis.com/auth/gmail.readonly'].join(' ');
+const GOOGLE_SCOPES = GOOGLE_SCOPES_BASE.join(' ');
 const GOOGLE_SCOPES_NATIVE = GOOGLE_SCOPES_BASE.join(' ');
 
 // Preencha quando criar o app em https://developer.spotify.com/dashboard
