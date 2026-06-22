@@ -367,6 +367,30 @@
     border: 1px solid var(--c-border);
   }
 
+  /* ===== Modo Carro: tela simplificada do briefing, botões gigantes =====
+     z-index abaixo da tela de navegação visual (300) — se as duas estiverem
+     ativas, a seta de manobra tem prioridade visual sobre os controles. */
+  .carro-overlay {
+    position: fixed; inset: 0; z-index: 290; background: #0a0a0a; color: #fff;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 28px; padding: 32px 24px; font-family: inherit; text-align: center;
+  }
+  .carro-overlay.open { display: flex; }
+  .carro-exit-btn {
+    position: absolute; top: 20px; right: 20px; background: #1a1a1a; border: none;
+    color: #888; border-radius: 10px; padding: 10px 16px; font-size: 0.85rem; font-weight: 600;
+  }
+  .carro-category { color: var(--c-accent-blue); font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .carro-title { font-size: 1.6rem; font-weight: 700; line-height: 1.3; max-width: 320px; }
+  .carro-controls { display: flex; align-items: center; gap: 24px; }
+  .carro-btn { border: none; border-radius: 50%; color: #fff; }
+  .carro-btn-skip { width: 76px; height: 76px; background: #1a1a1a; font-size: 2rem; }
+  .carro-btn-play { width: 120px; height: 120px; background: var(--c-green); font-size: 2.8rem; }
+  .carro-mic-btn {
+    background: #1a1a1a; border: 2px solid var(--md-voice); color: var(--md-voice);
+    border-radius: 30px; padding: 16px 32px; font-size: 1.1rem; font-weight: 700;
+  }
+
   /* ===== GPS, tela visual de navegação (modo carro) =====
      Preto puro de propósito, independente do tema do app — é uma tela de
      dirigir, não de configurar, precisa de contraste máximo a qualquer hora. */
@@ -563,6 +587,7 @@
         <div class="desc" style="margin-top: 6px; font-size: 0.72rem;">Digite o endereço completo, rua, número e cidade, pra maior precisão. Se a sugestão não vier certinha, pode ignorar a lista e ativar do mesmo jeito, o cálculo da rota funciona com o texto digitado.</div>
         <div class="desc" style="margin-top: 10px; opacity: 0.6;">🚧 <b>Em breve:</b> modo proximidades — ative sem destino e o app vai poder avisar quando aparecer um posto, restaurante ou farmácia perto de você, sem precisar digitar nada.</div>
         <div class="result" id="gps-result"></div>
+        <button id="modocarro-btn" style="margin-top: 10px; background: var(--c-border2); color: var(--c-text);">🚗 Modo Carro</button>
       </div>
 
       <div class="premium-feature">
@@ -684,6 +709,19 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- ============ MODO CARRO (overlay) ============ -->
+<div class="carro-overlay" id="carro-overlay">
+  <button class="carro-exit-btn" id="carro-exit-btn">✕ Sair do Modo Carro</button>
+  <div class="carro-category" id="carro-category"></div>
+  <div class="carro-title" id="carro-title">Configure suas categorias na aba Guia</div>
+  <div class="carro-controls">
+    <button class="carro-btn carro-btn-skip" id="carro-prev-btn">⏮</button>
+    <button class="carro-btn carro-btn-play" id="carro-play-btn">▶</button>
+    <button class="carro-btn carro-btn-skip" id="carro-next-btn">⏭</button>
+  </div>
+  <button class="carro-mic-btn" id="carro-mic-btn">🎤 Pergunte algo</button>
 </div>
 
 <!-- ============ GPS, TELA VISUAL DE NAVEGAÇÃO (overlay) ============ -->
@@ -2928,6 +2966,51 @@ function showNavArrivedState() {
 document.getElementById('nav-stop-btn').addEventListener('click', () => {
   stopGps();
   hideNavOverlay();
+});
+
+/* =========================================================================
+   MODO CARRO, tela simplificada do briefing (v1: sem mic sempre escutando)
+   ========================================================================= */
+let carroWakeLock = null;
+let carroSyncIntervalId = null;
+
+function syncCarroDisplay() {
+  document.getElementById('carro-category').textContent = briefingSub.textContent;
+  document.getElementById('carro-title').textContent = briefingLabel.textContent;
+  document.getElementById('carro-play-btn').textContent = isPlaying ? '⏹' : '▶';
+}
+
+async function enterModoCarro() {
+  document.getElementById('carro-overlay').classList.add('open');
+  try {
+    if ('wakeLock' in navigator) carroWakeLock = await navigator.wakeLock.request('screen');
+  } catch (e) { console.error('wakeLock:', e); }
+  if (!isPlaying) {
+    if (currentQueue.length > 0) {
+      setPlayingVisual(true);
+      speakQueueItem(currentQueueIndex);
+    } else {
+      startBriefingPlayback();
+    }
+  }
+  syncCarroDisplay();
+  carroSyncIntervalId = setInterval(syncCarroDisplay, 500);
+}
+
+function exitModoCarro() {
+  document.getElementById('carro-overlay').classList.remove('open');
+  if (carroWakeLock) { carroWakeLock.release().catch(() => {}); carroWakeLock = null; }
+  if (carroSyncIntervalId) { clearInterval(carroSyncIntervalId); carroSyncIntervalId = null; }
+}
+
+document.getElementById('modocarro-btn').addEventListener('click', enterModoCarro);
+document.getElementById('carro-exit-btn').addEventListener('click', exitModoCarro);
+document.getElementById('carro-prev-btn').addEventListener('click', () => document.getElementById('prev-btn').click());
+document.getElementById('carro-next-btn').addEventListener('click', () => document.getElementById('next-btn').click());
+document.getElementById('carro-play-btn').addEventListener('click', () => document.getElementById('play-circle').click());
+document.getElementById('carro-mic-btn').addEventListener('click', () => {
+  const micBtn = document.querySelector('[data-action="voice"]');
+  if (micBtn) micBtn.click();
 });
 
 function startTurnByTurn(steps, resultEl, totalMeters, totalDurationSec) {
