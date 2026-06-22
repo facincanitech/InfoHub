@@ -718,6 +718,23 @@
         </div>
       </div>
 
+      <div class="help-section" style="--topic-color: var(--cat-clima);">
+        <div class="help-section-header">
+          <span class="title">🌤️ Clima, guia completo</span>
+          <span class="chev">›</span>
+        </div>
+        <div class="help-section-body">
+          🌡️ <b>Temperatura, UV e qualidade do ar</b>: preenche até 2 cidades, lê a
+          previsão atual de cada uma.<br><br>
+          ⚠️ <b>Alertas climáticos</b>: independente da feature acima (pode ativar só
+          essa, só a outra, ou as duas). Calculado a partir da própria previsão, sem
+          custo extra — só fala se detectar frio (≤10°C), calor (≥35°C), tempestade ou
+          chuva forte de verdade. Fica em silêncio nos dias normais.<br><br>
+          📅 <b>Previsão dos próximos dias</b>: mínima e máxima dos próximos 3 dias pra
+          cidade configurada.
+        </div>
+      </div>
+
       <div class="help-section" style="--topic-color: var(--cat-entretenimento);">
         <div class="help-section-header">
           <span class="title">🎮 Entretenimento, guia completo</span>
@@ -729,7 +746,10 @@
           🎬 <b>Filmes em cartaz</b>: sem campo nenhum, já traz o que está passando no
           cinema agora (e o que chega em breve), com sinopse.<br><br>
           📺 <b>Séries lançamentos</b>: igual filmes, mas pra série, sem campo, automático.<br><br>
-          🕹️ <b>Jogos (lançamentos)</b>: também automático, busca no IGN Brasil.<br><br>
+          🕹️ <b>Jogos</b>: escolha entre Lançamentos, Curiosidades e Mais aguardados (pode
+          marcar mais de um). Tudo via IGN Brasil — Lançamentos e Mais aguardados só falam
+          quando acham matéria de verdade sobre isso, então pode ficar em silêncio às vezes
+          (melhor que inventar conteúdo errado). Curiosidades sempre tem algo.<br><br>
           ▶️ <b>Canais do YouTube</b>: digite o nome do canal e aperte Enter (até 5), não
           precisa conectar conta nenhuma, é busca direta pelo nome. Lê o vídeo mais
           recente de cada canal, com título e descrição. Cuidado com erro de digitação:
@@ -775,15 +795,23 @@
           • <b>Cotação</b>: "cotação do dólar", "quanto vale o bitcoin"<br>
           • <b>Clima</b>: "previsão do tempo em São Paulo" (se não falar a cidade, usa a
           que você já configurou em Clima)<br>
-          • <b>Notícias</b>: "notícias sobre futebol"<br>
+          • <b>Notícias por assunto</b>: "notícias sobre futebol"<br>
+          • <b>Últimas notícias</b>: "últimas notícias", "principais notícias", "o que
+          está acontecendo"<br>
           • <b>Esportes</b>: "quando o Flamengo vai jogar", "último jogo do Brasil"<br>
+          • <b>Filme por nome</b>: "filme do Michael Jackson", "filme sobre futebol",
+          busca direto no TMDB<br>
+          • <b>O que está no Guia</b>: também entende "filmes em cartaz", "séries no ar",
+          agenda, aniversários, feriados, fase da lua, canais do YouTube, podcasts e
+          músicas — usa o que você já configurou em cada feature<br>
           • Qualquer outra coisa cai num último recurso: busca um resumo na
-          <b>Wikipédia</b> pelo termo da pergunta (ex: "o que é buraco negro", "quem foi
-          Einstein"), funciona bem pra perguntas diretas, não pra frases complexas.<br><br>
-          Se perguntar "você é uma IA?", ele deixa bem claro que não é, é um assistente
-          de voz com respostas fixas, não inteligência artificial.<br><br>
+          <b>Wikipédia</b> (com busca de verdade, não só título exato) e, se nem isso
+          achar nada, tenta uma busca de notícia genérica pela frase inteira.<br><br>
+          Se perguntar "você é uma IA?", "qual seu nome" ou "o que você pode fazer", ele
+          deixa bem claro que não é IA, é um assistente de voz com respostas fixas.<br><br>
           ⚠️ O reconhecimento de voz funciona bem no <b>Chrome</b> e <b>Edge</b>. No
-          Firefox o suporte é bem limitado, e pode não funcionar no Safari/iOS.
+          Firefox o suporte é bem limitado, e pode não funcionar no Safari/iOS. No app
+          empacotado (Android), usa o reconhecimento de voz nativo do próprio aparelho.
         </div>
       </div>
 
@@ -805,11 +833,16 @@
           Bom pra deixar tocando em horários fixos do dia, ou pra simular uma
           repetição (ex: adicionar 08h, 11h, 14h, 17h pra ouvir de 3 em 3 horas
           enquanto joga ou trabalha com o navegador minimizado).<br><br>
-          Funciona bem no <b>PC</b> (o navegador continua rodando minimizado). No
-          <b>celular</b>, depende do aparelho: se o Android suspender o navegador em
-          segundo plano pra economizar bateria, o alarme pode atrasar ou não disparar
-          até você abrir o app de novo. Em ambos os casos, <b>precisa de uma aba do
-          InfoHub aberta</b>, fechando o navegador por completo, os alarmes param.<br><br>
+          Se você está usando o <b>app instalado</b> (não pelo navegador), o alarme é
+          de verdade: dispara mesmo com o app fechado, igual um despertador — com a tela
+          bloqueada ele abre sozinho e fala tudo; usando outro app, fala um aviso curto
+          sem abrir nada; e com o InfoHub já aberto, fala o briefing completo na hora.<br><br>
+          Pelo <b>navegador</b> (PC ou celular sem instalar o app), funciona bem no PC
+          (o navegador continua rodando minimizado). No celular pelo navegador, depende
+          do aparelho: se o Android suspender a aba em segundo plano pra economizar
+          bateria, o alarme pode atrasar ou não disparar até você abrir o app de novo —
+          nesse caso, <b>precisa de uma aba do InfoHub aberta</b>, fechando o navegador
+          por completo, os alarmes param.<br><br>
           <b>Deu "Permissão de notificação negada"?</b> Isso normalmente significa que o
           navegador já tinha negado notificação pra esse site antes (de propósito ou não),
           uma vez negado, ele não pergunta de novo, só nega direto. Pra resetar:<br><br>
