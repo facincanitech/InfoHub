@@ -525,7 +525,7 @@
 
       <div class="premium-feature">
         <div class="title">🧭 GPS auditivo</div>
-        <div class="desc">Navegação por voz completa, 100% auditiva, sem precisar olhar pra tela. Ative sem destino pro modo proximidades (avisa lugares perto de você), ou coloque um destino pra navegação turn-by-turn de verdade, acompanhando sua posição.</div>
+        <div class="desc">Navegação por voz completa, 100% auditiva, sem precisar olhar pra tela. Coloque um destino e o app calcula a rota e narra cada manobra, acompanhando sua posição em tempo real.</div>
       </div>
 
       <div class="premium-feature">
@@ -555,18 +555,13 @@
           <span>🧭 GPS auditivo</span>
           <button id="gps-start-btn" style="width: auto; padding: 8px 16px; font-size: 0.82rem; background: var(--c-accent-blue); color: var(--c-on-accent);">Ativar</button>
         </div>
-        <div class="desc">Origem: sua localização atual (GPS). Deixe o destino vazio pro modo proximidades (avisa lugares perto de você), ou preencha pra navegação turn-by-turn de verdade, só fala o próximo passo quando você chegar perto do ponto da manobra.</div>
+        <div class="desc">Origem: sua localização atual (GPS). Digite o destino e o app calcula a rota e fala o próximo passo quando você chegar perto do ponto da manobra.</div>
         <div style="position: relative;">
-          <input type="text" id="gps-destino" placeholder="Destino (opcional), digite e escolha um endereço" autocomplete="off">
+          <input type="text" id="gps-destino" placeholder="Destino, digite e escolha um endereço" autocomplete="off">
           <div id="gps-destino-suggestions" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:10; background: var(--c-surface); border: 1px solid var(--c-border2); border-radius: 8px; margin-top: 2px; overflow: hidden;"></div>
         </div>
         <div class="desc" style="margin-top: 6px; font-size: 0.72rem;">Digite o endereço completo, rua, número e cidade, pra maior precisão. Se a sugestão não vier certinha, pode ignorar a lista e ativar do mesmo jeito, o cálculo da rota funciona com o texto digitado.</div>
-        <div class="desc" style="margin-top: 8px;">No modo proximidades (sem destino), avisar quando aparecer perto (escolha só 1):</div>
-        <div class="btn-group" id="gps-poi-categories" style="margin-bottom: 10px;">
-          <button type="button" class="btn-opt" data-poi="gas_station">⛽ Posto</button>
-          <button type="button" class="btn-opt" data-poi="restaurant">🍽️ Restaurante</button>
-          <button type="button" class="btn-opt" data-poi="pharmacy">💊 Farmácia</button>
-        </div>
+        <div class="desc" style="margin-top: 10px; opacity: 0.6;">🚧 <b>Em breve:</b> modo proximidades — ative sem destino e o app vai poder avisar quando aparecer um posto, restaurante ou farmácia perto de você, sem precisar digitar nada.</div>
         <div class="result" id="gps-result"></div>
       </div>
 
@@ -1106,9 +1101,6 @@ function loadState() {
     activeClimateCity: saved.activeClimateCity || 1,
     theme: saved.theme || 'dark',
     premiumUnlocked: saved.premiumUnlocked || false,
-    gpsPoiCategory: saved.gpsPoiCategory || null,
-    gpsAmbientCycleMonth: saved.gpsAmbientCycleMonth || '',
-    gpsAmbientCycleCount: saved.gpsAmbientCycleCount || 0,
     alarmsActive: saved.alarmsActive || false,
     alarmTimes: saved.alarmTimes || [],
     alarmLastFired: saved.alarmLastFired || {},
@@ -2690,9 +2682,7 @@ document.getElementById('check-subscription-btn').addEventListener('click', asyn
    PREMIUM, GPS auditivo (via Edge Functions "directions" / "traffic")
    ========================================================================= */
 let gpsActive = false;
-let nearbyIntervalId = null;
 let gpsWatchId = null;
-let announcedPlaceIds = new Set();
 
 function distanceMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -2701,34 +2691,6 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
   const dLon = toRad(lon2 - lon1);
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-let gpsPoiCategory = state.gpsPoiCategory || null; // só 1 categoria por vez, pra controlar custo de API
-document.querySelectorAll('#gps-poi-categories .btn-opt').forEach(btn => {
-  if (gpsPoiCategory === btn.dataset.poi) btn.classList.add('selected');
-  btn.addEventListener('click', () => {
-    const poi = btn.dataset.poi;
-    gpsPoiCategory = gpsPoiCategory === poi ? null : poi;
-    document.querySelectorAll('#gps-poi-categories .btn-opt').forEach(b => b.classList.toggle('selected', b.dataset.poi === gpsPoiCategory));
-    state.gpsPoiCategory = gpsPoiCategory;
-    saveState();
-  });
-});
-
-async function announceNearbyPlaceIfNew(lat, lng) {
-  if (!gpsPoiCategory) return;
-  try {
-    const { places, error } = await callEdgeFunction('places-nearby', { lat, lng, types: gpsPoiCategory, radius: 2000 });
-    if (error || !places) return;
-    const novo = places.find(p => !announcedPlaceIds.has(p.id));
-    if (novo) {
-      announcedPlaceIds.add(novo.id);
-      const notaTexto = novo.rating ? `, nota ${novo.rating.toFixed(1)}` : '';
-      await speakAndWait(`Tem um lugar a ${novo.distance} metros: ${novo.name}${notaTexto}.`);
-    }
-  } catch (e) {
-    console.error('places-nearby:', e);
-  }
 }
 
 function getCurrentPosition() {
@@ -2820,55 +2782,12 @@ function setGpsButtonState(active) {
 
 function stopGps() {
   setGpsButtonState(false);
-  if (nearbyIntervalId) { clearInterval(nearbyIntervalId); nearbyIntervalId = null; }
   if (gpsWatchId !== null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
   speechSynthesis.cancel();
   hideNavOverlay();
 }
 
-const GPS_NEARBY_MONTHLY_LIMIT = 300; // ciclos/mês (1 ciclo = 1 checagem de lugares), uso responsável da API gratuita
-
-function checkAndCountGpsNearbyCycle() {
-  const mesAtual = new Date().toISOString().slice(0, 7); // "YYYY-MM"
-  if (state.gpsAmbientCycleMonth !== mesAtual) {
-    state.gpsAmbientCycleMonth = mesAtual;
-    state.gpsAmbientCycleCount = 0;
-  }
-  if (state.gpsAmbientCycleCount >= GPS_NEARBY_MONTHLY_LIMIT) return false;
-  state.gpsAmbientCycleCount++;
-  saveState();
-  return true;
-}
-
-// Modo sem destino: só avisa lugares próximos de verdade (dado real, via OpenStreetMap).
-// Não tenta adivinhar trânsito sem uma rota real, isso seria inventar dado que o GPS
-// não tem like fact, e gerava informação errada em curvas/cruzamentos.
-async function checkNearbyOnce() {
-  const resultEl = document.getElementById('gps-result');
-  if (!gpsPoiCategory) {
-    resultEl.textContent = 'Nenhuma categoria de lugar selecionada, escolha uma acima pra ativar o modo proximidades.';
-    stopGps();
-    return;
-  }
-  if (!checkAndCountGpsNearbyCycle()) {
-    const msg = 'Limite mensal do modo proximidades atingido. Volta a funcionar no próximo mês.';
-    resultEl.textContent = msg;
-    await speakAndWait(msg);
-    stopGps();
-    return;
-  }
-  try {
-    const pos = await getCurrentPosition();
-    await announceNearbyPlaceIfNew(pos.coords.latitude, pos.coords.longitude);
-    if (!resultEl.textContent || resultEl.textContent.startsWith('Modo')) {
-      resultEl.textContent = 'Modo proximidades ativo, sem lugar novo nessa checagem.';
-    }
-  } catch (e) {
-    resultEl.textContent = 'Erro ao checar proximidades: ' + e.message;
-  }
-}
-
-// Modo com destino: navegação turn-by-turn de verdade, só fala o próximo passo quando
+// Navegação turn-by-turn de verdade, só fala o próximo passo quando
 // você de fato chega perto do ponto da manobra (acompanha sua posição ao vivo), em vez
 // de ler o trajeto inteiro de uma vez com você parado.
 // Mapeia o enum de manobra do Google Routes pra um dos 5 ícones que sabemos
@@ -3028,6 +2947,10 @@ function startTurnByTurn(steps, resultEl, totalMeters, totalDurationSec) {
 
 async function startGpsRouteTo(destino, resultEl) {
   if (gpsActive) stopGps();
+  if (!destino) {
+    resultEl.textContent = 'Digite um destino pra ativar a navegação.';
+    return false;
+  }
   resultEl.textContent = 'Obtendo sua localização...';
   let pos;
   try {
@@ -3038,30 +2961,21 @@ async function startGpsRouteTo(destino, resultEl) {
   }
   const origem = `${pos.coords.latitude},${pos.coords.longitude}`;
 
-  if (destino) {
-    setGpsButtonState(true);
-    resultEl.textContent = 'Calculando rota...';
-    try {
-      const { summary, steps, totalDistanceMeters, totalDurationSec, error } = await callEdgeFunction('directions', { origem, destino });
-      if (error || !steps || steps.length === 0) { resultEl.textContent = error || 'Nenhum passo de rota encontrado.'; stopGps(); return false; }
-      await speakAndWait(summary);
-      await startTurnByTurn(steps, resultEl, totalDistanceMeters, totalDurationSec);
-    } catch (e) {
-      resultEl.textContent = 'Erro ao calcular rota: ' + e.message;
-      stopGps();
-      hideNavOverlay();
-      return false;
-    }
+  setGpsButtonState(true);
+  resultEl.textContent = 'Calculando rota...';
+  try {
+    const { summary, steps, totalDistanceMeters, totalDurationSec, error } = await callEdgeFunction('directions', { origem, destino });
+    if (error || !steps || steps.length === 0) { resultEl.textContent = error || 'Nenhum passo de rota encontrado.'; stopGps(); return false; }
+    await speakAndWait(summary);
+    await startTurnByTurn(steps, resultEl, totalDistanceMeters, totalDurationSec);
+  } catch (e) {
+    resultEl.textContent = 'Erro ao calcular rota: ' + e.message;
     stopGps();
-    return true;
-  } else {
-    setGpsButtonState(true);
-    announcedPlaceIds = new Set();
-    resultEl.textContent = 'Modo proximidades ativo, avisando lugares próximos.';
-    checkNearbyOnce();
-    nearbyIntervalId = setInterval(checkNearbyOnce, 180000); // 3min, uso responsável da API gratuita
-    return true;
+    hideNavOverlay();
+    return false;
   }
+  stopGps();
+  return true;
 }
 
 document.getElementById('gps-start-btn').addEventListener('click', () => {
