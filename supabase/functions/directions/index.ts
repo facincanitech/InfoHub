@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs.steps.navigationInstruction,routes.legs.steps.endLocation',
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs.steps.navigationInstruction,routes.legs.steps.endLocation,routes.legs.steps.distanceMeters',
       },
       body: JSON.stringify({
         origin: toWaypoint(origem),
@@ -70,16 +70,17 @@ Deno.serve(async (req: Request) => {
     const route = data.routes[0];
     const durationSec = parseInt(route.duration.replace('s', ''), 10);
     const distanceKm = (route.distanceMeters / 1000).toFixed(1);
-    const steps: { text: string; lat: number; lng: number }[] = [];
+    const steps: { text: string; lat: number; lng: number; maneuver: string | null; distanceMeters: number }[] = [];
     for (const leg of route.legs || []) {
       for (const step of leg.steps || []) {
         const text = step.navigationInstruction && step.navigationInstruction.instructions;
         const loc = step.endLocation && step.endLocation.latLng;
-        if (text && loc) steps.push({ text, lat: loc.latitude, lng: loc.longitude });
+        const maneuver = (step.navigationInstruction && step.navigationInstruction.maneuver) || null;
+        if (text && loc) steps.push({ text, lat: loc.latitude, lng: loc.longitude, maneuver, distanceMeters: step.distanceMeters || 0 });
       }
     }
     const summary = `Rota até ${destino}: ${distanceKm} quilômetros, tempo estimado ${formatDuration(durationSec)}.`;
-    return Response.json({ summary, steps, error: null }, { headers: CORS_HEADERS });
+    return Response.json({ summary, steps, totalDistanceMeters: route.distanceMeters, totalDurationSec: durationSec, error: null }, { headers: CORS_HEADERS });
   } catch (e) {
     return Response.json({ summary: '', steps: [], error: 'Erro ao calcular rota: ' + e.message }, { headers: CORS_HEADERS });
   }

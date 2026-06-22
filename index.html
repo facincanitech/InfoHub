@@ -366,6 +366,39 @@
   [data-theme='high-contrast'] .feature-fields input {
     border: 1px solid var(--c-border);
   }
+
+  /* ===== GPS, tela visual de navegação (modo carro) =====
+     Preto puro de propósito, independente do tema do app — é uma tela de
+     dirigir, não de configurar, precisa de contraste máximo a qualquer hora. */
+  .nav-overlay {
+    position: fixed; inset: 0; z-index: 300; background: #0a0a0a; color: #fff;
+    display: none; flex-direction: column; font-family: inherit;
+  }
+  .nav-overlay.open { display: flex; }
+  .nav-top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 12px; border-bottom: 1px solid #222;
+  }
+  .nav-street { font-size: 1.3rem; font-weight: 700; line-height: 1.25; }
+  .nav-stop-btn {
+    background: #1a1a1a; border: none; color: #888; border-radius: 10px;
+    padding: 9px 14px; font-size: 0.82rem; font-weight: 600; flex-shrink: 0;
+  }
+  .nav-route-progress { height: 3px; background: #1a1a1a; margin: 0 20px; border-radius: 3px; }
+  .nav-route-progress-fill { height: 100%; background: var(--c-green); border-radius: 3px; width: 0%; transition: width .4s; }
+  .nav-arrow-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 20px 0; }
+  .nav-dist-area { text-align: center; padding: 12px 20px 20px; }
+  .nav-meters { font-size: 3.5rem; font-weight: 800; letter-spacing: -2px; line-height: 1; }
+  .nav-unit { font-size: 1.1rem; color: #888; margin-left: 4px; }
+  .nav-arrived-banner { display: none; text-align: center; padding: 28px 20px; color: var(--c-green); font-size: 1.25rem; font-weight: 700; }
+  .nav-arrived-banner.show { display: block; }
+  .nav-bottom-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px 28px; border-top: 1px solid #222;
+  }
+  .nav-stat { text-align: center; }
+  .nav-val { font-size: 1.25rem; font-weight: 700; }
+  .nav-lbl { font-size: 0.68rem; color: #888; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -655,6 +688,34 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ============ GPS, TELA VISUAL DE NAVEGAÇÃO (overlay) ============ -->
+<div class="nav-overlay" id="nav-overlay">
+  <div class="nav-top-bar">
+    <div>
+      <div class="nav-street" id="nav-street">Calculando rota...</div>
+    </div>
+    <button class="nav-stop-btn" id="nav-stop-btn">Parar GPS</button>
+  </div>
+
+  <div class="nav-route-progress"><div class="nav-route-progress-fill" id="nav-route-fill"></div></div>
+
+  <div class="nav-arrow-area">
+    <svg id="nav-maneuver-svg" viewBox="0 0 140 140" width="200" height="200" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div class="nav-dist-area">
+    <span class="nav-meters" id="nav-dist-value">—</span><span class="nav-unit" id="nav-dist-unit"></span>
+  </div>
+
+  <div class="nav-arrived-banner" id="nav-arrived-banner">📍 Você chegou ao destino!</div>
+
+  <div class="nav-bottom-bar">
+    <div class="nav-stat"><div class="nav-val" id="nav-eta-val">—</div><div class="nav-lbl">chegada</div></div>
+    <div class="nav-stat"><div class="nav-val" id="nav-dist-total">—</div><div class="nav-lbl">restante</div></div>
+    <div class="nav-stat"><div class="nav-val" id="nav-speed-val">—</div><div class="nav-lbl">velocidade</div></div>
   </div>
 </div>
 
@@ -2762,6 +2823,7 @@ function stopGps() {
   if (nearbyIntervalId) { clearInterval(nearbyIntervalId); nearbyIntervalId = null; }
   if (gpsWatchId !== null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
   speechSynthesis.cancel();
+  hideNavOverlay();
 }
 
 const GPS_NEARBY_MONTHLY_LIMIT = 300; // ciclos/mês (1 ciclo = 1 checagem de lugares), uso responsável da API gratuita
@@ -2809,9 +2871,123 @@ async function checkNearbyOnce() {
 // Modo com destino: navegação turn-by-turn de verdade, só fala o próximo passo quando
 // você de fato chega perto do ponto da manobra (acompanha sua posição ao vivo), em vez
 // de ler o trajeto inteiro de uma vez com você parado.
-function startTurnByTurn(steps, resultEl) {
+// Mapeia o enum de manobra do Google Routes pra um dos 5 ícones que sabemos
+// desenhar. Lista oficial: TURN_LEFT/RIGHT, TURN_SLIGHT_/SHARP_LEFT/RIGHT,
+// UTURN_LEFT/RIGHT, RAMP_LEFT/RIGHT, FORK_LEFT/RIGHT, ROUNDABOUT_LEFT/RIGHT,
+// STRAIGHT, DEPART, MERGE, NAME_CHANGE, FERRY, FERRY_TRAIN, etc.
+function maneuverToIconType(maneuver) {
+  if (!maneuver) return 'straight';
+  if (/UTURN/.test(maneuver)) return 'uturn';
+  if (/LEFT/.test(maneuver)) return 'left';
+  if (/RIGHT/.test(maneuver)) return 'right';
+  return 'straight';
+}
+
+function drawNavArrow(type) {
+  const svg = document.getElementById('nav-maneuver-svg');
+  if (!svg) return;
+  const GREEN = '#34a853';
+  const GRAY = '#2a2a2a';
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs) {
+    const e = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    svg.appendChild(e);
+    return e;
+  }
+  const defs = document.createElementNS(ns, 'defs');
+  defs.innerHTML = `<marker id="nav-ah" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="${GREEN}"/></marker>`;
+  svg.appendChild(defs);
+  const W = 9;
+  if (type === 'left') {
+    el('line', { x1: 70, y1: 130, x2: 70, y2: 72, stroke: GRAY, 'stroke-width': W, 'stroke-linecap': 'round' });
+    el('path', { d: 'M70,72 L70,44 Q70,26 50,26 L22,26', stroke: GREEN, 'stroke-width': W, fill: 'none', 'stroke-linecap': 'round', 'marker-end': 'url(#nav-ah)' });
+  } else if (type === 'right') {
+    el('line', { x1: 70, y1: 130, x2: 70, y2: 72, stroke: GRAY, 'stroke-width': W, 'stroke-linecap': 'round' });
+    el('path', { d: 'M70,72 L70,44 Q70,26 90,26 L118,26', stroke: GREEN, 'stroke-width': W, fill: 'none', 'stroke-linecap': 'round', 'marker-end': 'url(#nav-ah)' });
+  } else if (type === 'uturn') {
+    el('line', { x1: 50, y1: 130, x2: 50, y2: 80, stroke: GRAY, 'stroke-width': W, 'stroke-linecap': 'round' });
+    el('path', { d: 'M50,80 Q50,30 90,30 Q114,30 114,60 Q114,95 50,95', stroke: GREEN, 'stroke-width': W, fill: 'none', 'stroke-linecap': 'round' });
+    el('line', { x1: 50, y1: 95, x2: 50, y2: 130, stroke: GREEN, 'stroke-width': W, 'stroke-linecap': 'round', 'marker-end': 'url(#nav-ah)' });
+  } else if (type === 'arrive') {
+    el('circle', { cx: 70, cy: 70, r: 32, stroke: GREEN, 'stroke-width': 6, fill: 'none' });
+    el('path', { d: 'M52,70 L63,83 L88,54', stroke: GREEN, 'stroke-width': 7, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+  } else {
+    el('line', { x1: 70, y1: 130, x2: 70, y2: 30, stroke: GREEN, 'stroke-width': W, 'stroke-linecap': 'round', 'marker-end': 'url(#nav-ah)' });
+  }
+}
+
+function formatDistanceFalado(metros) {
+  if (metros >= 1000) return { value: (metros / 1000).toFixed(1).replace('.', ','), unit: 'km' };
+  return { value: String(Math.round(metros)), unit: 'm' };
+}
+
+function formatEtaMinutos(min) {
+  if (min < 1) return '<1 min';
+  return `${Math.round(min)} min`;
+}
+
+function showNavOverlay() {
+  document.getElementById('nav-overlay').classList.add('open');
+  document.querySelector('.nav-arrow-area').style.display = 'flex';
+  document.querySelector('.nav-dist-area').style.display = 'block';
+  document.getElementById('nav-arrived-banner').classList.remove('show');
+}
+
+function hideNavOverlay() {
+  document.getElementById('nav-overlay').classList.remove('open');
+}
+
+function updateNavDisplay({ streetText, maneuver, distMeters, remainingMeters, totalMeters, totalDurationSec, speedMs }) {
+  document.getElementById('nav-street').textContent = streetText || '';
+  drawNavArrow(maneuverToIconType(maneuver));
+
+  const d = formatDistanceFalado(distMeters);
+  document.getElementById('nav-dist-value').textContent = d.value;
+  document.getElementById('nav-dist-unit').textContent = d.unit;
+
+  const restante = formatDistanceFalado(remainingMeters);
+  document.getElementById('nav-dist-total').textContent = `${restante.value} ${restante.unit}`;
+
+  if (totalMeters > 0) {
+    const progresso = Math.min(100, Math.round(((totalMeters - remainingMeters) / totalMeters) * 100));
+    document.getElementById('nav-route-fill').style.width = `${progresso}%`;
+  }
+
+  if (totalDurationSec > 0 && totalMeters > 0) {
+    const etaMin = (remainingMeters / totalMeters) * (totalDurationSec / 60);
+    document.getElementById('nav-eta-val').textContent = formatEtaMinutos(etaMin);
+  }
+
+  if (typeof speedMs === 'number' && speedMs >= 0) {
+    document.getElementById('nav-speed-val').textContent = `${Math.round(speedMs * 3.6)} km/h`;
+  }
+}
+
+function showNavArrivedState() {
+  document.getElementById('nav-arrived-banner').classList.add('show');
+  document.querySelector('.nav-arrow-area').style.display = 'none';
+  document.querySelector('.nav-dist-area').style.display = 'none';
+  document.getElementById('nav-street').textContent = 'Você chegou';
+}
+
+document.getElementById('nav-stop-btn').addEventListener('click', () => {
+  stopGps();
+  hideNavOverlay();
+});
+
+function startTurnByTurn(steps, resultEl, totalMeters, totalDurationSec) {
   const ARRIVAL_RADIUS_M = 40;
   let stepIndex = 0;
+
+  function remainingMetersFrom(index, distToNext) {
+    let total = distToNext;
+    for (let i = index + 1; i < steps.length; i++) total += steps[i].distanceMeters || 0;
+    return total;
+  }
+
+  showNavOverlay();
 
   return new Promise((resolve) => {
     speakAndWait(steps[0].text).then(() => {
@@ -2821,11 +2997,22 @@ function startTurnByTurn(steps, resultEl) {
           if (!gpsActive || stepIndex >= steps.length) return;
           const dist = distanceMeters(pos.coords.latitude, pos.coords.longitude, steps[stepIndex].lat, steps[stepIndex].lng);
           resultEl.textContent = `Passo ${stepIndex + 1} de ${steps.length}, ${Math.round(dist)}m até a próxima manobra.`;
+          updateNavDisplay({
+            streetText: steps[stepIndex].text,
+            maneuver: steps[stepIndex].maneuver,
+            distMeters: dist,
+            remainingMeters: remainingMetersFrom(stepIndex, dist),
+            totalMeters,
+            totalDurationSec,
+            speedMs: pos.coords.speed,
+          });
           if (dist <= ARRIVAL_RADIUS_M) {
             stepIndex++;
             if (stepIndex >= steps.length) {
+              showNavArrivedState();
               await speakAndWait('Você chegou ao seu destino.');
               stopGps();
+              hideNavOverlay();
               resolve();
             } else {
               await speakAndWait(steps[stepIndex].text);
@@ -2855,13 +3042,14 @@ async function startGpsRouteTo(destino, resultEl) {
     setGpsButtonState(true);
     resultEl.textContent = 'Calculando rota...';
     try {
-      const { summary, steps, error } = await callEdgeFunction('directions', { origem, destino });
+      const { summary, steps, totalDistanceMeters, totalDurationSec, error } = await callEdgeFunction('directions', { origem, destino });
       if (error || !steps || steps.length === 0) { resultEl.textContent = error || 'Nenhum passo de rota encontrado.'; stopGps(); return false; }
       await speakAndWait(summary);
-      await startTurnByTurn(steps, resultEl);
+      await startTurnByTurn(steps, resultEl, totalDistanceMeters, totalDurationSec);
     } catch (e) {
       resultEl.textContent = 'Erro ao calcular rota: ' + e.message;
       stopGps();
+      hideNavOverlay();
       return false;
     }
     stopGps();
