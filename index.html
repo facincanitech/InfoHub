@@ -841,12 +841,22 @@
 // sem isso, qualquer toque em speechSynthesis lançava ReferenceError e travava
 // o resto do script, inclusive o que monta a tela do Guia. Shim inofensivo.
 if (typeof window.speechSynthesis === 'undefined') {
+  // Dentro do app empacotado (Capacitor) não tem Web Speech API, mas tem o
+  // plugin de TTS nativo (motor de voz do próprio Android) — usa ele aqui.
+  const nativeTTS = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech;
   window.speechSynthesis = {
     speaking: false, pending: false, paused: false,
-    // Sem TTS de verdade aqui ainda — só chama onend pra fila do briefing e o
-    // assistente de voz não ficarem esperando pra sempre uma fala que não vem.
-    speak: (utter) => { if (utter && typeof utter.onend === 'function') setTimeout(() => utter.onend(), 0); },
-    cancel: () => {}, pause: () => {}, resume: () => {},
+    speak: (utter) => {
+      if (nativeTTS) {
+        nativeTTS.speak({ text: utter.text, lang: utter.lang || 'pt-BR', rate: utter.rate || 1, category: 'playback' })
+          .then(() => { if (utter.onend) utter.onend(); })
+          .catch(() => { if (utter.onerror) utter.onerror(); else if (utter.onend) utter.onend(); });
+      } else if (utter && typeof utter.onend === 'function') {
+        setTimeout(() => utter.onend(), 0);
+      }
+    },
+    cancel: () => { if (nativeTTS) nativeTTS.stop().catch(() => {}); },
+    pause: () => {}, resume: () => {},
     getVoices: () => [], onvoiceschanged: null,
   };
 }
