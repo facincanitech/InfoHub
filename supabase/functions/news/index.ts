@@ -24,7 +24,8 @@ Deno.serve(async (req: Request) => {
     const gnewsUrl = `https://gnews.io/api/v4/search?q=${encodeURIComponent(q)}&lang=pt&country=br&max=5&apikey=${apiKey}`;
     const resp = await fetch(gnewsUrl).then(r => r.json());
     if (!resp.articles) {
-      return Response.json({ items: [], error: `GNews: ${resp.errors ? resp.errors.join(', ') : 'sem resultados'}` }, { headers: CORS_HEADERS });
+      const motivo = Array.isArray(resp.errors) ? resp.errors.join(', ') : (resp.errors || resp.message || 'sem resultados');
+      return Response.json({ items: [], error: `GNews: ${motivo}` }, { headers: CORS_HEADERS });
     }
     const items = resp.articles.map((a: any) => ({
       title: a.title,

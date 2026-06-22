@@ -2868,7 +2868,13 @@ async function tryAnswerClima(texto) {
 async function tryAnswerNoticias(texto) {
   const m = texto.match(/not[íi]cias? (?:sobre|de)\s+(.+)/i);
   if (!m) return null;
-  const termo = m[1].trim();
+  const termo = m[1].replace(/[?.!]+$/, '').trim();
+  // "notícia de hoje", "notícias de hoje 22 de junho" etc também batem na regex
+  // acima ("de" + data, não um assunto de verdade) — sem isso a busca virava
+  // qualquer coisa aleatória em vez de pedir um assunto específico.
+  if (/^(hoje|agora|hoje\s+\d{1,2}\s+de\s+\w+|atualidades?)$/i.test(termo)) {
+    return 'Pra te trazer notícia preciso de um assunto, tipo "notícias sobre futebol" ou "notícias sobre tecnologia".';
+  }
   const items = await fetchNewsItems(termo, 1);
   if (!items || items.length === 0) return `Não achei notícia sobre ${termo}.`;
   return items[0].full;
@@ -2999,7 +3005,7 @@ async function tryAnswerWikipedia(texto) {
 }
 
 async function tryAnswerNoticiaGenerica(texto) {
-  const termo = texto.replace(/\?$/, '').trim();
+  const termo = texto.replace(/[?.!]+$/, '').trim();
   if (!termo) return null;
   try {
     const items = await fetchNewsItems([termo], 1);
