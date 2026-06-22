@@ -2950,7 +2950,18 @@ async function tryAnswerEsportes(texto) {
   }
   if (!time) return null;
   time = time.replace(/[?.!]+$/, '').trim();
-  const items = await fetchEsportesItems('', time);
+
+  // Separa a competição mencionada depois do nome do time, ex: "brasil na copa
+  // do mundo" — sem isso, "na copa do mundo" ia colado no nome buscado no
+  // TheSportsDB e a busca do time falhava.
+  let competicao = '';
+  const compMatch = time.match(/^(.*?)\s+(?:na|no|pela|pelo)\s+(copa.*|campeonato.*|brasileir[ãa]o.*|mundial.*|liga.*)$/i);
+  if (compMatch) {
+    time = compMatch[1].trim();
+    competicao = compMatch[2].trim();
+  }
+
+  const items = await fetchEsportesItems(competicao, time);
   if (!items || items.length === 0) return `Não encontrei jogos de ${time}.`;
   const wanted = items.find((it) => it.sub === (querNext ? 'Próximo jogo' : 'Último jogo'));
   return (wanted || items[0]).full;
