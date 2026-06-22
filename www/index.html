@@ -2968,7 +2968,7 @@ async function tryAnswerWikipedia(texto) {
     .replace(/^(o que é|o que são|quem foi|quem é|como funciona|defina|definição de|explica)\s+/i, '')
     .replace(/\?$/, '')
     .trim();
-  if (!termo) return 'Não entendi a pergunta.';
+  if (!termo) return null;
   try {
     // Tenta o título exato primeiro (mais rápido); se não bater, faz busca
     // textual de verdade e usa o melhor resultado — "copa do mundo brasil" não
@@ -2980,10 +2980,22 @@ async function tryAnswerWikipedia(texto) {
       const melhorTitulo = searchData.query && searchData.query.search && searchData.query.search[0] && searchData.query.search[0].title;
       if (melhorTitulo) extract = await fetchWikipediaSummary(melhorTitulo);
     }
-    if (!extract) return `Não achei nada sobre "${termo}".`;
+    if (!extract) return null; // sem artigo, deixa o próximo fallback (notícia) tentar
     return truncateAtBoundary(extract, 600);
   } catch (e) {
-    return 'Erro ao buscar na Wikipédia: ' + e.message;
+    return null;
+  }
+}
+
+async function tryAnswerNoticiaGenerica(texto) {
+  const termo = texto.replace(/\?$/, '').trim();
+  if (!termo) return null;
+  try {
+    const items = await fetchNewsItems([termo], 1);
+    if (!items || items.length === 0) return null;
+    return items[0].full;
+  } catch (e) {
+    return null;
   }
 }
 
@@ -3069,6 +3081,8 @@ async function handleVoiceQuery(textoOriginal) {
     if (!resposta) resposta = await tryAnswerFilmeBusca(semSaudacao);
     if (!resposta) resposta = await tryAnswerNoticias(semSaudacao);
     if (!resposta) resposta = await tryAnswerWikipedia(semSaudacao);
+    if (!resposta) resposta = await tryAnswerNoticiaGenerica(semSaudacao);
+    if (!resposta) resposta = `Não encontrei nada sobre "${semSaudacao}".`;
   }
 
   voiceHistoryItems.unshift({ category: 'Pergunte algo', title: `"${texto}", ${resposta}` });
