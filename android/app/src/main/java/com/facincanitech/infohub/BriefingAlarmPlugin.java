@@ -17,6 +17,22 @@ import java.util.Set;
 public class BriefingAlarmPlugin extends Plugin {
     public static final String EXTRA_AUTOPLAY_TIME = "infohub_autoplay_time";
 
+    // Instância ativa, pra o BroadcastReceiver conseguir avisar o JS direto
+    // quando o app já está aberto (nesse caso a notificação não "abre" nada,
+    // então precisa chamar isso manualmente em vez de depender do Intent).
+    private static BriefingAlarmPlugin activeInstance;
+
+    @Override
+    public void load() {
+        activeInstance = this;
+    }
+
+    public static void emitAlarmFiredIfActive(String time) {
+        if (activeInstance != null) {
+            activeInstance.emitAlarmFired(time);
+        }
+    }
+
     @PluginMethod
     public void schedule(PluginCall call) {
         JSArray timesArray = call.getArray("times");

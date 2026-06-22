@@ -40,11 +40,20 @@ public class BriefingAlarmReceiver extends BroadcastReceiver {
         try {
             KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
             boolean locked = km != null && km.isKeyguardLocked();
-            boolean canTakeOverScreen = locked || AppState.isForeground;
 
-            if (canTakeOverScreen) {
+            if (locked) {
+                // Full-screen intent do Android abre a Activity sozinho (tela
+                // bloqueada/ociosa) — o JS fala o briefing completo a partir
+                // do consumePendingAlarm() no carregamento.
                 showNotification(context, time, true);
+            } else if (AppState.isForeground) {
+                // App já está na tela: não tem "abertura" pra disparar, então
+                // avisa o JS direto pelo plugin pra falar o briefing completo.
+                showNotification(context, time, true);
+                BriefingAlarmPlugin.emitAlarmFiredIfActive(time);
             } else {
+                // Desbloqueado usando outro app: Android não deixa abrir por
+                // cima sem avisar — só fala o aviso curto nativo.
                 showNotification(context, time, false);
                 speakShortAnnouncement(context, time, wakeLock);
                 return; // wakeLock liberado dentro do callback da fala, não no finally
