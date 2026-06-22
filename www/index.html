@@ -637,13 +637,13 @@
         <div class="scope-list">Google, também dá acesso a agenda e contatos (aniversários).</div>
         <button class="btn-connect" id="google-connect-btn">Entrar com Google</button>
       </div>
-      <div class="account-card unavailable" style="--brand-color:#0078d4;">
+      <div class="account-card" id="outlook-account-card" style="--brand-color:#0078d4;">
         <div class="acc-top">
           <div class="acc-icon-badge">📨</div>
-          <div class="status"><span class="status-dot" id="outlook-status-dot"></span><span id="outlook-status-text">Indisponível</span></div>
+          <div class="status"><span class="status-dot" id="outlook-status-dot"></span><span id="outlook-status-text">Desconectado</span></div>
         </div>
-        <div class="scope-list">Hotmail / Outlook, indisponível no momento.</div>
-        <button class="btn-connect" id="outlook-connect-btn" disabled style="opacity:0.4; cursor:default;">Indisponível no momento</button>
+        <div class="scope-list">Hotmail / Outlook, acesso de leitura aos e-mails.</div>
+        <button class="btn-connect" id="outlook-connect-btn">Entrar com Microsoft</button>
       </div>
     </div>
 
@@ -775,12 +775,11 @@
           Primeiro, vá em ⚙️ no canto superior direito e conecte as contas que for usar
           (Google, Spotify, YouTube). É por ali que o app acessa e-mail, agenda e
           aniversários.<br><br>
-          <b>Status atual:</b> Google (Gmail, agenda, aniversários) está funcionando.
-          Canais do YouTube também funcionam, mas não precisam de login, é só digitar
-          o nome do canal direto na categoria Entretenimento. <b>Spotify e Hotmail ainda não
-          estão disponíveis</b> (Spotify exige conta Premium na conta que criou o app,
-          e o Hotmail ficou travado num problema de cadastro no Azure), os botões
-          aparecem na tela, mas não fazem nada por enquanto.
+          <b>Status atual:</b> Google (Gmail, agenda, aniversários) e Hotmail/Outlook
+          estão funcionando. Canais do YouTube também funcionam, mas não precisam de
+          login, é só digitar o nome do canal direto na categoria Entretenimento.
+          <b>Spotify ainda não está disponível</b> (exige conta Premium na conta que
+          criou o app), o botão aparece na tela, mas não faz nada por enquanto.
         </div>
       </div>
 
@@ -1033,7 +1032,7 @@ const SPOTIFY_SCOPES = 'user-library-read user-top-read playlist-read-private';
 const MERCADOLIVRE_CLIENT_ID = '';
 
 // Preencha quando criar o app (tipo SPA) em https://portal.azure.com
-const OUTLOOK_CLIENT_ID = '';
+const OUTLOOK_CLIENT_ID = '4f52b8d9-276d-4eae-83c4-3cc89c5d73f1';
 const OUTLOOK_SCOPES = 'openid email Mail.Read offline_access';
 
 const SUPABASE_URL = 'https://xpscjwcqgdldwtmbbzua.supabase.co';
@@ -1780,7 +1779,14 @@ function updateAccountsUI() {
   document.getElementById('google-connect-btn').className = googleOn ? 'btn-disconnect' : 'btn-connect';
   document.getElementById('google-account-card').classList.toggle('connected', googleOn);
 
-  // Spotify e Hotmail estão indisponíveis no momento, status/botão fixos, sem dinâmica.
+  const outlookOn = !!localStorage.getItem('infohub_outlook_token');
+  document.getElementById('outlook-status-dot').classList.toggle('on', outlookOn);
+  document.getElementById('outlook-status-text').textContent = outlookOn ? 'Conectado' : 'Desconectado';
+  document.getElementById('outlook-connect-btn').textContent = outlookOn ? 'Desconectar' : 'Entrar com Microsoft';
+  document.getElementById('outlook-connect-btn').className = outlookOn ? 'btn-disconnect' : 'btn-connect';
+  document.getElementById('outlook-account-card').classList.toggle('connected', outlookOn);
+
+  // Spotify ainda está indisponível no momento, status/botão fixos, sem dinâmica.
 }
 
 document.getElementById('google-connect-btn').addEventListener('click', () => {
