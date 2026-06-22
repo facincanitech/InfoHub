@@ -1004,14 +1004,24 @@ if (typeof window.SpeechSynthesisUtterance === 'undefined') {
    Chaves de verdade (OpenWeatherMap, API-Football, Google Maps) ficam só no
    servidor, como secret das Supabase Edge Functions em supabase/functions/*.
    ========================================================================= */
-const CLIENT_ID = '501409490841-felsdcgkktofluhkt1hg5pg089fuakoi.apps.googleusercontent.com';
-const GOOGLE_SCOPES = [
-  'https://www.googleapis.com/auth/gmail.readonly',
+// Dois projetos/clients diferentes de propósito: o Gmail é escopo "restrito"
+// (exige avaliação de segurança paga pra liberar em produção pra qualquer
+// pessoa, ~US$500+/ano) — inviável pro app nativo vendido pro público. No
+// navegador/GitHub Pages (uso pessoal, conta de teste) mantém o Gmail; no app
+// nativo (clientes reais) usa outro client sem esse escopo, só os "sensíveis"
+// (Calendar/Contacts/YouTube/Drive), que podem ser verificados de graça.
+const CLIENT_ID_WEB = '614074980827-7k3u0ugpmk8100chp5m1998b36peajo9.apps.googleusercontent.com';
+const CLIENT_ID_NATIVE = '501409490841-felsdcgkktofluhkt1hg5pg089fuakoi.apps.googleusercontent.com';
+const CLIENT_ID = CLIENT_ID_WEB;
+const GOOGLE_SCOPES_BASE = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/contacts.readonly',
   'https://www.googleapis.com/auth/youtube.readonly',
+  'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email',
-].join(' ');
+];
+const GOOGLE_SCOPES = [...GOOGLE_SCOPES_BASE, 'https://www.googleapis.com/auth/gmail.readonly'].join(' ');
+const GOOGLE_SCOPES_NATIVE = GOOGLE_SCOPES_BASE.join(' ');
 
 // Preencha quando criar o app em https://developer.spotify.com/dashboard
 const SPOTIFY_CLIENT_ID = '2091e973264947739ebdcd861aba4fd2';
@@ -1686,10 +1696,10 @@ const nativeGoogleAuth = window.Capacitor && window.Capacitor.Plugins && window.
 
 async function googleLoginNative() {
   try {
-    await nativeGoogleAuth.initialize({ google: { webClientId: CLIENT_ID } });
+    await nativeGoogleAuth.initialize({ google: { webClientId: CLIENT_ID_NATIVE } });
     const { result } = await nativeGoogleAuth.login({
       provider: 'google',
-      options: { scopes: GOOGLE_SCOPES.split(' ') },
+      options: { scopes: GOOGLE_SCOPES_NATIVE.split(' ') },
     });
     if (result && result.accessToken && result.accessToken.token) {
       accessToken = result.accessToken.token;
@@ -1938,19 +1948,26 @@ function truncateAtBoundary(text, maxLen) {
 
 async function fetchGmailEmailItems(quantidade) {
   if (!accessToken) return [];
-  const listResp = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&maxResults=${quantidade}`);
-  if (!listResp.messages) return [];
-  const items = [];
-  for (const m of listResp.messages) {
-    const msg = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
-    const headers = msg.payload.headers;
-    const from = getHeader(headers, 'From').replace(/<.*?>/, '').trim();
-    const subject = getHeader(headers, 'Subject') || '(sem assunto)';
-    const snippet = msg.snippet || '';
-    const text = `E-mail (Google) de ${from}, assunto: ${subject}. ${snippet}`;
-    items.push({ category: 'Pessoal', sub: 'E-mail (Google)', title: `${from}, ${subject}`, full: text, quick: text });
+  try {
+    // No app nativo o login não pede escopo de Gmail (restrito, exige
+    // avaliação paga pra produção) — sem isso a API retorna 403, cai aqui.
+    const listResp = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&maxResults=${quantidade}`);
+    if (!listResp.messages) return [];
+    const items = [];
+    for (const m of listResp.messages) {
+      const msg = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
+      const headers = msg.payload.headers;
+      const from = getHeader(headers, 'From').replace(/<.*?>/, '').trim();
+      const subject = getHeader(headers, 'Subject') || '(sem assunto)';
+      const snippet = msg.snippet || '';
+      const text = `E-mail (Google) de ${from}, assunto: ${subject}. ${snippet}`;
+      items.push({ category: 'Pessoal', sub: 'E-mail (Google)', title: `${from}, ${subject}`, full: text, quick: text });
+    }
+    return items;
+  } catch (e) {
+    console.error('Gmail:', e);
+    return [];
   }
-  return items;
 }
 
 async function fetchOutlookEmailItems(quantidade) {
