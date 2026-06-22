@@ -2748,30 +2748,31 @@ function clearAllAlarmTimeouts() {
 }
 
 // Dentro do app empacotado, setTimeout + Service Worker não sobrevive o app
-// fechado/em segundo plano — o plugin nativo agenda pelo próprio sistema
-// Android (AlarmManager), dispara mesmo com o app fechado de verdade.
+// fechado/em segundo plano — o plugin nativo (BriefingAlarm, código nosso em
+// android/.../BriefingAlarmPlugin.java) agenda pelo AlarmManager do próprio
+// Android e dispara mesmo com o app fechado, abrindo igual um despertador.
+const nativeAlarm = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BriefingAlarm;
 const nativeNotifications = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
 
-function alarmTimeToId(time) {
-  const [h, m] = time.split(':').map(Number);
-  return h * 100 + m;
+async function scheduleAllAlarmsNative() {
+  if (!state.alarmsActive || state.alarmTimes.length === 0) {
+    await nativeAlarm.cancel().catch((e) => console.error('BriefingAlarm.cancel:', e));
+    return;
+  }
+  await nativeAlarm.schedule({ times: state.alarmTimes }).catch((e) => console.error('BriefingAlarm.schedule:', e));
 }
 
-async function scheduleAllAlarmsNative() {
-  await nativeNotifications.cancel({ notifications: state.alarmTimes.map((t) => ({ id: alarmTimeToId(t) })) }).catch(() => {});
-  if (!state.alarmsActive || state.alarmTimes.length === 0) return;
-  await nativeNotifications.schedule({
-    notifications: state.alarmTimes.map((time) => {
-      const [hour, minute] = time.split(':').map(Number);
-      return {
-        id: alarmTimeToId(time),
-        title: 'InfoHub, Meu Dia',
-        body: `Seu briefing das ${time} está pronto. Toca aqui pra ouvir.`,
-        schedule: { on: { hour, minute }, repeats: true, allowWhileIdle: true },
-      };
-    }),
-  }).catch((e) => console.error('local-notifications schedule:', e));
+// Quando o alarme dispara e consegue abrir o app (tela bloqueada/ociosa, ou o
+// InfoHub já estava na tela), o nativo avisa aqui pra falar o briefing completo.
+async function initNativeAlarmAutoplay() {
+  if (!nativeAlarm) return;
+  nativeAlarm.addListener('alarmFired', () => startBriefingPlayback(true));
+  try {
+    const { time } = await nativeAlarm.consumePendingAlarm();
+    if (time) startBriefingPlayback(true);
+  } catch (e) { console.error('consumePendingAlarm:', e); }
 }
+initNativeAlarmAutoplay();
 
 function scheduleAlarm(time) {
   const [h, m] = time.split(':').map(Number);
@@ -2805,7 +2806,7 @@ function scheduleAlarm(time) {
 }
 
 function scheduleAllAlarms() {
-  if (nativeNotifications) { scheduleAllAlarmsNative(); return; }
+  if (nativeAlarm) { scheduleAllAlarmsNative(); return; }
   clearAllAlarmTimeouts();
   if (!state.alarmsActive) return;
   state.alarmTimes.forEach(scheduleAlarm);
