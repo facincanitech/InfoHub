@@ -1,5 +1,15 @@
 {
   "appId": "com.facincanitech.infohub",
   "appName": "InfoHub",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "SocialLogin": {
+      "providers": {
+        "google": true,
+        "facebook": false,
+        "apple": false,
+        "twitter": false
+      }
+    }
+  }
 }

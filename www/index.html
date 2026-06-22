@@ -1678,7 +1678,28 @@ function getSelectedVoice() {
 let tokenClient;
 let accessToken = null;
 
+// O Google bloqueia o popup de login OAuth dentro de WebView por política
+// própria (desde 2016) — dentro do app empacotado isso nunca funciona, não
+// importa a configuração. Usa o plugin de login nativo do Android quando
+// disponível; no navegador/GitHub Pages segue com o popup de sempre.
+const nativeGoogleAuth = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SocialLogin;
+
+async function googleLoginNative() {
+  try {
+    await nativeGoogleAuth.initialize({ google: { webClientId: CLIENT_ID } });
+    const { result } = await nativeGoogleAuth.login({
+      provider: 'google',
+      options: { scopes: GOOGLE_SCOPES.split(' ') },
+    });
+    if (result && result.accessToken && result.accessToken.token) {
+      accessToken = result.accessToken.token;
+      updateAccountsUI();
+    }
+  } catch (e) { console.error('Erro no login Google nativo:', e); }
+}
+
 function loadGis() {
+  if (nativeGoogleAuth) return;
   if (typeof google === 'undefined') { setTimeout(loadGis, 300); return; }
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
@@ -1756,6 +1777,7 @@ function updateAccountsUI() {
 
 document.getElementById('google-connect-btn').addEventListener('click', () => {
   if (accessToken) { accessToken = null; updateAccountsUI(); }
+  else if (nativeGoogleAuth) googleLoginNative();
   else tokenClient.requestAccessToken();
 });
 
