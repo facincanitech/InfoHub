@@ -367,31 +367,7 @@
     border: 1px solid var(--c-border);
   }
 
-  /* ===== Modo Carro: tela simplificada do briefing, botões gigantes =====
-     z-index abaixo da tela de navegação visual (300) — se as duas estiverem
-     ativas, a seta de manobra tem prioridade visual sobre os controles. */
-  .carro-overlay {
-    position: fixed; inset: 0; z-index: 290; background: #0a0a0a; color: #fff;
-    display: none; flex-direction: column; align-items: center; justify-content: center;
-    gap: 28px; padding: 32px 24px; font-family: inherit; text-align: center;
-  }
-  .carro-overlay.open { display: flex; }
-  .carro-exit-btn {
-    position: absolute; top: 20px; right: 20px; background: #1a1a1a; border: none;
-    color: #888; border-radius: 10px; padding: 10px 16px; font-size: 0.85rem; font-weight: 600;
-  }
-  .carro-category { color: var(--c-accent-blue); font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-  .carro-title { font-size: 1.6rem; font-weight: 700; line-height: 1.3; max-width: 320px; }
-  .carro-controls { display: flex; align-items: center; gap: 24px; }
-  .carro-btn { border: none; border-radius: 50%; color: #fff; }
-  .carro-btn-skip { width: 76px; height: 76px; background: #1a1a1a; font-size: 2rem; }
-  .carro-btn-play { width: 120px; height: 120px; background: var(--c-green); font-size: 2.8rem; }
-  .carro-mic-btn {
-    background: #1a1a1a; border: 2px solid var(--md-voice); color: var(--md-voice);
-    border-radius: 30px; padding: 16px 32px; font-size: 1.1rem; font-weight: 700;
-  }
-
-  /* ===== GPS, tela visual de navegação (modo carro) =====
+  /* ===== GPS auditivo: tela única (busca parada / navegando) =====
      Preto puro de propósito, independente do tema do app — é uma tela de
      dirigir, não de configurar, precisa de contraste máximo a qualquer hora. */
   .nav-overlay {
@@ -400,8 +376,12 @@
   }
   .nav-overlay.open { display: flex; }
   .nav-top-bar {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
     padding: 16px 20px 12px; border-bottom: 1px solid #222;
+  }
+  .nav-back-btn {
+    background: none; border: none; color: #fff; font-size: 1.4rem;
+    padding: 4px 8px; flex-shrink: 0; line-height: 1;
   }
   .nav-street { font-size: 1.3rem; font-weight: 700; line-height: 1.25; }
   .nav-stop-btn {
@@ -423,6 +403,31 @@
   .nav-stat { text-align: center; }
   .nav-val { font-size: 1.25rem; font-weight: 700; }
   .nav-lbl { font-size: 0.68rem; color: #888; margin-top: 2px; }
+
+  /* ===== Estado parado: busca de endereço + mic, antes de ativar a rota ===== */
+  .nav-idle-setup { flex: 1; display: flex; flex-direction: column; padding: 28px 20px; }
+  .nav-idle-setup .nav-search-wrap { position: relative; }
+  .nav-idle-setup input {
+    width: 100%; background: #141414; border: 1px solid #2a2a2a; color: #fff;
+    border-radius: 12px; padding: 14px 16px 14px 42px; font-size: 0.95rem; font-family: inherit;
+  }
+  .nav-idle-setup .search-ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
+  .nav-idle-suggestions {
+    display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 10;
+    background: #141414; border: 1px solid #2a2a2a; border-radius: 10px; margin-top: 4px; overflow: hidden;
+  }
+  .nav-idle-activate-btn {
+    margin-top: 14px; background: var(--c-accent-blue); color: var(--c-on-accent);
+    border: none; border-radius: 12px; padding: 14px; font-size: 0.95rem; font-weight: 700;
+  }
+  .nav-idle-mic-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .nav-idle-mic-btn {
+    width: 84px; height: 84px; border-radius: 50%; border: none;
+    background: #1a1a1a; color: #fff; font-size: 2rem;
+  }
+  .nav-idle-mic-btn.listening { background: var(--c-green); }
+  .nav-idle-mic-btn.mic-continuous { background: var(--md-voice); box-shadow: 0 0 0 6px rgba(255,255,255,0.08); }
+  .nav-idle-mic-hint { color: #888; font-size: 0.78rem; text-align: center; max-width: 260px; }
 </style>
 </head>
 <body>
@@ -574,20 +579,11 @@
       </div>
       <div class="sub">Assinatura ativa.</div>
 
-      <div class="premium-feature">
+      <div class="premium-feature" id="gps-category-card" style="cursor:pointer;">
         <div class="title" style="justify-content: space-between;">
-          <span>🧭 GPS auditivo</span>
-          <button id="gps-start-btn" style="width: auto; padding: 8px 16px; font-size: 0.82rem; background: var(--c-accent-blue); color: var(--c-on-accent);">Ativar</button>
+          <span>🧭 GPS auditivo</span><span class="chev">›</span>
         </div>
-        <div class="desc">Origem: sua localização atual (GPS). Digite o destino e o app calcula a rota e fala o próximo passo quando você chegar perto do ponto da manobra.</div>
-        <div style="position: relative;">
-          <input type="text" id="gps-destino" placeholder="Destino, digite e escolha um endereço" autocomplete="off">
-          <div id="gps-destino-suggestions" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:10; background: var(--c-surface); border: 1px solid var(--c-border2); border-radius: 8px; margin-top: 2px; overflow: hidden;"></div>
-        </div>
-        <div class="desc" style="margin-top: 6px; font-size: 0.72rem;">Digite o endereço completo, rua, número e cidade, pra maior precisão. Se a sugestão não vier certinha, pode ignorar a lista e ativar do mesmo jeito, o cálculo da rota funciona com o texto digitado.</div>
-        <div class="desc" style="margin-top: 10px; opacity: 0.6;">🚧 <b>Em breve:</b> modo proximidades — ative sem destino e o app vai poder avisar quando aparecer um posto, restaurante ou farmácia perto de você, sem precisar digitar nada.</div>
-        <div class="result" id="gps-result"></div>
-        <button id="modocarro-btn" style="margin-top: 10px; background: var(--c-border2); color: var(--c-text);">🚗 Modo Carro</button>
+        <div class="desc">Navegação por voz: digite o destino, ative e o app narra cada manobra com tela de seta + distância + ETA. Toque pra abrir.</div>
       </div>
 
       <div class="premium-feature">
@@ -711,41 +707,43 @@
   </div>
 </div>
 
-<!-- ============ MODO CARRO (overlay) ============ -->
-<div class="carro-overlay" id="carro-overlay">
-  <button class="carro-exit-btn" id="carro-exit-btn">✕ Sair do Modo Carro</button>
-  <div class="carro-category" id="carro-category"></div>
-  <div class="carro-title" id="carro-title">Configure suas categorias na aba Guia</div>
-  <div class="carro-controls">
-    <button class="carro-btn carro-btn-skip" id="carro-prev-btn">⏮</button>
-    <button class="carro-btn carro-btn-play" id="carro-play-btn">▶</button>
-    <button class="carro-btn carro-btn-skip" id="carro-next-btn">⏭</button>
-  </div>
-  <button class="carro-mic-btn" id="carro-mic-btn">🎤 Pergunte algo</button>
-</div>
-
-<!-- ============ GPS, TELA VISUAL DE NAVEGAÇÃO (overlay) ============ -->
+<!-- ============ GPS auditivo (categoria Premium): tela única, parado (busca) ou navegando (seta) ============ -->
 <div class="nav-overlay" id="nav-overlay">
   <div class="nav-top-bar">
-    <div>
-      <div class="nav-street" id="nav-street">Calculando rota...</div>
+    <button class="nav-back-btn" id="nav-back-btn">←</button>
+    <div style="flex:1;">
+      <div class="nav-street" id="nav-street">GPS auditivo</div>
     </div>
-    <button class="nav-stop-btn" id="nav-stop-btn">Parar GPS</button>
+    <button class="nav-stop-btn" id="nav-stop-btn" style="display:none;">Parar GPS</button>
   </div>
 
-  <div class="nav-route-progress"><div class="nav-route-progress-fill" id="nav-route-fill"></div></div>
+  <div class="nav-idle-setup" id="nav-idle-setup">
+    <div class="nav-search-wrap">
+      <span class="search-ic">🔍</span>
+      <input type="text" id="gps-destino" placeholder="Destino, digite e escolha um endereço" autocomplete="off">
+      <div class="nav-idle-suggestions" id="gps-destino-suggestions"></div>
+    </div>
+    <button class="nav-idle-activate-btn" id="gps-start-btn">Ativar</button>
+    <div class="result" id="gps-result" style="color: var(--c-green-text); font-size: 0.78rem; margin-top: 8px;"></div>
+    <div class="nav-idle-mic-area">
+      <button class="nav-idle-mic-btn" id="gps-mic-btn">🎤</button>
+      <div class="nav-idle-mic-hint">Toque pra falar um comando único ("me leva pra X"). Segure pra deixar o mic sempre ativo, escutando comandos sem precisar tocar de novo — desliga junto com "Parar GPS".</div>
+    </div>
+  </div>
 
-  <div class="nav-arrow-area">
+  <div class="nav-route-progress" id="nav-route-progress" style="display:none;"><div class="nav-route-progress-fill" id="nav-route-fill"></div></div>
+
+  <div class="nav-arrow-area" style="display:none;">
     <svg id="nav-maneuver-svg" viewBox="0 0 140 140" width="200" height="200" xmlns="http://www.w3.org/2000/svg"></svg>
   </div>
 
-  <div class="nav-dist-area">
+  <div class="nav-dist-area" style="display:none;">
     <span class="nav-meters" id="nav-dist-value">—</span><span class="nav-unit" id="nav-dist-unit"></span>
   </div>
 
   <div class="nav-arrived-banner" id="nav-arrived-banner">📍 Você chegou ao destino!</div>
 
-  <div class="nav-bottom-bar">
+  <div class="nav-bottom-bar" id="nav-bottom-bar" style="display:none;">
     <div class="nav-stat"><div class="nav-val" id="nav-eta-val">—</div><div class="nav-lbl">chegada</div></div>
     <div class="nav-stat"><div class="nav-val" id="nav-dist-total">—</div><div class="nav-lbl">restante</div></div>
     <div class="nav-stat"><div class="nav-val" id="nav-speed-val">—</div><div class="nav-lbl">velocidade</div></div>
@@ -2895,13 +2893,17 @@ function speakAndWait(text) {
 function setGpsButtonState(active) {
   gpsActive = active;
   document.getElementById('gps-start-btn').textContent = active ? 'Parar' : 'Ativar';
+  if (active) acquireGpsWakeLock(); else releaseGpsWakeLock();
 }
 
 function stopGps() {
   setGpsButtonState(false);
+  stopGpsContinuousListening();
   if (gpsWatchId !== null) { clearWatchUnified(gpsWatchId); gpsWatchId = null; }
   speechSynthesis.cancel();
-  hideNavOverlay();
+  // Volta pro estado parado (busca de novo destino) em vez de fechar a tela
+  // inteira — só a flechinha de voltar fecha de verdade.
+  showNavIdleState();
 }
 
 // Navegação turn-by-turn de verdade, só fala o próximo passo quando
@@ -2964,16 +2966,54 @@ function formatEtaMinutos(min) {
   return `${Math.round(min)} min`;
 }
 
-function showNavOverlay() {
-  document.getElementById('nav-overlay').classList.add('open');
+// Tela única do GPS auditivo: "parado" (busca de endereço + mic) ou
+// "navegando" (seta + distância + ETA) — nunca as duas juntas.
+function showNavIdleState() {
+  document.getElementById('nav-idle-setup').style.display = 'flex';
+  document.getElementById('nav-stop-btn').style.display = 'none';
+  document.getElementById('nav-route-progress').style.display = 'none';
+  document.querySelector('.nav-arrow-area').style.display = 'none';
+  document.querySelector('.nav-dist-area').style.display = 'none';
+  document.getElementById('nav-bottom-bar').style.display = 'none';
+  document.getElementById('nav-arrived-banner').classList.remove('show');
+  document.getElementById('nav-street').textContent = 'GPS auditivo';
+}
+
+function showNavActiveState() {
+  document.getElementById('nav-idle-setup').style.display = 'none';
+  document.getElementById('nav-stop-btn').style.display = 'block';
+  document.getElementById('nav-route-progress').style.display = 'block';
   document.querySelector('.nav-arrow-area').style.display = 'flex';
   document.querySelector('.nav-dist-area').style.display = 'block';
+  document.getElementById('nav-bottom-bar').style.display = 'flex';
   document.getElementById('nav-arrived-banner').classList.remove('show');
+}
+
+function showNavOverlay() {
+  document.getElementById('nav-overlay').classList.add('open');
+  showNavActiveState();
 }
 
 function hideNavOverlay() {
   document.getElementById('nav-overlay').classList.remove('open');
 }
+
+// Abre a tela do GPS pelo card de categoria do Premium — mostra o estado
+// parado (ou navegando, se já tiver uma rota ativa em segundo plano).
+function openGpsScreen() {
+  document.getElementById('nav-overlay').classList.add('open');
+  if (gpsActive) showNavActiveState();
+  else showNavIdleState();
+}
+
+// Só esconde a tela, sem desligar o GPS — a narração e o rastreamento
+// continuam rodando em segundo plano, junto com o mic contínuo se estiver ativo.
+function backFromGpsScreen() {
+  hideNavOverlay();
+}
+
+document.getElementById('gps-category-card').addEventListener('click', openGpsScreen);
+document.getElementById('nav-back-btn').addEventListener('click', backFromGpsScreen);
 
 function updateNavDisplay({ streetText, maneuver, distMeters, remainingMeters, totalMeters, totalDurationSec, speedMs }) {
   document.getElementById('nav-street').textContent = streetText || '';
@@ -3010,53 +3050,91 @@ function showNavArrivedState() {
 
 document.getElementById('nav-stop-btn').addEventListener('click', () => {
   stopGps();
-  hideNavOverlay();
 });
 
 /* =========================================================================
-   MODO CARRO, tela simplificada do briefing (v1: sem mic sempre escutando)
+   GPS, mic dedicado (toque = comando único, segurar = sempre ativo) +
+   tela sempre acesa enquanto a navegação está rodando
    ========================================================================= */
-let carroWakeLock = null;
-let carroSyncIntervalId = null;
+let gpsWakeLock = null;
 
-function syncCarroDisplay() {
-  document.getElementById('carro-category').textContent = briefingSub.textContent;
-  document.getElementById('carro-title').textContent = briefingLabel.textContent;
-  document.getElementById('carro-play-btn').textContent = isPlaying ? '⏹' : '▶';
-}
-
-async function enterModoCarro() {
-  document.getElementById('carro-overlay').classList.add('open');
+async function acquireGpsWakeLock() {
   try {
-    if ('wakeLock' in navigator) carroWakeLock = await navigator.wakeLock.request('screen');
+    if ('wakeLock' in navigator) gpsWakeLock = await navigator.wakeLock.request('screen');
   } catch (e) { console.error('wakeLock:', e); }
-  if (!isPlaying) {
-    if (currentQueue.length > 0) {
-      setPlayingVisual(true);
-      speakQueueItem(currentQueueIndex);
-    } else {
-      startBriefingPlayback();
-    }
+}
+
+function releaseGpsWakeLock() {
+  if (gpsWakeLock) { gpsWakeLock.release().catch(() => {}); gpsWakeLock = null; }
+}
+
+// Versão "esperável" do reconhecimento de voz, pra poder encadear chamadas
+// em loop (escuta contínua) sem depender de callback solto.
+async function listenOnceUnified(btn) {
+  if (nativeSTT) { await listenWithNativeSTT(btn); return; }
+  await new Promise((resolve) => {
+    if (!SpeechRecognitionImpl) { showVoiceToast('Reconhecimento de voz não suportado nesse navegador.'); resolve(); return; }
+    const recognition = new SpeechRecognitionImpl();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    btn.classList.add('listening');
+    const stopTimeout = setTimeout(() => { try { recognition.stop(); } catch (e) {} }, 12000);
+    recognition.onresult = (event) => handleVoiceQuery(event.results[0][0].transcript);
+    recognition.onerror = () => {};
+    recognition.onend = () => { clearTimeout(stopTimeout); btn.classList.remove('listening'); resolve(); };
+    recognition.start();
+  });
+}
+
+let gpsContinuousListening = false;
+let gpsContinuousLoopRunning = false;
+
+async function gpsContinuousLoop() {
+  if (gpsContinuousLoopRunning) return;
+  gpsContinuousLoopRunning = true;
+  const btn = document.getElementById('gps-mic-btn');
+  while (gpsContinuousListening && gpsActive) {
+    await listenOnceUnified(btn);
+    if (gpsContinuousListening && gpsActive) await new Promise((r) => setTimeout(r, 400));
   }
-  syncCarroDisplay();
-  carroSyncIntervalId = setInterval(syncCarroDisplay, 500);
+  gpsContinuousListening = false;
+  btn.classList.remove('mic-continuous');
+  gpsContinuousLoopRunning = false;
 }
 
-function exitModoCarro() {
-  document.getElementById('carro-overlay').classList.remove('open');
-  if (carroWakeLock) { carroWakeLock.release().catch(() => {}); carroWakeLock = null; }
-  if (carroSyncIntervalId) { clearInterval(carroSyncIntervalId); carroSyncIntervalId = null; }
+function stopGpsContinuousListening() {
+  gpsContinuousListening = false;
+  document.getElementById('gps-mic-btn').classList.remove('mic-continuous');
 }
 
-document.getElementById('modocarro-btn').addEventListener('click', enterModoCarro);
-document.getElementById('carro-exit-btn').addEventListener('click', exitModoCarro);
-document.getElementById('carro-prev-btn').addEventListener('click', () => document.getElementById('prev-btn').click());
-document.getElementById('carro-next-btn').addEventListener('click', () => document.getElementById('next-btn').click());
-document.getElementById('carro-play-btn').addEventListener('click', () => document.getElementById('play-circle').click());
-document.getElementById('carro-mic-btn').addEventListener('click', () => {
-  const micBtn = document.querySelector('[data-action="voice"]');
-  if (micBtn) micBtn.click();
-});
+const gpsMicBtn = document.getElementById('gps-mic-btn');
+let gpsMicPressTimer = null;
+let gpsMicLongPressFired = false;
+
+function gpsMicPressStart() {
+  gpsMicLongPressFired = false;
+  gpsMicPressTimer = setTimeout(() => {
+    gpsMicLongPressFired = true;
+    if (gpsContinuousListening) {
+      stopGpsContinuousListening();
+    } else {
+      gpsContinuousListening = true;
+      gpsMicBtn.classList.add('mic-continuous');
+      gpsContinuousLoop();
+    }
+  }, 550);
+}
+
+function gpsMicPressEnd() {
+  clearTimeout(gpsMicPressTimer);
+  if (!gpsMicLongPressFired && !gpsContinuousListening) listenOnceUnified(gpsMicBtn);
+}
+
+gpsMicBtn.addEventListener('mousedown', gpsMicPressStart);
+gpsMicBtn.addEventListener('touchstart', gpsMicPressStart);
+gpsMicBtn.addEventListener('mouseup', gpsMicPressEnd);
+gpsMicBtn.addEventListener('touchend', gpsMicPressEnd);
 
 function startTurnByTurn(steps, resultEl, totalMeters, totalDurationSec) {
   const ARRIVAL_RADIUS_M = 40;
@@ -3093,7 +3171,6 @@ function startTurnByTurn(steps, resultEl, totalMeters, totalDurationSec) {
               showNavArrivedState();
               await speakAndWait('Você chegou ao seu destino.');
               stopGps();
-              hideNavOverlay();
               resolve();
             } else {
               await speakAndWait(steps[stepIndex].text);
@@ -3138,7 +3215,6 @@ async function startGpsRouteTo(destino, resultEl) {
   } catch (e) {
     resultEl.textContent = 'Erro ao calcular rota: ' + e.message;
     stopGps();
-    hideNavOverlay();
     return false;
   }
   stopGps();
