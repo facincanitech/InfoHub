@@ -837,6 +837,26 @@
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
+// A WebView nativa (app empacotado com Capacitor) não tem a Web Speech API —
+// sem isso, qualquer toque em speechSynthesis lançava ReferenceError e travava
+// o resto do script, inclusive o que monta a tela do Guia. Shim inofensivo.
+if (typeof window.speechSynthesis === 'undefined') {
+  window.speechSynthesis = {
+    speaking: false, pending: false, paused: false,
+    // Sem TTS de verdade aqui ainda — só chama onend pra fila do briefing e o
+    // assistente de voz não ficarem esperando pra sempre uma fala que não vem.
+    speak: (utter) => { if (utter && typeof utter.onend === 'function') setTimeout(() => utter.onend(), 0); },
+    cancel: () => {}, pause: () => {}, resume: () => {},
+    getVoices: () => [], onvoiceschanged: null,
+  };
+}
+if (typeof window.SpeechSynthesisUtterance === 'undefined') {
+  window.SpeechSynthesisUtterance = function (text) {
+    this.text = text; this.voice = null; this.lang = ''; this.rate = 1;
+    this.onend = null; this.onerror = null;
+  };
+}
+
 /* =========================================================================
    CONFIGURAÇÃO
    CLIENT_ID, SPOTIFY_CLIENT_ID e SUPABASE_ANON_KEY não são segredos, são
