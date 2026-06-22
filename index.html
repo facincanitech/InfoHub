@@ -2839,18 +2839,15 @@ function startTurnByTurn(steps, resultEl) {
   });
 }
 
-document.getElementById('gps-start-btn').addEventListener('click', async () => {
-  const resultEl = document.getElementById('gps-result');
-  if (gpsActive) { stopGps(); resultEl.textContent = 'GPS parado.'; return; }
-
-  const destino = document.getElementById('gps-destino').value.trim();
+async function startGpsRouteTo(destino, resultEl) {
+  if (gpsActive) stopGps();
   resultEl.textContent = 'Obtendo sua localização...';
   let pos;
   try {
     pos = await getCurrentPosition();
   } catch (e) {
     resultEl.textContent = 'Não foi possível obter sua localização: ' + e.message;
-    return;
+    return false;
   }
   const origem = `${pos.coords.latitude},${pos.coords.longitude}`;
 
@@ -2859,20 +2856,31 @@ document.getElementById('gps-start-btn').addEventListener('click', async () => {
     resultEl.textContent = 'Calculando rota...';
     try {
       const { summary, steps, error } = await callEdgeFunction('directions', { origem, destino });
-      if (error || !steps || steps.length === 0) { resultEl.textContent = error || 'Nenhum passo de rota encontrado.'; stopGps(); return; }
+      if (error || !steps || steps.length === 0) { resultEl.textContent = error || 'Nenhum passo de rota encontrado.'; stopGps(); return false; }
       await speakAndWait(summary);
       await startTurnByTurn(steps, resultEl);
     } catch (e) {
       resultEl.textContent = 'Erro ao calcular rota: ' + e.message;
+      stopGps();
+      return false;
     }
     stopGps();
+    return true;
   } else {
     setGpsButtonState(true);
     announcedPlaceIds = new Set();
     resultEl.textContent = 'Modo proximidades ativo, avisando lugares próximos.';
     checkNearbyOnce();
     nearbyIntervalId = setInterval(checkNearbyOnce, 180000); // 3min, uso responsável da API gratuita
+    return true;
   }
+}
+
+document.getElementById('gps-start-btn').addEventListener('click', () => {
+  const resultEl = document.getElementById('gps-result');
+  if (gpsActive) { stopGps(); resultEl.textContent = 'GPS parado.'; return; }
+  const destino = document.getElementById('gps-destino').value.trim();
+  startGpsRouteTo(destino, resultEl);
 });
 
 /* =========================================================================
@@ -3145,6 +3153,19 @@ async function tryAnswerCotacao(texto) {
   return null;
 }
 
+async function tryActionRota(texto) {
+  const m = texto.match(/^(?:me leva (?:pra|para)|rota (?:pra|para|at[ée])|ir (?:pra|para)|navegar (?:at[ée]|para)|como chegar (?:em|at[ée]|a))\s+(.+)/i);
+  if (!m) return null;
+  const destino = m[1].replace(/[?.!]+$/, '').trim();
+  if (!destino) return null;
+  if (!(state.premiumUnlocked && accessToken)) {
+    return 'Essa função de rota é só pra quem assinou o Premium e conectou a conta Google.';
+  }
+  const resultEl = document.getElementById('gps-result');
+  startGpsRouteTo(destino, resultEl); // não espera terminar — o resumo e os passos narram sozinhos depois
+  return `Calculando rota até ${destino}.`;
+}
+
 async function tryAnswerIndices(texto) {
   let tipo = null;
   if (/imobili[áa]rio/i.test(texto)) tipo = 'Imobiliário';
@@ -3404,6 +3425,7 @@ async function handleVoiceQuery(textoOriginal) {
     const faq = matchVoiceQA(semSaudacao);
     resposta = faq ? faq.response : null;
     if (!resposta) resposta = tryAnswerMath(semSaudacao) || tryAnswerTime(semSaudacao);
+    if (!resposta) resposta = await tryActionRota(semSaudacao);
     if (!resposta) resposta = await tryAnswerCotacao(semSaudacao);
     if (!resposta) resposta = await tryAnswerIndices(semSaudacao);
     if (!resposta) resposta = await tryAnswerClima(semSaudacao);
