@@ -1010,6 +1010,9 @@ const CATEGORY_DEFS = [
         { id: 'moedas', kind: 'buttons', options: ['Dólar', 'Euro', 'Libra', 'Peso'] },
         { id: 'criptos', kind: 'buttons', options: ['Bitcoin', 'Ethereum', 'Solana', 'BNB'] },
       ], hint: 'Moedas via Banco Central, criptos via CoinGecko, sem chave' },
+      { id: 'indices', label: 'Índices econômicos', icon: '🏠', fields: [
+        { id: 'tipos', kind: 'buttons', options: ['Imobiliário', 'Inflação (IPCA)', 'Juros (Selic)'] },
+      ], hint: 'Banco Central, sem chave' },
     ],
   },
   {
@@ -2213,6 +2216,28 @@ async function fetchCotacoesItems(moedas, criptos) {
   return items;
 }
 
+const BCB_SERIES = {
+  'Imobiliário': { codigo: 21340, unidade: 'pontos', nome: 'Índice de Valores de Garantia de Imóveis Residenciais Financiados (IVG-R)' },
+  'Inflação (IPCA)': { codigo: 433, unidade: '%', nome: 'IPCA, variação mensal' },
+  'Juros (Selic)': { codigo: 432, unidade: '% ao ano', nome: 'Meta Selic' },
+};
+
+async function fetchIndicesEconomicosItems(tipos) {
+  const items = [];
+  for (const tipo of (tipos || [])) {
+    const info = BCB_SERIES[tipo];
+    if (!info) continue;
+    try {
+      const resp = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${info.codigo}/dados/ultimos/1?formato=json`).then((r) => r.json());
+      const ultimo = resp && resp[0];
+      if (!ultimo) continue;
+      const title = `${tipo}: ${ultimo.valor} ${info.unidade}`;
+      items.push({ category: 'Financeiro', sub: tipo, title, full: `${info.nome}: ${ultimo.valor} ${info.unidade}, referente a ${ultimo.data}.`, quick: title });
+    } catch (e) {}
+  }
+  return items;
+}
+
 /* =========================================================================
    ESPORTES, competição + time via API-Football
    ========================================================================= */
@@ -2255,6 +2280,7 @@ async function buildQueue() {
       else if (s.catId === 'clima' && s.featId === 'previsao-dias') items = await fetchPrevisaoDiasItems(s.fields.cidade);
       else if (s.catId === 'noticias' && s.featId === 'keyword') items = await fetchNewsItems(s.fields.termos, limit);
       else if (s.catId === 'financeiro' && s.featId === 'cotacoes') items = await fetchCotacoesItems(s.fields.moedas, s.fields.criptos);
+      else if (s.catId === 'financeiro' && s.featId === 'indices') items = await fetchIndicesEconomicosItems(s.fields.tipos);
       else if (s.catId === 'entretenimento' && s.featId === 'filmes') items = await fetchFilmesItems(limit);
       else if (s.catId === 'entretenimento' && s.featId === 'series') items = await fetchSeriesItems(limit);
       else if (s.catId === 'entretenimento' && s.featId === 'musica') items = await fetchMusicaItems(s.fields.nomes, limit);
@@ -3085,6 +3111,16 @@ async function tryAnswerCotacao(texto) {
   return null;
 }
 
+async function tryAnswerIndices(texto) {
+  let tipo = null;
+  if (/imobili[áa]rio/i.test(texto)) tipo = 'Imobiliário';
+  else if (/ipca|inflaç[ãa]o|inflacao/i.test(texto)) tipo = 'Inflação (IPCA)';
+  else if (/\bselic\b/i.test(texto)) tipo = 'Juros (Selic)';
+  if (!tipo) return null;
+  const items = await fetchIndicesEconomicosItems([tipo]);
+  return items[0] ? items[0].full : 'Não consegui consultar esse índice agora.';
+}
+
 async function tryAnswerClima(texto) {
   const m = texto.match(/(?:previsão do tempo|clima|temperatura)(?: em| de| no| na)?\s*(.*)/i);
   if (!m) return null;
@@ -3335,6 +3371,7 @@ async function handleVoiceQuery(textoOriginal) {
     resposta = faq ? faq.response : null;
     if (!resposta) resposta = tryAnswerMath(semSaudacao) || tryAnswerTime(semSaudacao);
     if (!resposta) resposta = await tryAnswerCotacao(semSaudacao);
+    if (!resposta) resposta = await tryAnswerIndices(semSaudacao);
     if (!resposta) resposta = await tryAnswerClima(semSaudacao);
     if (!resposta) resposta = await tryAnswerEsportes(semSaudacao);
     if (!resposta) resposta = await tryAnswerGuia(semSaudacao);
