@@ -118,15 +118,12 @@ public class BriefingAlarmReceiver extends BroadcastReceiver {
             .setAutoCancel(true);
 
         if (fullScreen) {
+            // O próprio full-screen intent já abre a Activity sozinho quando o
+            // sistema permite (tela bloqueada/ociosa) — chamar startActivity()
+            // aqui também causava abertura duplicada (e a saudação repetindo).
             builder.setFullScreenIntent(launchPendingIntent, true);
         }
 
         nm.notify(reqCode, builder.build());
-
-        if (fullScreen) {
-            try {
-                context.startActivity(launchIntent);
-            } catch (Exception ignored) {}
-        }
     }
 }

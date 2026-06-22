@@ -2792,12 +2792,21 @@ async function scheduleAllAlarmsNative() {
 
 // Quando o alarme dispara e consegue abrir o app (tela bloqueada/ociosa, ou o
 // InfoHub já estava na tela), o nativo avisa aqui pra falar o briefing completo.
+let lastAutoplayTime = null;
+function triggerAlarmAutoplay(time) {
+  // Segurança extra: nunca dispara duas vezes pro mesmo horário (caso algum
+  // caminho nativo acabe avisando mais de uma vez pro mesmo disparo).
+  if (time && time === lastAutoplayTime) return;
+  lastAutoplayTime = time || true;
+  startBriefingPlayback(true);
+}
+
 async function initNativeAlarmAutoplay() {
   if (!nativeAlarm) return;
-  nativeAlarm.addListener('alarmFired', () => startBriefingPlayback(true));
+  nativeAlarm.addListener('alarmFired', (data) => triggerAlarmAutoplay(data && data.time));
   try {
     const { time } = await nativeAlarm.consumePendingAlarm();
-    if (time) startBriefingPlayback(true);
+    if (time) triggerAlarmAutoplay(time);
   } catch (e) { console.error('consumePendingAlarm:', e); }
 }
 initNativeAlarmAutoplay();
