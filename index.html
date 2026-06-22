@@ -289,6 +289,16 @@
   .history-item .cat { color: var(--c-text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
   .history-item.current { border: 1px solid var(--c-accent-blue); }
   .history-link { display: block; margin-top: 4px; color: var(--c-accent-blue); font-size: 0.78rem; text-decoration: none; }
+  .item-actions { display: flex; gap: 4px; margin-top: 6px; }
+  .item-action-btn {
+    background: var(--c-border2); border: none; border-radius: 8px; color: var(--c-text);
+    width: 30px; height: 30px; font-size: 0.85rem; padding: 0;
+  }
+  .saved-item { background: var(--c-surface); border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 8px; }
+  .saved-item .cat { color: var(--c-text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
+  .saved-item .remove-saved-btn {
+    background: none; border: none; color: var(--c-text-dim); font-size: 0.78rem; padding: 0; margin-top: 6px;
+  }
 
   /* ===== Central de Contas (overlay) ===== */
   .overlay { position: fixed; inset: 0; background: var(--c-bg); z-index: 100; display: none; overflow-y: auto; }
@@ -454,6 +464,10 @@
         <div class="top-row"><span class="ic">⏰</span><span class="chev">›</span></div>
         <div><div class="title">Briefing automático</div><div class="status" id="alarms-tile-status">Desativado</div></div>
       </div>
+      <div class="md-bento-tile" id="saved-tile" style="--tile-color: var(--c-green);">
+        <div class="top-row"><span class="ic">💾</span><span class="chev">›</span></div>
+        <div><div class="title">Salvos</div><div class="status" id="saved-tile-status">Nada salvo ainda</div></div>
+      </div>
     </div>
 
     <div class="md-bento-detail" id="custom-detail">
@@ -494,6 +508,13 @@
           <input type="time" id="new-alarm-time-input" value="07:00" lang="pt-BR" style="flex:1; max-width: 160px;">
           <button type="button" id="add-alarm-btn" style="background: var(--c-accent-blue); color: var(--c-on-accent); padding: 8px 14px; font-size: 0.85rem;">+ Adicionar horário</button>
         </div>
+      </div>
+    </div>
+
+    <div class="md-bento-detail" id="saved-detail">
+      <div class="settings-panel">
+        <div class="desc" style="margin-bottom: 10px;">Itens que você salvou manualmente com o botão 💾 no histórico do briefing — fica só no seu celular, nada vai pro servidor.</div>
+        <div id="saved-items-list"></div>
       </div>
     </div>
 
@@ -1164,6 +1185,7 @@ function loadState() {
     alarmsActive: saved.alarmsActive || false,
     alarmTimes: saved.alarmTimes || [],
     alarmLastFired: saved.alarmLastFired || {},
+    savedItems: saved.savedItems || [], // itens do briefing salvos manualmente pelo botão 💾
   };
 }
 
@@ -2541,6 +2563,57 @@ function setPlayingVisual(playing) {
 
 let voiceHistoryItems = []; // perguntas/respostas do "Pergunte algo", mais recente primeiro
 
+// Botões de ação (compartilhar/copiar/salvar) que aparecem em cada item do
+// histórico — curadoria manual, sem guardar tudo automaticamente.
+function buildItemActionsRow(category, sub, text) {
+  const row = document.createElement('div');
+  row.className = 'item-actions';
+
+  const shareBtn = document.createElement('button');
+  shareBtn.type = 'button';
+  shareBtn.className = 'item-action-btn';
+  shareBtn.title = 'Compartilhar';
+  shareBtn.textContent = '📤';
+  shareBtn.addEventListener('click', async (ev) => {
+    ev.stopPropagation();
+    if (navigator.share) {
+      try { await navigator.share({ text }); } catch (e) {}
+    } else {
+      await navigator.clipboard.writeText(text);
+      showVoiceToast('Compartilhamento não disponível, copiado pra área de transferência.');
+    }
+  });
+
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.className = 'item-action-btn';
+  copyBtn.title = 'Copiar';
+  copyBtn.textContent = '📋';
+  copyBtn.addEventListener('click', async (ev) => {
+    ev.stopPropagation();
+    await navigator.clipboard.writeText(text);
+    showVoiceToast('Copiado.');
+  });
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'item-action-btn';
+  saveBtn.title = 'Salvar';
+  saveBtn.textContent = '💾';
+  saveBtn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    state.savedItems.unshift({ category, sub: sub || '', text, savedAt: Date.now() });
+    saveState();
+    renderSavedItems();
+    showVoiceToast('Salvo.');
+  });
+
+  row.appendChild(shareBtn);
+  row.appendChild(copyBtn);
+  row.appendChild(saveBtn);
+  return row;
+}
+
 function renderHistory(currentIndex) {
   historyListEl.innerHTML = '';
 
@@ -2552,6 +2625,7 @@ function renderHistory(currentIndex) {
     catEl.textContent = item.category;
     div.appendChild(catEl);
     div.appendChild(document.createTextNode(item.title));
+    div.appendChild(buildItemActionsRow(item.category, '', item.full || item.title));
     historyListEl.appendChild(div);
   }
 
@@ -2577,6 +2651,7 @@ function renderHistory(currentIndex) {
       div.appendChild(linkEl);
     }
 
+    div.appendChild(buildItemActionsRow(item.category, item.sub, item.full || item.title));
     historyListEl.appendChild(div);
   }
   historyListEl.scrollTop = 0;
@@ -3613,6 +3688,39 @@ alarmsActiveToggle.checked = state.alarmsActive;
 renderAlarmsList();
 updateAlarmsTileStatus();
 
+function renderSavedItems() {
+  const listEl = document.getElementById('saved-items-list');
+  listEl.innerHTML = '';
+  document.getElementById('saved-tile-status').textContent =
+    state.savedItems.length === 0 ? 'Nada salvo ainda' : `${state.savedItems.length} salvo${state.savedItems.length > 1 ? 's' : ''}`;
+  if (state.savedItems.length === 0) {
+    listEl.innerHTML = '<div class="desc">Nenhum item salvo ainda.</div>';
+    return;
+  }
+  state.savedItems.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = 'saved-item';
+    const catEl = document.createElement('div');
+    catEl.className = 'cat';
+    catEl.textContent = item.category + (item.sub ? ' · ' + item.sub : '');
+    div.appendChild(catEl);
+    div.appendChild(document.createTextNode(item.text));
+    div.appendChild(buildItemActionsRow(item.category, item.sub, item.text));
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'remove-saved-btn';
+    removeBtn.textContent = '✕ Remover';
+    removeBtn.addEventListener('click', () => {
+      state.savedItems.splice(index, 1);
+      saveState();
+      renderSavedItems();
+    });
+    div.appendChild(removeBtn);
+    listEl.appendChild(div);
+  });
+}
+renderSavedItems();
+
 alarmsActiveToggle.addEventListener('change', async () => {
   if (alarmsActiveToggle.checked) {
     if (nativeNotifications) {
@@ -3637,9 +3745,10 @@ alarmsActiveToggle.addEventListener('change', async () => {
   updateAlarmsTileStatus();
 });
 
+const BENTO_TILE_DETAIL_IDS = { 'custom-tile': 'custom-detail', 'alarms-tile': 'alarms-detail', 'saved-tile': 'saved-detail' };
 document.querySelectorAll('.md-bento-tile').forEach((tile) => {
   tile.addEventListener('click', () => {
-    const detail = document.getElementById(tile.id === 'custom-tile' ? 'custom-detail' : 'alarms-detail');
+    const detail = document.getElementById(BENTO_TILE_DETAIL_IDS[tile.id]);
     tile.classList.toggle('open');
     detail.classList.toggle('open');
   });
