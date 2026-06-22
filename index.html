@@ -943,9 +943,9 @@ const CATEGORY_DEFS = [
     features: [
       { id: 'filmes', label: 'Filmes em cartaz', icon: '🎬', fields: [], hint: 'Estreias de cinema' },
       { id: 'series', label: 'Séries lançamentos', icon: '📺', fields: [], hint: 'Lançamentos de streaming' },
-      { id: 'jogos-lancamentos', label: 'Lançamentos de jogos', icon: '🕹️', fields: [], hint: 'IGN Brasil, só fala se achar matéria de lançamento de verdade' },
-      { id: 'jogos-aguardados', label: 'Jogos mais aguardados', icon: '🔥', fields: [], hint: 'IGN Brasil, só fala se achar matéria sobre jogo aguardado/expectativa' },
-      { id: 'jogos-curiosidades', label: 'Curiosidades sobre jogos', icon: '🎮', fields: [], hint: 'IGN Brasil' },
+      { id: 'jogos', label: 'Jogos', icon: '🕹️', fields: [
+        { id: 'tipos', kind: 'buttons', options: ['Lançamentos', 'Curiosidades', 'Mais aguardados'] },
+      ], hint: 'IGN Brasil. Lançamentos/Mais aguardados só falam se achar matéria de verdade sobre isso' },
       { id: 'youtube', label: 'Canais do YouTube', icon: '▶️', fields: [
         { id: 'canais', kind: 'tags', placeholder: 'Nome do canal, digite e aperte Enter (até 5)' },
       ], hint: 'Vídeo mais recente de cada canal. Cuidado com erro de digitação, se o nome não bater certinho, o canal não é encontrado.' },
@@ -2251,9 +2251,14 @@ async function buildQueue() {
       else if (s.catId === 'entretenimento' && s.featId === 'filmes') items = await fetchFilmesItems(limit);
       else if (s.catId === 'entretenimento' && s.featId === 'series') items = await fetchSeriesItems(limit);
       else if (s.catId === 'entretenimento' && s.featId === 'musicas') items = await fetchMusicasItems(s.fields.generos, limit);
-      else if (s.catId === 'entretenimento' && s.featId === 'jogos-lancamentos') items = await fetchJogosLancamentosItems(limit);
-      else if (s.catId === 'entretenimento' && s.featId === 'jogos-aguardados') items = await fetchJogosAguardadosItems(limit);
-      else if (s.catId === 'entretenimento' && s.featId === 'jogos-curiosidades') items = await fetchJogosCuriosidadesItems(limit);
+      else if (s.catId === 'entretenimento' && s.featId === 'jogos') {
+        const tipos = s.fields.tipos || [];
+        let jogosItems = [];
+        if (tipos.includes('Lançamentos')) jogosItems = jogosItems.concat(await fetchJogosLancamentosItems(limit));
+        if (tipos.includes('Curiosidades')) jogosItems = jogosItems.concat(await fetchJogosCuriosidadesItems(limit));
+        if (tipos.includes('Mais aguardados')) jogosItems = jogosItems.concat(await fetchJogosAguardadosItems(limit));
+        items = jogosItems;
+      }
       else if (s.catId === 'entretenimento' && s.featId === 'youtube') items = await fetchYoutubeItems(s.fields.canais, s.fields);
       else if (s.catId === 'entretenimento' && s.featId === 'podcasts') items = await fetchPodcastItems(s.fields.nomes, limit);
       else if (s.catId === 'entretenimento' && s.featId === 'jogo-esportivo') items = await fetchEsportesItems(s.fields.competicao, s.fields.time);
@@ -3060,11 +3065,11 @@ const GUIA_VOICE_TOPICS = [
     fetch: () => fetchFilmesItems(2) },
   { keywords: ['série em cartaz', 'séries em cartaz', 'série no ar', 'séries no ar', 'o que tem de série', 'lançamento de série', 'lançamentos de série'], catId: 'entretenimento', featId: 'series',
     fetch: () => fetchSeriesItems(2) },
-  { keywords: ['lançamento de jogo', 'jogos novos', 'jogo lançado', 'lançamentos de jogos'], catId: 'entretenimento', featId: 'jogos-lancamentos',
+  { keywords: ['lançamento de jogo', 'jogos novos', 'jogo lançado', 'lançamentos de jogos'], catId: 'entretenimento', featId: 'jogos',
     fetch: () => fetchJogosLancamentosItems(2) },
-  { keywords: ['jogos mais aguardados', 'jogo mais aguardado', 'jogos esperados'], catId: 'entretenimento', featId: 'jogos-aguardados',
+  { keywords: ['jogos mais aguardados', 'jogo mais aguardado', 'jogos esperados'], catId: 'entretenimento', featId: 'jogos',
     fetch: () => fetchJogosAguardadosItems(2) },
-  { keywords: ['curiosidade sobre jogo', 'curiosidades sobre jogo', 'novidades de jogo', 'novidades de jogos'], catId: 'entretenimento', featId: 'jogos-curiosidades',
+  { keywords: ['curiosidade sobre jogo', 'curiosidades sobre jogo', 'novidades de jogo', 'novidades de jogos'], catId: 'entretenimento', featId: 'jogos',
     fetch: () => fetchJogosCuriosidadesItems(2) },
   { keywords: ['youtube', 'canal', 'vídeo novo', 'video novo'], catId: 'entretenimento', featId: 'youtube',
     fetch: (fields) => fetchYoutubeItems(fields.canais, fields) },
