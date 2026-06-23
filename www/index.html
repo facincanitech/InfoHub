@@ -2002,8 +2002,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const CHANGELOG = [
+  {
+    version: '1.9', date: '23/06/2026',
+    items: [
+      'Horóscopo do dia agora também fala com qual signo sua energia combina hoje (compatibilidade por elemento, gira todo dia)',
+    ],
+  },
   {
     version: '1.8', date: '23/06/2026',
     items: [
@@ -2780,6 +2786,27 @@ function getDiaSeedAtual() {
   return hoje.getFullYear() * 372 + (hoje.getMonth() + 1) * 31 + hoje.getDate();
 }
 
+// Compatibilidade por elemento (afinidade astrológica tradicional) — gira
+// diariamente qual signo do grupo compatível é destacado, igual a numerologia
+// faz com os números.
+const ELEMENTO_SIGNO = {
+  'Áries': 'Fogo', 'Leão': 'Fogo', 'Sagitário': 'Fogo',
+  'Touro': 'Terra', 'Virgem': 'Terra', 'Capricórnio': 'Terra',
+  'Gêmeos': 'Ar', 'Libra': 'Ar', 'Aquário': 'Ar',
+  'Câncer': 'Água', 'Escorpião': 'Água', 'Peixes': 'Água',
+};
+const ELEMENTO_AFINIDADE = {
+  Fogo: ['Fogo', 'Ar'], Terra: ['Terra', 'Água'], Ar: ['Ar', 'Fogo'], Água: ['Água', 'Terra'],
+};
+
+function getSignoCompativelHoje(signo) {
+  const elemento = ELEMENTO_SIGNO[signo];
+  const elementosBons = ELEMENTO_AFINIDADE[elemento] || [];
+  const compativeis = Object.keys(ELEMENTO_SIGNO).filter((s) => s !== signo && elementosBons.includes(ELEMENTO_SIGNO[s]));
+  if (compativeis.length === 0) return null;
+  return compativeis[getDiaSeedAtual() % compativeis.length];
+}
+
 async function fetchSignoSolarItems(fields) {
   const nascimento = (fields.nascimento || '').trim();
   const match = nascimento.match(/^(\d{1,2})\/(\d{1,2})/);
@@ -2793,13 +2820,15 @@ async function fetchSignoSolarItems(fields) {
   const diaSemana = DIAS_PLANETARIOS[hoje.getDay()];
   const nomeDiaSemana = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'][hoje.getDay()];
   const areaDoDia = AREAS_VIDA_DIA[getDiaSeedAtual() % AREAS_VIDA_DIA.length](signo, traco);
+  const signoCompativel = getSignoCompativelHoje(signo);
+  const fraseCompat = signoCompativel ? ` Sua energia combina bem hoje com gente de ${signoCompativel}.` : '';
 
-  const full = `Você é de ${signo}. ${areaDoDia} Hoje é ${nomeDiaSemana}, dia de ${diaSemana.planeta}: ${diaSemana.texto}`;
+  const full = `Você é de ${signo}. ${areaDoDia}${fraseCompat} Hoje é ${nomeDiaSemana}, dia de ${diaSemana.planeta}: ${diaSemana.texto}`;
   return [{
     category: 'Místico', sub: 'Horóscopo do dia',
     title: `${signo} · ${nomeDiaSemana}`,
     full,
-    quick: `${signo}: ${areaDoDia}`,
+    quick: `${signo}: combina hoje com ${signoCompativel || '—'}`,
   }];
 }
 
