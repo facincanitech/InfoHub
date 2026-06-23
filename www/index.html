@@ -740,7 +740,21 @@
       <div class="account-card">
         <button class="btn-connect" id="privacy-open-btn" style="background: var(--c-border2); color: var(--c-text);">🔒 Política de Privacidade</button>
       </div>
+      <div class="account-card">
+        <button class="btn-connect" id="changelog-open-btn" style="background: var(--c-border2); color: var(--c-text);">📋 Versão e novidades</button>
+      </div>
     </div>
+  </div>
+</div>
+
+<!-- ============ VERSÃO E NOVIDADES (overlay) ============ -->
+<div class="overlay" id="changelog-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <button class="back-btn" id="changelog-close-btn">←</button>
+      <h2>📋 Versão e novidades</h2>
+    </div>
+    <div id="changelog-list"></div>
   </div>
 </div>
 
@@ -1938,6 +1952,52 @@ document.getElementById('privacy-open-btn').addEventListener('click', () => {
 });
 document.getElementById('privacy-close-btn').addEventListener('click', () => {
   document.getElementById('privacy-overlay').classList.remove('open');
+});
+
+// Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
+// — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
+const APP_VERSION = '1.1';
+const CHANGELOG = [
+  {
+    version: '1.1', date: '23/06/2026',
+    items: [
+      'Premium reorganizado: GPS auditivo minimalista, Salvar fotos na nuvem (antigo Backup de fotos) e Rastreio de encomenda (em breve), cada um abrindo num card que expande',
+      'Revalidação automática da assinatura Premium (1x por dia)',
+      'Reconexão automática com o Google ao recarregar a página (sem precisar clicar de novo)',
+      'Voz gravada de verdade nas manobras do GPS e na saudação do briefing automático (Bom dia/Boa tarde/Boa noite/Boa madrugada)',
+      'Hotmail/Outlook funcionando (web e app)',
+      'GPS recalcula rota sozinho se você sair do caminho, e avisa de trânsito conforme se aproxima',
+      'Clima preenche a cidade sozinho com base na localização ao ativar o GPS',
+      'Tela de Salvos (💾) em tela cheia, histórico com botão de compartilhar/copiar/salvar',
+      'Política de Privacidade adicionada',
+      'Download direto do APK pelo site (sem precisar da Play Store ainda)',
+    ],
+  },
+  {
+    version: '1.0', date: 'antes de 23/06/2026',
+    items: ['Primeira versão empacotada como app Android (antes disso, só rodava como site).'],
+  },
+];
+
+function renderChangelog() {
+  const listEl = document.getElementById('changelog-list');
+  listEl.innerHTML = `<div class="account-card" style="margin-bottom: 14px;"><div class="scope-list">Versão instalada: <b>${APP_VERSION}</b></div></div>`;
+  CHANGELOG.forEach((entry) => {
+    const card = document.createElement('div');
+    card.className = 'account-card';
+    card.style.marginBottom = '14px';
+    const itemsHtml = entry.items.map((it) => `• ${it}`).join('<br>');
+    card.innerHTML = `<div class="scope-list"><b>v${entry.version}</b> — ${entry.date}<br><br>${itemsHtml}</div>`;
+    listEl.appendChild(card);
+  });
+}
+
+document.getElementById('changelog-open-btn').addEventListener('click', () => {
+  renderChangelog();
+  document.getElementById('changelog-overlay').classList.add('open');
+});
+document.getElementById('changelog-close-btn').addEventListener('click', () => {
+  document.getElementById('changelog-overlay').classList.remove('open');
 });
 
 const helpOverlay = document.getElementById('help-overlay');
