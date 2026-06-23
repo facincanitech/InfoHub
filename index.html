@@ -570,21 +570,21 @@
       </div>
 
       <div class="premium-feature">
-        <div class="title">🧭 GPS auditivo</div>
+        <div class="title">🧭 GPS auditivo minimalista</div>
         <div class="desc">Navegação por voz completa, 100% auditiva, sem precisar olhar pra tela. Coloque um destino e o app calcula a rota e narra cada manobra, acompanhando sua posição em tempo real.</div>
       </div>
 
       <div class="premium-feature">
-        <div class="title">📦 Rastreio de encomenda</div>
-        <div class="desc">Conecte sua conta do Mercado Livre ou seu e-mail e o app encontra e lê suas encomendas em trânsito em voz alta.</div>
-      </div>
-
-      <div class="premium-feature">
-        <div class="title">📤 Backup de fotos no Drive</div>
+        <div class="title">📤 Salvar fotos na nuvem</div>
         <div class="desc">Escolha fotos e vídeos do celular e o app envia direto pro seu Google Drive. Sem servidor no meio, sem backup automático bagunçado — você decide o que vai.</div>
       </div>
 
-      <button id="subscribe-btn" disabled style="opacity:0.5; cursor:default;">Em breve</button>
+      <div class="premium-feature">
+        <div class="title">📦 Rastreio de encomenda</div>
+        <div class="desc" style="opacity: 0.6;">🚧 Em breve.</div>
+      </div>
+
+      <button id="subscribe-btn">Assinar</button>
       <button id="check-subscription-btn" style="background: var(--c-surface); color: var(--c-text); margin-top: 10px; width: 100%; padding: 12px;">Já assinei, verificar</button>
       <div class="result" id="subscribe-result" style="text-align:center; margin-top: 8px;"></div>
       <div class="premium-note">Pagamento via Mercado Pago. Conecte sua conta Google (⚙️ Central de Contas) antes, é assim que identificamos sua assinatura.</div>
@@ -601,31 +601,35 @@
       </div>
       <div class="sub">Assinatura ativa.</div>
 
-      <div class="premium-feature" id="gps-category-card" style="cursor:pointer;">
-        <div class="title" style="justify-content: space-between;">
-          <span>🧭 GPS auditivo</span><span class="chev">›</span>
+      <div class="premium-feature">
+        <div class="title" id="gps-toggle" style="cursor:pointer; justify-content: space-between;">
+          <span>🧭 GPS auditivo minimalista</span><span class="chev">›</span>
         </div>
-        <div class="desc">Navegação por voz: digite o destino, ative e o app narra cada manobra com tela de seta + distância + ETA. Toque pra abrir.</div>
+        <div id="gps-subcategories" style="display:none;">
+          <div class="desc">Navegação por voz: digite o destino, ative e o app narra cada manobra com tela de seta + distância + ETA.</div>
+          <button id="gps-category-card">Abrir GPS auditivo</button>
+        </div>
       </div>
 
       <div class="premium-feature">
-        <div class="title" id="rastreio-toggle" style="cursor:pointer;">📦 Rastreio de encomenda <span class="chev">›</span></div>
-        <div class="desc">Conecte uma fonte pra buscar encomendas em trânsito.</div>
+        <div class="title" id="drive-backup-toggle" style="cursor:pointer; justify-content: space-between;">
+          <span>📤 Salvar fotos na nuvem</span><span class="chev">›</span>
+        </div>
+        <div id="drive-backup-subcategories" style="display:none;">
+          <div class="desc">Escolhe as fotos/vídeos do celular e o app envia direto pro seu Google Drive, numa pasta "InfoHub Backup". Precisa estar com o Google conectado em ⚙️ Central de Contas.</div>
+          <input type="file" id="drive-backup-input" accept="image/*,video/*" multiple style="display:none;">
+          <button id="drive-backup-btn">Escolher fotos/vídeos</button>
+          <div class="result" id="drive-backup-result"></div>
+        </div>
+      </div>
+
+      <div class="premium-feature">
+        <div class="title" id="rastreio-toggle" style="cursor:pointer; justify-content: space-between;">
+          <span>📦 Rastreio de encomenda</span><span class="chev">›</span>
+        </div>
         <div id="rastreio-subcategories" style="display:none;">
-          <div class="btn-group" style="margin-bottom: 10px;">
-            <button type="button" class="btn-opt" id="rastreio-ml-btn">Mercado Livre</button>
-            <button type="button" class="btn-opt" id="rastreio-email-btn">E-mail</button>
-          </div>
-          <div class="result" id="rastreio-result"></div>
+          <div class="desc" style="opacity: 0.6;">🚧 Em breve.</div>
         </div>
-      </div>
-
-      <div class="premium-feature">
-        <div class="title">📤 Backup de fotos no Drive</div>
-        <div class="desc">Escolhe as fotos/vídeos do celular e o app envia direto pro seu Google Drive, numa pasta "InfoHub Backup". Precisa estar com o Google conectado em ⚙️ Central de Contas.</div>
-        <input type="file" id="drive-backup-input" accept="image/*,video/*" multiple style="display:none;">
-        <button id="drive-backup-btn">Escolher fotos/vídeos</button>
-        <div class="result" id="drive-backup-result"></div>
       </div>
     </div>
   </section>
@@ -1107,30 +1111,33 @@
         </div>
         <div class="help-section-body">
           Depois de assinar (Mercado Pago), conecte sua conta Google e clique em "Já
-          assinei, verificar" pra desbloquear as features abaixo:<br><br>
-          🧭 <b>GPS auditivo</b>: é uma categoria que abre numa tela própria (preta,
-          estilo GPS de carro de verdade). Quando você ainda não ativou nenhuma rota, ela
-          mostra um campo de busca de endereço (com sugestão automática) e um botão
-          "Ativar". Depois de ativar, a mesma tela passa a mostrar a seta de manobra,
-          distância até a próxima curva, ETA, quilômetros restantes e velocidade —
-          acompanhando sua posição em tempo real. A flechinha "←" no topo só esconde a
-          tela (a navegação continua falando em segundo plano); o botão "Parar GPS" para
-          de verdade e volta pro campo de busca. Tem um microfone dedicado nessa tela:
-          toque rápido captura um comando de voz só (ex: "me leva pra tal endereço");
-          segurar deixa o microfone sempre ativo, escutando comandos sem precisar tocar de
-          novo (desliga junto com "Parar GPS"). Se você desviar do caminho esperado, a
-          rota recalcula sozinha a partir de onde você está; se tiver trânsito lento ou
-          parado mais adiante, ele avisa conforme você se aproxima. As manobras
-          ("vire à direita", "siga reto", etc) usam voz real gravada, não o TTS
-          robótico do celular — só o nome da rua e conteúdo dinâmico continuam no TTS
-          normal.<br><br>
-          📦 <b>Rastreio de encomenda</b>: conecta Mercado Livre ou e-mail (Google/Outlook)
-          e o app procura e lê em voz alta as mensagens sobre encomendas em trânsito.<br><br>
-          📤 <b>Backup de fotos no Drive</b>: escolhe fotos/vídeos do celular e o app sobe
+          assinei, verificar" pra desbloquear as features. Cada uma é um card que
+          expande pra baixo quando você toca (igual o tutorial), revelando a
+          descrição e o botão de usar:<br><br>
+          🧭 <b>GPS auditivo minimalista</b>: o botão "Abrir GPS auditivo" leva pra uma
+          tela própria (preta, estilo GPS de carro de verdade). Quando você ainda não
+          ativou nenhuma rota, ela mostra um campo de busca de endereço (com sugestão
+          automática) e um botão "Ativar". Depois de ativar, a mesma tela passa a
+          mostrar a seta de manobra, distância até a próxima curva, ETA, quilômetros
+          restantes e velocidade — acompanhando sua posição em tempo real. A flechinha
+          "←" no topo só esconde a tela (a navegação continua falando em segundo
+          plano); o botão "Parar GPS" para de verdade e volta pro campo de busca. Tem
+          um microfone dedicado nessa tela: toque rápido captura um comando de voz só
+          (ex: "me leva pra tal endereço"); segurar deixa o microfone sempre ativo,
+          escutando comandos sem precisar tocar de novo (desliga junto com "Parar
+          GPS"). Se você desviar do caminho esperado, a rota recalcula sozinha a
+          partir de onde você está; se tiver trânsito lento ou parado mais adiante, ele
+          avisa conforme você se aproxima. As manobras ("vire à direita", "siga reto",
+          etc) usam voz real gravada, não o TTS robótico do celular — só o nome da rua
+          e conteúdo dinâmico continuam no TTS normal.<br><br>
+          📤 <b>Salvar fotos na nuvem</b>: escolhe fotos/vídeos do celular e o app sobe
           direto pro seu Google Drive (pasta "InfoHub Backup", criada automaticamente na
           primeira vez), sem passar por nenhum servidor nosso. É manual de propósito — só
           sobe o que você escolher, sem risco de backup automático subindo coisa que você
-          não queria guardar.
+          não queria guardar.<br><br>
+          📦 <b>Rastreio de encomenda</b>: ainda não está disponível (em breve) — vai
+          conectar Mercado Livre ou e-mail (Google/Outlook) pra procurar e ler em voz
+          alta as mensagens sobre encomendas em trânsito.
         </div>
       </div>
     </div>
@@ -3753,42 +3760,14 @@ document.getElementById('rastreio-toggle').addEventListener('click', () => {
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 });
 
-document.getElementById('rastreio-ml-btn').addEventListener('click', () => {
-  const resultEl = document.getElementById('rastreio-result');
-  if (!MERCADOLIVRE_CLIENT_ID) {
-    resultEl.textContent = 'Configure o MERCADOLIVRE_CLIENT_ID no topo do index.html primeiro (crie o app em developers.mercadolivre.com.br).';
-    return;
-  }
-  const redirectUri = window.location.origin + window.location.pathname;
-  const params = new URLSearchParams({ response_type: 'code', client_id: MERCADOLIVRE_CLIENT_ID, redirect_uri: redirectUri });
-  window.location.href = `https://auth.mercadolivre.com.br/authorization?${params}`;
+document.getElementById('gps-toggle').addEventListener('click', () => {
+  const el = document.getElementById('gps-subcategories');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
 });
 
-document.getElementById('rastreio-email-btn').addEventListener('click', async () => {
-  const resultEl = document.getElementById('rastreio-result');
-  if (!accessToken) {
-    resultEl.textContent = 'Conecte sua conta Google em ⚙️ Central de Contas primeiro.';
-    return;
-  }
-  resultEl.textContent = 'Buscando e-mails de rastreio...';
-  try {
-    const query = encodeURIComponent('rastreio OR rastreamento OR "tracking number" OR "código de rastreio" OR envio');
-    const listResp = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=5`);
-    if (!listResp.messages || listResp.messages.length === 0) {
-      resultEl.textContent = 'Nenhum e-mail de rastreio encontrado.';
-      return;
-    }
-    const lines = [];
-    for (const m of listResp.messages) {
-      const msg = await googleApiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject`);
-      const subject = getHeader(msg.payload.headers, 'Subject') || '(sem assunto)';
-      lines.push(`${subject}: ${msg.snippet || ''}`);
-    }
-    resultEl.textContent = lines.join(' | ');
-    for (const line of lines) await speakAndWait(line);
-  } catch (e) {
-    resultEl.textContent = 'Erro ao buscar e-mails: ' + e.message;
-  }
+document.getElementById('drive-backup-toggle').addEventListener('click', () => {
+  const el = document.getElementById('drive-backup-subcategories');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
 });
 
 /* =========================================================================
