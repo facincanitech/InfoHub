@@ -501,7 +501,7 @@
 
     <div class="md-bento-detail" id="alarms-detail">
       <div class="settings-panel">
-        <div class="desc" style="margin-bottom: 10px;">Toca sozinho se a aba já estiver aberta; senão, manda notificação pra abrir. Precisa do app aberto em alguma aba pra funcionar.</div>
+        <div class="desc" style="margin-bottom: 10px;">Toca sozinho se a aba já estiver aberta; senão, manda notificação pra abrir. Cada horário toca só o que você marcar nele — toque numa tag pra ligar/desligar nesse horário.</div>
         <div class="settings-row">
           <div class="label">Ativar</div>
           <label class="switch">
@@ -627,6 +627,7 @@
           <div class="desc">Escolhe as fotos/vídeos do celular e o app envia direto pro seu Google Drive, numa pasta "InfoHub Backup". Precisa estar com o Google conectado em ⚙️ Central de Contas.</div>
           <input type="file" id="drive-backup-input" accept="image/*,video/*" multiple style="display:none;">
           <button id="drive-backup-btn">Escolher fotos/vídeos</button>
+          <button id="drive-view-btn" style="margin-top: 8px; background: var(--c-surface); color: var(--c-text);">📂 Ver/gerenciar o que já tá salvo</button>
           <div class="result" id="drive-backup-result"></div>
         </div>
       </div>
@@ -1400,7 +1401,16 @@ function loadState() {
     premiumUnlocked: saved.premiumUnlocked || false,
     premiumLastVerified: saved.premiumLastVerified || 0,
     alarmsActive: saved.alarmsActive || false,
-    alarmTimes: saved.alarmTimes || [],
+    // Cada horário tem sua própria lista de tags (catId.featId) que tocam nele —
+    // migra o formato antigo (array de strings "HH:MM", tocava tudo sempre) pra
+    // {time, features}, preenchendo com tudo que já tava ativo pra não silenciar
+    // alarmes existentes.
+    alarmTimes: (saved.alarmTimes || []).map((a) => {
+      if (typeof a === 'string') {
+        return { time: a, features: Object.keys(saved.features || {}).filter((k) => saved.features[k] && saved.features[k].enabled) };
+      }
+      return a;
+    }),
     alarmLastFired: saved.alarmLastFired || {},
     savedItems: saved.savedItems || [], // itens do briefing salvos manualmente pelo botão 💾
   };
@@ -2029,8 +2039,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 const CHANGELOG = [
+  {
+    version: '2.3', date: '23/06/2026',
+    items: [
+      'Briefing automático: agora cada horário tem suas próprias tags (toque pra marcar) — só toca o que você marcou nele, não tudo que tá ativo no Guia',
+      'Salvar fotos na nuvem: novo botão "Ver/gerenciar o que já tá salvo", abre a pasta direto no Google Drive',
+    ],
+  },
   {
     version: '2.2', date: '23/06/2026',
     items: [
@@ -3238,19 +3255,24 @@ async function fetchEsportesItems(competicao, time) {
 /* =========================================================================
    BRIEFING, montagem da fila e leitura
    ========================================================================= */
-function getEnabledFeatureSummaries() {
+// featureKeys (opcional): lista de "catId.featId" — quando informada, restringe
+// aos ativos que TAMBÉM estão nessa lista (usado pelo briefing automático por
+// horário, onde cada alarme só toca as tags marcadas pra ele).
+function getEnabledFeatureSummaries(featureKeys) {
   const summaries = [];
   CATEGORY_DEFS.forEach(cat => {
     cat.features.forEach(feat => {
       const fs = getFeatureState(cat.id, feat.id);
-      if (fs.enabled) summaries.push({ catId: cat.id, featId: feat.id, fields: fs.fields });
+      if (!fs.enabled) return;
+      if (featureKeys && !featureKeys.includes(`${cat.id}.${feat.id}`)) return;
+      summaries.push({ catId: cat.id, featId: feat.id, fields: fs.fields });
     });
   });
   return summaries;
 }
 
-async function buildQueue() {
-  const summaries = getEnabledFeatureSummaries();
+async function buildQueue(featureKeys) {
+  const summaries = getEnabledFeatureSummaries(featureKeys);
   const limit = 5;
   let queue = [];
   for (const s of summaries) {
@@ -3564,10 +3586,12 @@ function getHorarioFalado() {
   return `são ${horaTexto} e ${m} minuto${m === 1 ? '' : 's'}`;
 }
 
-async function startBriefingPlayback(automatic = false) {
-  const summaries = getEnabledFeatureSummaries();
+async function startBriefingPlayback(automatic = false, featureKeys) {
+  const summaries = getEnabledFeatureSummaries(featureKeys);
   if (summaries.length === 0) {
-    briefingLabel.textContent = 'Nenhuma categoria ativa. Vá na aba Guia e ative algo.';
+    briefingLabel.textContent = (featureKeys && featureKeys.length === 0)
+      ? 'Esse horário não tem nenhuma tag selecionada. Vá em ⚙️ Briefing automático e marque o que quer ouvir nele.'
+      : 'Nenhuma categoria ativa. Vá na aba Guia e ative algo.';
     return;
   }
   setPlayingVisual(true);
@@ -3575,7 +3599,7 @@ async function startBriefingPlayback(automatic = false) {
   briefingSub.textContent = '';
   progressFill.style.width = '0%';
   historyListEl.innerHTML = '';
-  currentQueue = await buildQueue();
+  currentQueue = await buildQueue(featureKeys);
   if (currentQueue.length === 0) {
     setPlayingVisual(false);
     briefingLabel.textContent = 'Nada novo para ler agora';
@@ -4480,6 +4504,21 @@ document.getElementById('drive-backup-input').addEventListener('change', async (
   }
 });
 
+document.getElementById('drive-view-btn').addEventListener('click', async () => {
+  const resultEl = document.getElementById('drive-backup-result');
+  // Não precisa de tela própria pra listar/remover: a pasta já é do Google
+  // Drive de verdade, então só abre ela direto no app/site do Drive — lá já
+  // tem visualização, exclusão, tudo. O app só guarda o ID da pasta.
+  resultEl.textContent = 'Abrindo a pasta no Drive...';
+  try {
+    const folderId = await ensureDriveBackupFolder();
+    window.open(`https://drive.google.com/drive/folders/${folderId}`, '_blank');
+    resultEl.textContent = '';
+  } catch (e) {
+    resultEl.textContent = 'Erro ao abrir a pasta: ' + e.message;
+  }
+});
+
 /* =========================================================================
    PREMIUM, Botão SOS — manda localização por SMS (nativo, sem segundo
    toque) e e-mail (via Gmail já conectado) pro contato configurado.
@@ -4634,19 +4673,35 @@ const alarmsListEl = document.getElementById('alarms-list');
 const newAlarmTimeInput = document.getElementById('new-alarm-time-input');
 let alarmTimeoutIds = [];
 
+// Tudo que tá ativo no Guia agora — vira a lista de tags que cada horário
+// pode marcar pra tocar (toque pra marcar, sem arrastar — mais confiável em
+// WebView do que drag-and-drop por toque).
+function getEnabledFeatureTags() {
+  const tags = [];
+  CATEGORY_DEFS.forEach((cat) => {
+    cat.features.forEach((feat) => {
+      if (getFeatureState(cat.id, feat.id).enabled) {
+        tags.push({ key: `${cat.id}.${feat.id}`, label: `${cat.icon} ${feat.label}` });
+      }
+    });
+  });
+  return tags;
+}
+
 function renderAlarmsList() {
   alarmsListEl.innerHTML = '';
-  state.alarmTimes.slice().sort().forEach((time) => {
+  const tags = getEnabledFeatureTags();
+  state.alarmTimes.slice().sort((a, b) => a.time.localeCompare(b.time)).forEach((alarm) => {
     const row = document.createElement('div');
     row.className = 'alarm-item';
     const span = document.createElement('span');
     span.className = 'time';
-    span.textContent = time;
+    span.textContent = alarm.time;
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.textContent = '✕';
     delBtn.addEventListener('click', () => {
-      state.alarmTimes = state.alarmTimes.filter((t) => t !== time);
+      state.alarmTimes = state.alarmTimes.filter((a) => a.time !== alarm.time);
       saveState();
       renderAlarmsList();
       scheduleAllAlarms();
@@ -4654,6 +4709,28 @@ function renderAlarmsList() {
     row.appendChild(span);
     row.appendChild(delBtn);
     alarmsListEl.appendChild(row);
+
+    const tagWrap = document.createElement('div');
+    tagWrap.className = 'btn-group';
+    tagWrap.style.margin = '4px 0 14px';
+    if (tags.length === 0) {
+      tagWrap.innerHTML = '<div class="desc" style="opacity:0.6;">Nenhuma categoria ativa no Guia ainda.</div>';
+    } else {
+      tags.forEach((tag) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'btn-opt' + (alarm.features.includes(tag.key) ? ' selected' : '');
+        chip.textContent = tag.label;
+        chip.addEventListener('click', () => {
+          if (alarm.features.includes(tag.key)) alarm.features = alarm.features.filter((k) => k !== tag.key);
+          else alarm.features.push(tag.key);
+          saveState();
+          renderAlarmsList();
+        });
+        tagWrap.appendChild(chip);
+      });
+    }
+    alarmsListEl.appendChild(tagWrap);
   });
 }
 
@@ -4674,7 +4751,7 @@ async function scheduleAllAlarmsNative() {
     await nativeAlarm.cancel().catch((e) => console.error('BriefingAlarm.cancel:', e));
     return;
   }
-  await nativeAlarm.schedule({ times: state.alarmTimes }).catch((e) => console.error('BriefingAlarm.schedule:', e));
+  await nativeAlarm.schedule({ times: state.alarmTimes.map((a) => a.time) }).catch((e) => console.error('BriefingAlarm.schedule:', e));
 }
 
 // Quando o alarme dispara e consegue abrir o app (tela bloqueada/ociosa, ou o
@@ -4685,7 +4762,8 @@ function triggerAlarmAutoplay(time) {
   // caminho nativo acabe avisando mais de uma vez pro mesmo disparo).
   if (time && time === lastAutoplayTime) return;
   lastAutoplayTime = time || true;
-  startBriefingPlayback(true);
+  const alarm = time ? state.alarmTimes.find((a) => a.time === time) : null;
+  startBriefingPlayback(true, alarm ? alarm.features : undefined);
 }
 
 async function initNativeAlarmAutoplay() {
@@ -4710,7 +4788,7 @@ function scheduleAlarm(time) {
       state.alarmLastFired[time] = today;
       saveState();
       if (document.visibilityState === 'visible') {
-        startBriefingPlayback(true);
+        triggerAlarmAutoplay(time);
       } else {
         try {
           const reg = await navigator.serviceWorker.ready;
@@ -4724,7 +4802,7 @@ function scheduleAlarm(time) {
         }
       }
     }
-    if (state.alarmsActive && state.alarmTimes.includes(time)) scheduleAlarm(time); // reagenda pro dia seguinte
+    if (state.alarmsActive && state.alarmTimes.some((a) => a.time === time)) scheduleAlarm(time); // reagenda pro dia seguinte
   }, ms);
   alarmTimeoutIds.push(id);
 }
@@ -4733,7 +4811,7 @@ function scheduleAllAlarms() {
   if (nativeAlarm) { scheduleAllAlarmsNative(); return; }
   clearAllAlarmTimeouts();
   if (!state.alarmsActive) return;
-  state.alarmTimes.forEach(scheduleAlarm);
+  state.alarmTimes.forEach((a) => scheduleAlarm(a.time));
 }
 
 function updateAlarmsTileStatus() {
@@ -4835,8 +4913,8 @@ document.querySelectorAll('.md-bento-tile').forEach((tile) => {
 
 document.getElementById('add-alarm-btn').addEventListener('click', () => {
   const time = newAlarmTimeInput.value;
-  if (!time || state.alarmTimes.includes(time)) return;
-  state.alarmTimes.push(time);
+  if (!time || state.alarmTimes.some((a) => a.time === time)) return;
+  state.alarmTimes.push({ time, features: [] });
   saveState();
   renderAlarmsList();
   scheduleAllAlarms();
