@@ -514,12 +514,6 @@
       </div>
     </div>
 
-    <div class="md-bento-detail" id="saved-detail">
-      <div class="settings-panel">
-        <div id="saved-items-list"></div>
-      </div>
-    </div>
-
     <div class="briefing-wrap">
       <div id="briefing-label">Configure suas categorias na aba Guia</div>
       <div id="briefing-sub"></div>
@@ -783,6 +777,17 @@
     <div class="nav-stat"><div class="nav-val" id="nav-eta-val">—</div><div class="nav-lbl">chegada</div></div>
     <div class="nav-stat"><div class="nav-val" id="nav-dist-total">—</div><div class="nav-lbl">restante</div></div>
     <div class="nav-stat"><div class="nav-val" id="nav-speed-val">—</div><div class="nav-lbl">velocidade</div></div>
+  </div>
+</div>
+
+<!-- ============ SALVOS (overlay) ============ -->
+<div class="overlay" id="saved-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <button class="back-btn" id="saved-close-btn">←</button>
+      <h2>💾 Salvos</h2>
+    </div>
+    <div id="saved-items-list"></div>
   </div>
 </div>
 
@@ -3545,13 +3550,16 @@ function startTurnByTurn(steps, resultEl, totalMeters, totalDurationSec, destino
       if (dist <= ARRIVAL_RADIUS_M) {
         stepIndex++;
         minDistSeenForStep = Infinity;
-        preAnnouncedForStep = false;
         if (stepIndex >= steps.length) {
           showNavArrivedState();
           await playVozClip('arrived');
           stopGps();
           resolve();
         } else {
+          // Passo curto (≤300m): já fala a manobra completa na hora, não
+          // precisa do aviso "em X metros" repetindo a mesma instrução
+          // segundos depois. Só passo longo recebe o aviso de aproximação.
+          preAnnouncedForStep = (steps[stepIndex].distanceMeters || 0) <= 300;
           await announceManeuver(steps[stepIndex].maneuver);
         }
       }
@@ -3569,6 +3577,7 @@ function startTurnByTurn(steps, resultEl, totalMeters, totalDurationSec, destino
       watchPositionUnified(onPosition, onWatchError).then((id) => { gpsWatchId = id; });
     }
 
+    preAnnouncedForStep = (steps[0].distanceMeters || 0) <= 300;
     announceManeuver(steps[0].maneuver).then(async () => {
       if (!gpsActive) { resolve(); return; }
       gpsWatchId = await watchPositionUnified(onPosition, onWatchError);
@@ -3931,7 +3940,10 @@ alarmsActiveToggle.addEventListener('change', async () => {
 
 const BENTO_TILE_DETAIL_IDS = { 'custom-tile': 'custom-detail', 'alarms-tile': 'alarms-detail' };
 document.getElementById('saved-header-btn').addEventListener('click', () => {
-  document.getElementById('saved-detail').classList.toggle('open');
+  document.getElementById('saved-overlay').classList.add('open');
+});
+document.getElementById('saved-close-btn').addEventListener('click', () => {
+  document.getElementById('saved-overlay').classList.remove('open');
 });
 document.querySelectorAll('.md-bento-tile').forEach((tile) => {
   tile.addEventListener('click', () => {
