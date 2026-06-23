@@ -1250,6 +1250,7 @@ if (typeof window.SpeechSynthesisUtterance === 'undefined') {
 // limitação — não é o ideal pra venda em escala, mas sem custo imediato.
 const CLIENT_ID_WEB = '614074980827-7k3u0ugpmk8100chp5m1998b36peajo9.apps.googleusercontent.com';
 const CLIENT_ID_NATIVE = '501409490841-felsdcgkktofluhkt1hg5pg089fuakoi.apps.googleusercontent.com';
+const APP_DOWNLOAD_LINK = 'https://facincanitech.github.io/InfoHub/';
 const GOOGLE_SCOPES_BASE = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/contacts.readonly',
@@ -2028,8 +2029,16 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 const CHANGELOG = [
+  {
+    version: '2.2', date: '23/06/2026',
+    items: [
+      'Corrigido: numerologia repetindo o mesmo número quando Expressão/Caminho de Vida/Hora coincidiam',
+      'Místico (numerologia, tarot, horóscopo, lua) agora fala com um tom mais lento e envolvente',
+      'Corrigido: compartilhamento de notícia/vídeo saindo com o link duplicado; assinatura do app agora vem no topo, com link pra baixar o InfoHub',
+    ],
+  },
   {
     version: '2.1', date: '23/06/2026',
     items: [
@@ -2528,7 +2537,7 @@ function getMoonPhaseName(date) {
 
 async function fetchFaseLuaItems() {
   const fase = getMoonPhaseName(new Date());
-  return [{ category: 'Místico', sub: 'Lua', title: `Fase da lua: ${fase}`, full: `Hoje a fase da lua é: ${fase}.`, quick: `Lua: ${fase}` }];
+  return [{ category: 'Místico', sub: 'Lua', title: `Fase da lua: ${fase}`, full: `Hoje a fase da lua é: ${fase}.`, quick: `Lua: ${fase}`, vozEnvolvente: true }];
 }
 
 /* =========================================================================
@@ -2685,10 +2694,6 @@ async function fetchNumerologiaItems(fields) {
 
   const numExpressao = calcNumeroExpressao(nome);
   const numHora = calcNumeroHora(hora);
-
-  const infoExp = NUMEROS_SISTEMA[numExpressao];
-  const infoVida = NUMEROS_SISTEMA[numVida];
-  const infoHora = numHora ? NUMEROS_SISTEMA[numHora] : null;
   const infoDia = NUMEROS_SISTEMA[numDia];
 
   // Primeiro acesso: apresenta os números fixos da pessoa (nome/nascimento/hora).
@@ -2696,8 +2701,22 @@ async function fetchNumerologiaItems(fields) {
   let textoBase = '';
   if (!localStorage.getItem('infohub_num_apresentou')) {
     localStorage.setItem('infohub_num_apresentou', '1');
-    textoBase = `Sua numerologia pitagórica. Número de Expressão ${numExpressao}: ${infoExp ? infoExp.voz : ''} Número do Caminho de Vida ${numVida}: ${infoVida ? infoVida.voz : ''} ` +
-      (infoHora ? `Número da Hora ${numHora}: ${infoHora.voz} ` : '');
+    // Quando dois (ou os três) números calham de coincidir, agrupa os rótulos
+    // num só lugar pra não falar o mesmo texto do NUMEROS_SISTEMA duas vezes.
+    const rotulosPorNumero = new Map();
+    const addRotulo = (numero, rotulo) => {
+      if (!numero) return;
+      if (!rotulosPorNumero.has(numero)) rotulosPorNumero.set(numero, []);
+      rotulosPorNumero.get(numero).push(rotulo);
+    };
+    addRotulo(numExpressao, 'Número de Expressão');
+    addRotulo(numVida, 'Número do Caminho de Vida');
+    addRotulo(numHora, 'Número da Hora');
+
+    textoBase = 'Sua numerologia pitagórica. ' + [...rotulosPorNumero.entries()].map(([numero, rotulos]) => {
+      const info = NUMEROS_SISTEMA[numero];
+      return `${rotulos.join(' e ')} ${numero}: ${info ? info.voz : ''}`;
+    }).join(' ') + ' ';
   }
 
   const compat = (infoDia && infoDia.compatibilidade) || {};
@@ -2712,6 +2731,7 @@ async function fetchNumerologiaItems(fields) {
     title: `Número do dia: ${numDia}`,
     full: textoBase + textoDia,
     quick: `Número pessoal hoje: ${numDia}. ${ENERGIA_DIA[numDia] || ''}`,
+    vozEnvolvente: true,
   }];
 }
 
@@ -2758,6 +2778,7 @@ async function fetchTarotItems() {
     title: `Arcano do dia: ${carta.nome}`,
     full: `O arcano de hoje é ${carta.nome}: ${carta.texto}`,
     quick: `Arcano do dia: ${carta.nome}`,
+    vozEnvolvente: true,
   }];
 }
 
@@ -2868,6 +2889,7 @@ async function fetchSignoSolarItems(fields) {
     title: `${signo} · ${nomeDiaSemana}`,
     full,
     quick: `${signo}: combina hoje com ${signoCompativel || '—'}`,
+    vozEnvolvente: true,
   }];
 }
 
@@ -3306,9 +3328,14 @@ function buildItemActionsRow(category, sub, text, title, showSave, link) {
   const wrap = document.createElement('div');
   wrap.className = 'item-actions';
 
-  // Junta o link (quando tem, ex: vídeo/notícia) e uma assinatura do app —
-  // tanto compartilhar quanto copiar usam esse texto completo, não só o título.
-  const shareableText = [text, link || null, 'Compartilhado usando o app InfoHub.'].filter(Boolean).join('\n\n');
+  // Assinatura do app fica no topo, com um link real pra baixar o InfoHub —
+  // tanto compartilhar quanto copiar usam esse texto, não só o título.
+  const attribution = `📲 Compartilhado usando o app InfoHub — ${APP_DOWNLOAD_LINK}`;
+  // Quando tem nativeShare, o link do item (notícia/vídeo) vai separado no
+  // campo "url" — o plugin já concatena ele no texto, então NÃO repete aqui
+  // dentro (era isso que duplicava o link no compartilhamento).
+  const shareableTextSemLinkItem = [attribution, text].filter(Boolean).join('\n\n');
+  const shareableText = [attribution, text, link || null].filter(Boolean).join('\n\n');
 
   const triggerBtn = document.createElement('button');
   triggerBtn.type = 'button';
@@ -3336,9 +3363,9 @@ function buildItemActionsRow(category, sub, text, title, showSave, link) {
     // navigator.share não funciona dentro da WebView do app empacotado —
     // mesmo buraco de sempre, usa o plugin nativo quando disponível.
     if (nativeShare) {
-      try { await nativeShare.share({ text: shareableText, url: link || undefined }); } catch (e) {}
+      try { await nativeShare.share({ text: shareableTextSemLinkItem, url: link || undefined }); } catch (e) {}
     } else if (navigator.share) {
-      try { await navigator.share({ text: shareableText }); } catch (e) {}
+      try { await navigator.share({ text: shareableTextSemLinkItem, url: link || undefined }); } catch (e) {}
     } else {
       await navigator.clipboard.writeText(shareableText);
       showVoiceToast('Compartilhamento não disponível, copiado pra área de transferência.');
@@ -3466,13 +3493,14 @@ function stopYoutubeSnippetPlayback() {
   try { if (ytPlayerInstance) ytPlayerInstance.pauseVideo(); } catch (e) {}
 }
 
-function speakQueueText(text, rate) {
+function speakQueueText(text, rate, pitch) {
   return new Promise((resolve) => {
     const utter = new SpeechSynthesisUtterance(text);
     const voice = getSelectedVoice();
     if (voice) utter.voice = voice;
     utter.lang = voice ? voice.lang : 'pt-BR';
     utter.rate = rate;
+    utter.pitch = pitch || 1;
     utter.onend = resolve;
     utter.onerror = resolve;
     speechSynthesis.speak(utter);
@@ -3494,20 +3522,24 @@ async function speakQueueItem(i) {
   progressFill.style.width = `${Math.round((i / currentQueue.length) * 100)}%`;
   renderHistory(i);
 
-  const rate = parseFloat(briefingRateInput.value);
+  const baseRate = parseFloat(briefingRateInput.value);
+  // Místico (numerologia/tarot/horóscopo/lua) usa um tom mais lento e levemente
+  // mais grave, pra soar como um locutor envolvente em vez de leitura de notícia.
+  const rate = item.vozEnvolvente ? baseRate * 0.85 : baseRate;
+  const pitch = item.vozEnvolvente ? 0.9 : 1;
 
   if (item.videoId) {
     // Vídeo/música com trecho real: fala o título, toca uns segundos de áudio
     // de verdade (player escondido, sem imagem), e fala pra abrir o link pro resto.
     const intro = state.quickMode ? (item.quick || item.title) : item.title;
-    await speakQueueText(intro, rate);
+    await speakQueueText(intro, rate, pitch);
     if (myToken !== playbackToken) return;
     await playYoutubeSnippet(item.videoId);
     if (myToken !== playbackToken) return;
-    await speakQueueText('Pra ouvir o resto, clica no link.', rate);
+    await speakQueueText('Pra ouvir o resto, clica no link.', rate, pitch);
   } else {
     const text = state.quickMode ? (item.quick || item.title) : (item.full || item.title);
-    await speakQueueText(text, rate);
+    await speakQueueText(text, rate, pitch);
   }
 
   if (myToken !== playbackToken) return; // já foi cancelada por um clique novo, ignora
