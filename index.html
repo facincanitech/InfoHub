@@ -1076,7 +1076,7 @@
           erro de digitação, se o nome não bater exatamente o canal não é encontrado;
           na primeira vez que adiciona demora um pouco mais, depois fica rápido.<br>
           🎧 <b>Podcasts</b>: mesma lógica do YouTube, digite o nome (até 5).<br>
-          🎵 <b>Música</b>: marca os gêneros/artistas que quiser.<br>
+          🎵 <b>Música</b>: marca os gêneros/artistas que quiser. Toca um trechinho real (~20s) aqui no app; pra ouvir completo, o botão "Ouvir completo no YouTube Music" abre o app deles de verdade (precisa estar instalado).<br>
           ⚽ <b>Esportes</b>: Competição + Time/seleção, resultado do último jogo e
           data do próximo.<br><br>
 
@@ -2146,8 +2146,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.0';
+const APP_VERSION = '3.1';
 const CHANGELOG = [
+  {
+    version: '3.1', date: '23/06/2026',
+    items: [
+      'Itens de vídeo/música agora têm botão "Ouvir completo no YouTube Music" — o trecho de ~20s no app é só uma prévia, o resto toca de verdade no app deles',
+    ],
+  },
   {
     version: '3.0', date: '23/06/2026',
     items: [
@@ -3719,7 +3725,20 @@ function renderHistory(currentIndex) {
 
     div.appendChild(document.createTextNode(item.title));
 
-    if (item.link) {
+    if (item.videoId) {
+      // Toca só ~20s aqui dentro (trecho real, sem imagem) — pra ouvir a
+      // música/vídeo completo, abre o app do YouTube Music de verdade (com
+      // anúncio se não for Premium deles, igual qualquer outra pessoa usando
+      // o app oficial). Sem esconder nada: quem toca completo é o YouTube.
+      const linkEl = document.createElement('a');
+      linkEl.href = `https://music.youtube.com/watch?v=${item.videoId}`;
+      linkEl.target = '_blank';
+      linkEl.rel = 'noopener noreferrer';
+      linkEl.className = 'history-link';
+      linkEl.textContent = '🎵 Ouvir completo no YouTube Music';
+      linkEl.title = 'Abre o app do YouTube Music (ou o site, se não tiver instalado) — o trecho aqui no InfoHub é só uma prévia.';
+      div.appendChild(linkEl);
+    } else if (item.link) {
       const linkEl = document.createElement('a');
       linkEl.href = item.link;
       linkEl.target = '_blank';
