@@ -2146,8 +2146,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '2.9';
+const APP_VERSION = '3.0';
 const CHANGELOG = [
+  {
+    version: '3.0', date: '23/06/2026',
+    items: [
+      'Místico ganhou um segundo locutor (James) — numerologia, horóscopo e compatibilidade têm frases gravadas inteiras, sem TTS no meio',
+      'A voz do Místico agora troca de narrador por semana (não a cada item), pra não parecer um oráculo diferente todo dia',
+    ],
+  },
   {
     version: '2.9', date: '23/06/2026',
     items: [
@@ -2715,10 +2722,10 @@ function getMoonPhaseName(date) {
 // Gravação real (voz/mistico-lua-*.mp3) só do nome da fase — a frase de
 // introdução continua em TTS porque é curta e não muda.
 const LUA_VOZ_KEYS = {
-  'Lua Nova': 'mistico-lua-nova', 'Lua Crescente': 'mistico-lua-crescente',
-  'Quarto Crescente': 'mistico-lua-quarto-crescente', 'Lua Crescente Gibosa': 'mistico-lua-crescente-gibosa',
-  'Lua Cheia': 'mistico-lua-cheia', 'Lua Minguante Gibosa': 'mistico-lua-minguante-gibosa',
-  'Quarto Minguante': 'mistico-lua-quarto-minguante', 'Lua Minguante': 'mistico-lua-minguante',
+  'Lua Nova': 'mistico-lua-nova-vagner', 'Lua Crescente': 'mistico-lua-crescente-vagner',
+  'Quarto Crescente': 'mistico-lua-quarto-crescente-vagner', 'Lua Crescente Gibosa': 'mistico-lua-crescente-gibosa-vagner',
+  'Lua Cheia': 'mistico-lua-cheia-vagner', 'Lua Minguante Gibosa': 'mistico-lua-minguante-gibosa-vagner',
+  'Quarto Minguante': 'mistico-lua-quarto-minguante-vagner', 'Lua Minguante': 'mistico-lua-minguante-vagner',
 };
 
 async function fetchFaseLuaItems() {
@@ -2913,10 +2920,11 @@ async function fetchNumerologiaItems(fields) {
       return `${rotulos.join(' e ')} ${numero}: ${info ? info.voz : ''}`;
     }).join(' ') + ' ';
 
-    vozSequence.push({ clip: 'mistico-num-intro' });
+    const narrador = getNarradorMisticoAtivo();
+    vozSequence.push({ clip: `mistico-num-intro-vagner` });
     rotulosPorNumero.forEach((rotulos, numero) => {
       vozSequence.push({ tts: `${rotulos.join(' e ')} ${numero}:` });
-      vozSequence.push({ clip: `mistico-numero-${numero}` });
+      vozSequence.push({ clip: narrador === 'james' ? `mistico-numero-${numero}-james` : `mistico-numero-${numero}-vagner` });
     });
   }
 
@@ -2927,11 +2935,16 @@ async function fetchNumerologiaItems(fields) {
     (melhor ? `Sua energia flui melhor hoje com quem tem número ${melhor}. ` : '') +
     (dificil ? `Mais atenção com energia ${dificil} hoje.` : '');
 
-  vozSequence.push(
-    { clip: 'mistico-num-pessoal-hoje' }, { tts: `${numDia}.` }, { clip: `mistico-energia-${numDia}` },
-  );
-  if (melhor) vozSequence.push({ clip: 'mistico-num-compat-bem' }, { tts: melhor });
-  if (dificil) vozSequence.push({ clip: 'mistico-num-compat-atencao' }, { tts: dificil }, { clip: 'mistico-num-compat-atencao-fim' });
+  // Narrador da semana decide a forma: Vagner fala em clipes picotados +
+  // TTS nos números (estilo original), James fala a frase inteira de uma vez
+  // (sem TTS no meio) — nenhum substitui o outro, são só dois jeitos.
+  if (getNarradorMisticoAtivo() === 'james') {
+    vozSequence.push({ clip: `mistico-pessoal-dia-${numDia}-james` });
+  } else {
+    vozSequence.push({ clip: 'mistico-num-pessoal-hoje-vagner' }, { tts: `${numDia}.` }, { clip: `mistico-energia-${numDia}-vagner` });
+    if (melhor) vozSequence.push({ clip: 'mistico-num-compat-bem-vagner' }, { tts: melhor });
+    if (dificil) vozSequence.push({ clip: 'mistico-num-compat-atencao-vagner' }, { tts: dificil }, { clip: 'mistico-num-compat-atencao-fim-vagner' });
+  }
 
   return [{
     category: 'Místico', sub: 'Numerologia pitagórica',
@@ -2995,7 +3008,7 @@ async function fetchTarotItems() {
     full: `O arcano de hoje é ${carta.nome}: ${carta.texto}`,
     quick: `Arcano do dia: ${carta.nome}`,
     vozEnvolvente: true,
-    vozSequence: [{ clip: 'mistico-tarot-intro' }, { tts: `${carta.nome}:` }, { clip: `mistico-tarot-${clipNum}` }],
+    vozSequence: [{ clip: 'mistico-tarot-intro-vagner' }, { tts: `${carta.nome}:` }, { clip: `mistico-tarot-${clipNum}-vagner` }],
   }];
 }
 
@@ -3063,6 +3076,15 @@ function getDiaSeedAtual() {
   return hoje.getFullYear() * 372 + (hoje.getMonth() + 1) * 31 + hoje.getDate();
 }
 
+// Místico, narrador da semana — troca de voz toda semana (não a cada item),
+// senão parece um xamã diferente todo dia. Lista cresce conforme grava mais
+// gente; o primeiro nome é o narrador original (sempre existe, é o fallback).
+const NARRADORES_MISTICO = ['vagner', 'james'];
+function getNarradorMisticoAtivo() {
+  const semana = Math.floor(getDiaSeedAtual() / 7);
+  return NARRADORES_MISTICO[semana % NARRADORES_MISTICO.length];
+}
+
 // Compatibilidade por elemento (afinidade astrológica tradicional) — gira
 // diariamente qual signo do grupo compatível é destacado, igual a numerologia
 // faz com os números.
@@ -3084,6 +3106,14 @@ function getSignoCompativelHoje(signo) {
   return compativeis[getDiaSeedAtual() % compativeis.length];
 }
 
+// Slug de arquivo de cada signo (sem acento) — usado pra achar os clipes
+// gravados (James) do nome do signo e da abertura "Você é de [signo]".
+const SIGNO_SLUG = {
+  'Áries': 'aries', 'Touro': 'touro', 'Gêmeos': 'gemeos', 'Câncer': 'cancer',
+  'Leão': 'leao', 'Virgem': 'virgem', 'Libra': 'libra', 'Escorpião': 'escorpiao',
+  'Sagitário': 'sagitario', 'Capricórnio': 'capricornio', 'Aquário': 'aquario', 'Peixes': 'peixes',
+};
+
 async function fetchSignoSolarItems(fields) {
   const nascimento = (fields.nascimento || '').trim();
   const match = nascimento.match(/^(\d{1,2})\/(\d{1,2})/);
@@ -3092,29 +3122,54 @@ async function fetchSignoSolarItems(fields) {
   const mes = parseInt(match[2], 10);
   const signo = getSignoSolar(dia, mes);
   const traco = SIGNOS_TRACOS[signo] || '';
+  const slug = SIGNO_SLUG[signo];
 
   const hoje = new Date();
   const diaSemana = DIAS_PLANETARIOS[hoje.getDay()];
   const nomeDiaSemana = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'][hoje.getDay()];
   const areaDoDia = AREAS_VIDA_DIA[getDiaSeedAtual() % AREAS_VIDA_DIA.length](signo, traco);
   const signoCompativel = getSignoCompativelHoje(signo);
+  const slugCompativel = signoCompativel ? SIGNO_SLUG[signoCompativel] : null;
   const fraseCompat = signoCompativel ? ` Sua energia combina bem hoje com gente de ${signoCompativel}.` : '';
 
   const full = `Você é de ${signo}. ${areaDoDia}${fraseCompat} Hoje é ${nomeDiaSemana}, dia de ${diaSemana.planeta}: ${diaSemana.texto}`;
-  // Voz gravada de verdade (voz/mistico-planeta-*.mp3) só da parte fixa do
-  // planeta do dia — o resto (signo, traço, compatibilidade) muda de pessoa pra
-  // pessoa e fica em TTS.
+  // Voz gravada de verdade pra três partes fixas: abertura do signo (James,
+  // 3 versões), nome do signo compatível (James) e o planeta do dia. A área da
+  // vida (signo+traço) continua em TTS — combinatória demais pra gravar.
   const PLANETA_VOZ_KEYS = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+
+  // Narrador da semana decide a forma: só o James gravou abertura de signo e
+  // compatibilidade até agora, então em semana do Vagner cai pro TTS (nenhum
+  // dos dois é "errado", é só o que cada um já gravou). A v1/v2/v3 dentro da
+  // semana do mesmo narrador continua sorteando à toa, só pra variar a frase.
+  const narradorSigno = getNarradorMisticoAtivo();
+  const abertura = (slug && narradorSigno === 'james')
+    ? { clip: `mistico-signo-${slug}-james-v${1 + Math.floor(Math.random() * 3)}` }
+    : { tts: `Você é de ${signo}.` };
+
+  const vozSequence = [abertura, { tts: areaDoDia }];
+  if (signoCompativel) {
+    if (slugCompativel && narradorSigno === 'james') {
+      vozSequence.push(
+        { clip: `mistico-compat-gancho-james-v${1 + Math.floor(Math.random() * 4)}` },
+        { clip: `mistico-signo-nome-${slugCompativel}-james` },
+      );
+    } else {
+      vozSequence.push({ tts: fraseCompat });
+    }
+  }
+  vozSequence.push(
+    { tts: `Hoje é ${nomeDiaSemana}, dia de ${diaSemana.planeta}:` },
+    { clip: `mistico-planeta-${PLANETA_VOZ_KEYS[hoje.getDay()]}-vagner` },
+  );
+
   return [{
     category: 'Místico', sub: 'Horóscopo do dia',
     title: `${signo} · ${nomeDiaSemana}`,
     full,
     quick: `${signo}: combina hoje com ${signoCompativel || '—'}`,
     vozEnvolvente: true,
-    vozSequence: [
-      { tts: `Você é de ${signo}. ${areaDoDia}${fraseCompat} Hoje é ${nomeDiaSemana}, dia de ${diaSemana.planeta}:` },
-      { clip: `mistico-planeta-${PLANETA_VOZ_KEYS[hoje.getDay()]}` },
-    ],
+    vozSequence,
   }];
 }
 
@@ -4188,9 +4243,18 @@ function vozPickFile(key) {
 }
 
 let vozAudioEl = null;
+// Pastas dentro de voz/ — só organização de arquivo, não muda nenhuma key
+// usada no resto do código. James sempre tem "-james" no nome; o resto do
+// Místico (Vagner) sempre tem "-vagner"; o que não é Místico é GPS/saudação.
+function getVozSubfolder(key) {
+  if (key.includes('-james')) return 'mistico-james';
+  if (key.startsWith('mistico-')) return 'mistico-vagner';
+  return 'gps';
+}
+
 function playVozClip(key) {
   return new Promise((resolve) => {
-    const audio = new Audio(`voz/${vozPickFile(key)}.mp3`);
+    const audio = new Audio(`voz/${getVozSubfolder(key)}/${vozPickFile(key)}.mp3`);
     vozAudioEl = audio;
     audio.onended = resolve;
     audio.onerror = resolve;
