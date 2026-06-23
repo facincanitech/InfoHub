@@ -968,7 +968,7 @@
         </div>
         <div class="help-section-body">
           Na aba Guia, clica em cada categoria (Pessoal, Clima, Entretenimento,
-          Notícias e Curiosidades, Financeiro, Horóscopo) e ativa só o que você quer ouvir.
+          Notícias e Curiosidades, Financeiro, Místico) e ativa só o que você quer ouvir.
           Cada feature tem um toggle, quando ligado, aparecem os campos pra configurar
           (cidade, time, palavras-chave, etc).
         </div>
@@ -1333,9 +1333,18 @@ const CATEGORY_DEFS = [
     ],
   },
   {
-    id: 'horoscopo', icon: '🔮', title: 'Horóscopo', color: 'var(--cat-horoscopo)',
+    id: 'horoscopo', icon: '🔮', title: 'Místico', color: 'var(--cat-horoscopo)',
     features: [
       { id: 'fase-lua', label: 'Fase da lua', icon: '🌙', fields: [], hint: 'Calculado localmente, sem API' },
+      { id: 'signo-solar', label: 'Signo solar e dia planetário', icon: '♈', fields: [
+        { id: 'nascimento', kind: 'text', placeholder: 'Data de nascimento (DD/MM)' },
+      ], hint: 'Calculado localmente, sem API' },
+      { id: 'numerologia', label: 'Numerologia pitagórica', icon: '🔢', fields: [
+        { id: 'nome', kind: 'text', placeholder: 'Nome completo' },
+        { id: 'nascimento', kind: 'text', placeholder: 'Data de nascimento (DD/MM/AAAA)' },
+        { id: 'hora', kind: 'text', placeholder: 'Hora de nascimento (HH:MM), opcional' },
+      ], hint: 'Calculado localmente, sem API' },
+      { id: 'tarot', label: 'Arcano do dia (Tarot)', icon: '🃏', fields: [], hint: 'Calculado localmente, sem API' },
     ],
   },
 ];
@@ -1993,8 +2002,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 const CHANGELOG = [
+  {
+    version: '1.5', date: '23/06/2026',
+    items: [
+      'Categoria Horóscopo renomeada pra Místico, com 3 features novas: Numerologia pitagórica (número pessoal do dia + compatibilidade), Arcano do dia (Tarot) e Signo solar + dia planetário — tudo calculado localmente, sem nenhuma API',
+    ],
+  },
   {
     version: '1.4', date: '23/06/2026',
     items: [
@@ -2448,7 +2463,250 @@ function getMoonPhaseName(date) {
 
 async function fetchFaseLuaItems() {
   const fase = getMoonPhaseName(new Date());
-  return [{ category: 'Horóscopo', sub: 'Lua', title: `Fase da lua: ${fase}`, full: `Hoje a fase da lua é: ${fase}.`, quick: `Lua: ${fase}` }];
+  return [{ category: 'Místico', sub: 'Lua', title: `Fase da lua: ${fase}`, full: `Hoje a fase da lua é: ${fase}.`, quick: `Lua: ${fase}` }];
+}
+
+/* =========================================================================
+   NUMEROLOGIA PITAGÓRICA
+   Tudo calculado localmente — nome, data, hora e dia atual, sem API nenhuma.
+   ========================================================================= */
+const PITAG_TABLE = {
+  a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8, i: 9,
+  j: 1, k: 2, l: 3, m: 4, n: 5, o: 6, p: 7, q: 8, r: 9,
+  s: 1, t: 2, u: 3, v: 4, w: 5, x: 6, y: 7, z: 8,
+};
+
+function normalizarLetra(c) {
+  return c.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Reduz pra dígito único, preservando números mestres 11, 22, 33.
+function reduzirNumerologia(n) {
+  while (n > 9 && n !== 11 && n !== 22 && n !== 33) {
+    n = String(n).split('').reduce((s, d) => s + parseInt(d), 0);
+  }
+  return n;
+}
+
+function calcNumeroExpressao(nome) {
+  const soma = nome.split('').reduce((s, c) => s + (PITAG_TABLE[normalizarLetra(c)] || 0), 0);
+  return reduzirNumerologia(soma);
+}
+
+function calcCaminhoDeVida(dataNasc) {
+  const digits = dataNasc.replace(/\D/g, '');
+  if (digits.length < 8) return null;
+  const soma = digits.split('').reduce((s, d) => s + parseInt(d), 0);
+  return reduzirNumerologia(soma);
+}
+
+function calcNumeroHora(hora) {
+  if (!hora) return null;
+  const digits = hora.replace(/\D/g, '');
+  if (!digits) return null;
+  const soma = digits.split('').reduce((s, d) => s + parseInt(d), 0);
+  return reduzirNumerologia(soma);
+}
+
+function calcNumeroPessoalDia(dataNasc) {
+  const partes = dataNasc.split('/');
+  if (partes.length < 2) return null;
+  const hoje = new Date();
+  const soma = (hoje.getDate() + (hoje.getMonth() + 1) + hoje.getFullYear())
+    .toString().split('').reduce((s, d) => s + parseInt(d), 0)
+    + parseInt(partes[0]) + parseInt(partes[1]);
+  return reduzirNumerologia(soma);
+}
+
+const NUMEROS_DESC = {
+  1: 'liderança e independência. Você é pioneiro, prefere agir sozinho e tem força de vontade.',
+  2: 'diplomacia e parceria. Você é sensível, mediador e trabalha bem em equipe.',
+  3: 'criatividade e comunicação. Você é expressivo, sociável e cheio de energia.',
+  4: 'estabilidade e trabalho. Você é organizado, confiável e constrói com consistência.',
+  5: 'liberdade e mudança. Você é adaptável, curioso e vive bem com o inesperado.',
+  6: 'harmonia e responsabilidade. Você é cuidador, leal e voltado pra família.',
+  7: 'introspecção e espiritualidade. Você é analítico, reflexivo e busca o conhecimento profundo.',
+  8: 'poder e materialização. Você é ambicioso, estratégico e realiza no plano físico.',
+  9: 'humanidade e completude. Você é generoso, idealista e pensa no coletivo.',
+  11: 'número mestre da intuição. Você é sensível além do comum, com capacidade visionária.',
+  22: 'número mestre do construtor. Você tem potencial pra realizar coisas que poucos conseguem.',
+  33: 'número mestre do mestre. Você carrega um propósito de servir e elevar os outros.',
+};
+
+const COMPATIBILIDADE_NUM = {
+  1: { melhor: [1, 5, 9], dificil: [2, 4, 8] },
+  2: { melhor: [2, 4, 8], dificil: [1, 5, 7] },
+  3: { melhor: [3, 6, 9], dificil: [4, 7, 8] },
+  4: { melhor: [2, 4, 8], dificil: [1, 3, 5] },
+  5: { melhor: [1, 5, 7], dificil: [2, 4, 6] },
+  6: { melhor: [3, 6, 9], dificil: [5, 7, 8] },
+  7: { melhor: [5, 7], dificil: [2, 3, 6] },
+  8: { melhor: [2, 4, 8], dificil: [1, 3, 7, 9] },
+  9: { melhor: [3, 6, 9], dificil: [4, 5, 8] },
+  11: { melhor: [2, 11], dificil: [1, 4, 8] },
+  22: { melhor: [4, 22], dificil: [3, 5, 9] },
+  33: { melhor: [6, 33], dificil: [1, 5, 7] },
+};
+
+const ENERGIA_DIA = {
+  1: 'Dia de iniciativa. Bom pra começar projetos, tomar decisões e agir com independência.',
+  2: 'Dia de cooperação. Melhor pra parcerias, conversas e resolver conflitos com delicadeza.',
+  3: 'Dia de expressão. Ótimo pra criar, comunicar e interagir socialmente.',
+  4: 'Dia de trabalho. Foco em organização, planejamento e tarefas concretas.',
+  5: 'Dia de movimento. Espere o inesperado, fique aberto a mudanças e novas experiências.',
+  6: 'Dia de harmonia. Cuide das relações, da casa e das responsabilidades afetivas.',
+  7: 'Dia de introspecção. Bom pra meditação, estudo e reflexão interior.',
+  8: 'Dia de poder. Foco em metas, negócios e manifestação no plano material.',
+  9: 'Dia de conclusão. Bom pra encerrar ciclos, perdoar e olhar pro coletivo.',
+  11: 'Dia de intuição elevada. Confie nos seus instintos, os sinais estão mais visíveis.',
+  22: 'Dia de construção mestra. O que você fizer hoje tem peso e permanência.',
+  33: 'Dia de serviço. Foco em ajudar, curar e elevar as pessoas ao seu redor.',
+};
+
+async function fetchNumerologiaItems(fields) {
+  const nome = (fields.nome || '').trim();
+  const nascimento = (fields.nascimento || '').trim();
+  const hora = (fields.hora || '').trim();
+  if (!nome || !nascimento) return [];
+
+  const numVida = calcCaminhoDeVida(nascimento);
+  const numDia = calcNumeroPessoalDia(nascimento);
+  if (!numVida || !numDia) return [];
+
+  const numExpressao = calcNumeroExpressao(nome);
+  const numHora = calcNumeroHora(hora);
+
+  // Primeiro acesso: apresenta os números fixos da pessoa (nome/nascimento/hora).
+  // Nos dias seguintes, só o número pessoal do dia (que muda toda data).
+  let textoBase = '';
+  if (!localStorage.getItem('infohub_num_apresentou')) {
+    localStorage.setItem('infohub_num_apresentou', '1');
+    textoBase = `Sua numerologia pitagórica: Número de Expressão ${numExpressao}, baseado no seu nome completo — ${NUMEROS_DESC[numExpressao] || ''} Número do Caminho de Vida ${numVida}, baseado na sua data de nascimento — ${NUMEROS_DESC[numVida] || ''}. ` +
+      (numHora ? `Número da Hora ${numHora} — ${NUMEROS_DESC[numHora] || ''}. ` : '');
+  }
+
+  const compat = COMPATIBILIDADE_NUM[numDia] || {};
+  const melhor = (compat.melhor || []).join(', ');
+  const dificil = (compat.dificil || []).join(', ');
+  const textoDia = `Seu número pessoal hoje é ${numDia}. ${ENERGIA_DIA[numDia] || ''} ` +
+    (melhor ? `Energia fluindo melhor com quem tem número ${melhor}. ` : '') +
+    (dificil ? `Mais cuidado com energia ${dificil} hoje.` : '');
+
+  return [{
+    category: 'Místico', sub: 'Numerologia pitagórica',
+    title: `Número do dia: ${numDia}`,
+    full: textoBase + textoDia,
+    quick: `Número pessoal hoje: ${numDia}. ${ENERGIA_DIA[numDia] || ''}`,
+  }];
+}
+
+/* =========================================================================
+   TAROT, arcano do dia
+   Carta escolhida deterministicamente pela data (mesma carta o dia todo,
+   muda todo dia) — sem API, sem aleatoriedade real.
+   ========================================================================= */
+const ARCANOS_MAIORES = [
+  { nome: 'O Louco', texto: 'novos começos, espontaneidade e liberdade. Confie no salto, mesmo sem ver o chão.' },
+  { nome: 'O Mago', texto: 'ação e manifestação. Você tem todas as ferramentas pra realizar o que quiser hoje.' },
+  { nome: 'A Sacerdotisa', texto: 'intuição e mistério. As respostas estão dentro de você, não fora.' },
+  { nome: 'A Imperatriz', texto: 'abundância e cuidado. Dia de nutrir o que você está construindo.' },
+  { nome: 'O Imperador', texto: 'estrutura e autoridade. Organize, defina limites, assuma o controle.' },
+  { nome: 'O Hierofante', texto: 'tradição e aprendizado. Bom dia pra seguir um método ou buscar orientação.' },
+  { nome: 'Os Enamorados', texto: 'escolhas e conexão. Uma decisão importante envolve o coração hoje.' },
+  { nome: 'O Carro', texto: 'determinação e vitória. Avance com foco, o caminho está livre.' },
+  { nome: 'A Força', texto: 'coragem gentil. Você não precisa gritar pra vencer, paciência resolve.' },
+  { nome: 'O Eremita', texto: 'introspecção e busca interior. Recolha-se um pouco hoje, a resposta vem do silêncio.' },
+  { nome: 'A Roda da Fortuna', texto: 'ciclos e mudança. Algo gira hoje, esteja pronto pra se adaptar.' },
+  { nome: 'A Justiça', texto: 'equilíbrio e consequência. O que for justo vai se mostrar claro.' },
+  { nome: 'O Pendurado', texto: 'pausa e nova perspectiva. Às vezes parar é o único jeito de ver direito.' },
+  { nome: 'A Morte', texto: 'fim de ciclo. Algo precisa terminar pra abrir espaço pro novo.' },
+  { nome: 'A Temperança', texto: 'moderação e mistura. Equilíbrio entre extremos traz o melhor resultado hoje.' },
+  { nome: 'O Diabo', texto: 'tentação e apego. Preste atenção no que te aprisiona por hábito, não por escolha.' },
+  { nome: 'A Torre', texto: 'ruptura súbita. Uma estrutura falsa pode cair — deixa, era pra ser reconstruída melhor.' },
+  { nome: 'A Estrela', texto: 'esperança e cura. Depois da tempestade, hoje é dia de respirar e confiar de novo.' },
+  { nome: 'A Lua', texto: 'ilusão e subconsciente. Nem tudo é o que parece, confie mas confirme.' },
+  { nome: 'O Sol', texto: 'clareza e vitalidade. Dia bom pra brilhar sem medo de ser visto.' },
+  { nome: 'O Julgamento', texto: 'renascimento e chamado. Algo te chama pra um novo capítulo hoje.' },
+  { nome: 'O Mundo', texto: 'completude e realização. Um ciclo se fecha com sucesso — celebre antes de começar o próximo.' },
+];
+
+function getArcanoDoDia() {
+  const hoje = new Date();
+  const seed = hoje.getFullYear() * 372 + (hoje.getMonth() + 1) * 31 + hoje.getDate();
+  return ARCANOS_MAIORES[seed % ARCANOS_MAIORES.length];
+}
+
+async function fetchTarotItems() {
+  const carta = getArcanoDoDia();
+  return [{
+    category: 'Místico', sub: 'Tarot',
+    title: `Arcano do dia: ${carta.nome}`,
+    full: `O arcano de hoje é ${carta.nome}: ${carta.texto}`,
+    quick: `Arcano do dia: ${carta.nome}`,
+  }];
+}
+
+/* =========================================================================
+   SIGNO SOLAR (pela data de nascimento) + DIA PLANETÁRIO (pelo dia da
+   semana de hoje) — tabelas fixas, sem cálculo astronômico, sem API.
+   "Ascendente"/"lua natal" de verdade ficam de fora por exigirem efeméride
+   real (hora + lugar do nascimento) — não tem fonte gratuita confiável
+   verificada ainda pra isso.
+   ========================================================================= */
+const SIGNOS_SOLARES = [
+  { nome: 'Capricórnio', fim: [1, 19] },
+  { nome: 'Aquário', fim: [2, 18] },
+  { nome: 'Peixes', fim: [3, 20] },
+  { nome: 'Áries', fim: [4, 19] },
+  { nome: 'Touro', fim: [5, 20] },
+  { nome: 'Gêmeos', fim: [6, 20] },
+  { nome: 'Câncer', fim: [7, 22] },
+  { nome: 'Leão', fim: [8, 22] },
+  { nome: 'Virgem', fim: [9, 22] },
+  { nome: 'Libra', fim: [10, 22] },
+  { nome: 'Escorpião', fim: [11, 21] },
+  { nome: 'Sagitário', fim: [12, 21] },
+  { nome: 'Capricórnio', fim: [12, 31] },
+];
+
+function getSignoSolar(dia, mes) {
+  for (const s of SIGNOS_SOLARES) {
+    const [fimMes, fimDia] = s.fim;
+    if (mes === fimMes && dia <= fimDia) return s.nome;
+    if (mes < fimMes) return s.nome;
+  }
+  return 'Capricórnio';
+}
+
+const DIAS_PLANETARIOS = {
+  0: { planeta: 'Sol', texto: 'vitalidade, brilho pessoal e reconhecimento. Bom dia pra se mostrar e liderar.' },
+  1: { planeta: 'Lua', texto: 'emoção, intuição e lar. Dia sensível, cuide do que é íntimo.' },
+  2: { planeta: 'Marte', texto: 'ação, coragem e confronto. Energia pra resolver o que estava parado.' },
+  3: { planeta: 'Mercúrio', texto: 'comunicação, negócios e estudo. Bom pra conversas, contratos e aprender algo novo.' },
+  4: { planeta: 'Júpiter', texto: 'expansão, sorte e crescimento. Dia favorável pra arriscar e pensar grande.' },
+  5: { planeta: 'Vênus', texto: 'amor, beleza e prazer. Bom pra relacionamentos e cuidar de si.' },
+  6: { planeta: 'Saturno', texto: 'disciplina, limites e responsabilidade. Dia de organizar e encarar o que é sério.' },
+};
+
+async function fetchSignoSolarItems(fields) {
+  const nascimento = (fields.nascimento || '').trim();
+  const match = nascimento.match(/^(\d{1,2})\/(\d{1,2})/);
+  if (!match) return [];
+  const dia = parseInt(match[1], 10);
+  const mes = parseInt(match[2], 10);
+  const signo = getSignoSolar(dia, mes);
+
+  const hoje = new Date();
+  const diaSemana = DIAS_PLANETARIOS[hoje.getDay()];
+  const nomeDiaSemana = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'][hoje.getDay()];
+
+  const full = `Você é de ${signo}. Hoje é ${nomeDiaSemana}, dia de ${diaSemana.planeta}: ${diaSemana.texto}`;
+  return [{
+    category: 'Místico', sub: 'Signo solar',
+    title: `${signo} · dia de ${diaSemana.planeta}`,
+    full,
+    quick: `Hoje é dia de ${diaSemana.planeta}: ${diaSemana.texto}`,
+  }];
 }
 
 /* =========================================================================
@@ -2819,6 +3077,9 @@ async function buildQueue() {
       else if (s.catId === 'pessoal' && s.featId === 'aniversarios') items = await fetchAniversariosItems(limit);
       else if (s.catId === 'pessoal' && s.featId === 'feriados') items = await fetchFeriadosItems(limit);
       else if (s.catId === 'horoscopo' && s.featId === 'fase-lua') items = await fetchFaseLuaItems();
+      else if (s.catId === 'horoscopo' && s.featId === 'numerologia') items = await fetchNumerologiaItems(s.fields);
+      else if (s.catId === 'horoscopo' && s.featId === 'signo-solar') items = await fetchSignoSolarItems(s.fields);
+      else if (s.catId === 'horoscopo' && s.featId === 'tarot') items = await fetchTarotItems();
       else if (s.catId === 'clima' && s.featId === 'previsao') items = (await fetchWeatherItems(s.fields.cidade1, s.fields.cidade2)).items;
       else if (s.catId === 'clima' && s.featId === 'alertas') items = await fetchAlertasClimaticosItems(s.fields.cidade);
       else if (s.catId === 'clima' && s.featId === 'previsao-dias') items = await fetchPrevisaoDiasItems(s.fields.cidade);
