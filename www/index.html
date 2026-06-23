@@ -2002,8 +2002,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 const CHANGELOG = [
+  {
+    version: '1.8', date: '23/06/2026',
+    items: [
+      'Numerologia pitagórica: conteúdo autoral próprio (Sugranismo), baseado no álbum sobre Kabbalah do desenvolvedor, substituindo o texto genérico de cada número',
+      'Número 10 (Alfa e Ômega) agora também não reduz, igual os números mestres 11/22/33',
+    ],
+  },
   {
     version: '1.7', date: '23/06/2026',
     items: [
@@ -2493,9 +2500,9 @@ function normalizarLetra(c) {
   return c.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-// Reduz pra dígito único, preservando números mestres 11, 22, 33.
+// Reduz pra dígito único, preservando números mestres 10 (Alfa e Ômega), 11, 22, 33.
 function reduzirNumerologia(n) {
-  while (n > 9 && n !== 11 && n !== 22 && n !== 33) {
+  while (n > 9 && n !== 10 && n !== 11 && n !== 22 && n !== 33) {
     n = String(n).split('').reduce((s, d) => s + parseInt(d), 0);
   }
   return n;
@@ -2534,34 +2541,76 @@ function calcNumeroPessoalDia(dataNasc) {
 // Pitagórica + Cabala: cada número de 1 a 9 corresponde a uma Sefirá da
 // Árvore da Vida (sistema cabalístico real, não inventado) — combina os dois
 // numa descrição só, mais rica que só o significado pitagórico isolado.
-const NUMEROS_DESC = {
-  1: 'Kether, a coroa, a centelha original. Liderança e independência — você é pioneiro, prefere agir sozinho e tem força de vontade.',
-  2: 'Chokmah, a sabedoria que se revela em par. Diplomacia e parceria — você é sensível, mediador e trabalha bem em equipe.',
-  3: 'Binah, o entendimento, a trindade que cria — a base do padrão 3-6-9, que a numerologia mística trata como chave do universo. Criatividade e comunicação — você é expressivo, sociável e cheio de energia.',
-  4: 'Chesed, a misericórdia, a fundação que sustenta. Estabilidade e trabalho — você é organizado, confiável e constrói com consistência.',
-  5: 'Geburah, a força que rompe limites. Liberdade e mudança — você é adaptável, curioso e vive bem com o inesperado.',
-  6: 'Tiphereth, a beleza no centro da árvore — segundo ponto do padrão 3-6-9. Harmonia e responsabilidade — você é cuidador, leal e voltado pra família.',
-  7: 'Netzach, número sagrado de criação em quase toda tradição espiritual. Introspecção e mistério — você é analítico, reflexivo e busca o conhecimento profundo.',
-  8: 'Hod, o esplendor — o próprio símbolo do número já é o infinito (∞) deitado. Poder e materialização — você é ambicioso, estratégico e realiza no plano físico.',
-  9: 'Yesod, a fundação que fecha o ciclo — o vórtex que devolve todo número à origem, terceiro ponto do padrão 3-6-9. Humanidade e completude — você é generoso, idealista e pensa no coletivo.',
-  11: 'número mestre da intuição, um portal — pessoas com esse número costumam ser espiritualizadas e se entendem bem com outras igualmente sensíveis. Capacidade visionária além do comum.',
-  22: 'número mestre do construtor. Você materializa sonhos grandes em algo real e duradouro — potencial pra realizar coisas que poucos conseguem.',
-  33: 'número mestre do mestre professor, energia de cura. Você carrega um propósito de servir e elevar os outros.',
-};
-
-const COMPATIBILIDADE_NUM = {
-  1: { melhor: [1, 5, 9], dificil: [2, 4, 8] },
-  2: { melhor: [2, 4, 8], dificil: [1, 5, 7] },
-  3: { melhor: [3, 6, 9], dificil: [4, 7, 8] },
-  4: { melhor: [2, 4, 8], dificil: [1, 3, 5] },
-  5: { melhor: [1, 5, 7], dificil: [2, 4, 6] },
-  6: { melhor: [3, 6, 9], dificil: [5, 7, 8] },
-  7: { melhor: [5, 7], dificil: [2, 3, 6] },
-  8: { melhor: [2, 4, 8], dificil: [1, 3, 7, 9] },
-  9: { melhor: [3, 6, 9], dificil: [4, 5, 8] },
-  11: { melhor: [2, 11], dificil: [1, 4, 8] },
-  22: { melhor: [4, 22], dificil: [3, 5, 9] },
-  33: { melhor: [6, 33], dificil: [1, 5, 7] },
+// Sistema autoral (Sugranismo/FacincaniTech) — conhecimento pessoal do autor
+// cruzando Kabbalah, numerologia tradicional e referências místicas próprias
+// (3-6-9, vórtice do 9, ritos iniciáticos no 33, etc), não é texto genérico
+// copiado de site de horóscopo.
+const NUMEROS_SISTEMA = {
+  1: {
+    nome: 'Alfa — O Início',
+    voz: 'O 1 é a centelha no vazio. Antes dele não havia nada — nem tempo, nem forma, nem caminho. É o primeiro traço, o sopro que acende tudo. Quem carrega o número 1 veio pra iniciar. Não pra seguir — pra abrir estrada. Sua força é a chama. Seu desafio é aprender que o início precisa de coragem pra não voltar.',
+    compatibilidade: { melhor: [1, 5, 9], dificil: [2, 4, 6, 8] },
+  },
+  2: {
+    nome: 'A Dualidade',
+    voz: 'O 2 é o espelho. Luz e sombra, dia e noite, o que constrói e o que destrói — tudo isso existe porque o 2 existe. Quem carrega esse número sente o outro antes de ele falar. Vive a tensão entre os opostos e tem o dom de equilibrá-los. Seu desafio: entender que o reflexo nunca está num só lugar — e que isso não é fraqueza, é visão.',
+    compatibilidade: { melhor: [2, 4, 8], dificil: [1, 5, 7] },
+  },
+  3: {
+    nome: 'A Tríplice — 3, 6, 9',
+    voz: 'O 3 pulsa. Tesla disse: se você soubesse a magnificência do 3, do 6 e do 9, teria a chave do universo. Da Vinci via o universo em tríplices — toda criação nasce de três forças. O 3 é a porta da manifestação: o que era pensamento vira palavra, o que era palavra vira forma. Quem carrega o 3 tem o dom da expressão — palavra, arte, música, movimento. O código está no som. O portal está aberto pra quem sabe ouvir.',
+    compatibilidade: { melhor: [3, 6, 9], dificil: [4, 7, 8] },
+  },
+  4: {
+    nome: 'A Sustentação',
+    voz: 'O 4 é o que não cai. Quatro ventos, quatro direções, quatro elementos — tudo que existe no plano físico precisa de uma base de quatro. Se o caos vier, se tudo ruir, o que foi feito pelo 4 sempre há de existir. Quem carrega esse número é a rocha que os outros apoiam sem perceber. Seu desafio: entender que estrutura não é prisão.',
+    compatibilidade: { melhor: [2, 4, 8], dificil: [1, 3, 5] },
+  },
+  5: {
+    nome: 'O Quinto Elemento — O Éter',
+    voz: 'Quatro pilares sustentam o templo — mas há um centro. Uma pulsação. O 5 não está nas bordas, está no meio. Não é fogo, nem terra, nem água, nem ar — é o que une tudo. O Homem Vitruviano de Leonardo tem braços e pernas abertos porque o corpo humano é um 5. Quem carrega esse número é o pilar invisível. O que não se vê mas mantém tudo de pé.',
+    compatibilidade: { melhor: [1, 5, 7], dificil: [2, 4, 6] },
+  },
+  6: {
+    nome: 'O Nó do Destino',
+    voz: 'Três acima, três abaixo — e o 6 no meio, onde tudo se cruza. É o coração da Árvore da Vida, o ponto onde o divino toca o humano. Seis caminhos pra se encontrar. Ou pra se perder e nunca voltar. Quem carrega o 6 vive essa tensão todo dia: entre o animal e o ser que pensa, entre amor e obsessão. O dom é o equilíbrio. O desafio é não se perder nos seis caminhos.',
+    compatibilidade: { melhor: [3, 6, 9], dificil: [1, 5, 8] },
+  },
+  7: {
+    nome: 'O Número da Criação',
+    voz: 'Sete dias de criação. Sete cores no arco-íris — o presente do Infinito pra lembrar que Ele existe. Sete notas musicais. Sete chakras. Sete são as portas que vão nos libertar. Quem carrega o 7 busca o que está por trás do que está por trás. É o místico, o analítico, o que não aceita resposta superficial. O desafio: fé. Porque o 7 completa o que a razão não alcança.',
+    compatibilidade: { melhor: [5, 7], dificil: [2, 3, 6] },
+  },
+  8: {
+    nome: 'O Ciclo Eterno — O Infinito',
+    voz: 'O 8 deitado é o infinito. O que sobe tem que cair. O que termina volta a existir. Dois caminhos que se cruzam — destino e caos. O equilíbrio é a chave pra se elevar, mas quem tombar vai se apagar. Quem carrega o 8 tem poder real de manifestação. O karma é exato: o que você solta volta. O tempo não morre — ele volta pra si. O oito nunca se vai.',
+    compatibilidade: { melhor: [2, 4, 8], dificil: [1, 3, 7, 9] },
+  },
+  9: {
+    nome: 'O Vórtice — Evolutivo ou Devolutivo',
+    voz: 'O vórtex não espera. O 9 te arrasta — pra cima ou pra baixo, você decide. No vórtice da evolução não há escapatória: ou você avança ou se perde. O tempo não volta. O ciclo não erra. Qualquer número multiplicado por 9 volta ao 9 — ele contém todos os outros. Quem carrega o 9 veio pra completar, pra encerrar ciclos que outros não conseguem fechar. Ascenda ou seja apagado sem nome. Não há meio termo no 9.',
+    compatibilidade: { melhor: [3, 6, 9], dificil: [4, 5, 8] },
+  },
+  10: {
+    nome: 'Deus — Alfa e Ômega',
+    voz: 'O 1 é o Alfa. O 0 é o Ômega. Juntos formam o 10 — e o 10 é Deus. O Arquiteto que ergue o império e apaga o final. Tudo que sobe um dia cai — mas cada ruína é um novo lugar. A linha se fecha mas nunca se vai. O que foi feito renasce por trás. Quem tem o 10 carrega liderança com espiritualidade — o 1 que voltou depois de passar pelo vazio do 0.',
+    compatibilidade: { melhor: [1, 5, 9], dificil: [2, 4, 6, 8] },
+  },
+  11: {
+    nome: 'Acima do Sistema — O Ascendido',
+    voz: 'O 11 não reduz. Está acima do sistema. O véu se desfaz, a verdade se revela. Quem carrega o 11 tem intuição além do normal, mediunidade aflorada, sensibilidade que outros não entendem. As duas colunas do Templo — Jakin e Boaz — formam o 11. O portal entre o visível e o invisível. Desfez-se das correntes do tempo — agora é luz, agora é vento. Seu desafio: aterrar esse dom sem perdê-lo. Porque a sensibilidade do 11 é também seu maior peso.',
+    compatibilidade: { melhor: [2, 11, 22], dificil: [1, 4, 8] },
+  },
+  22: {
+    nome: 'O Grande Construtor',
+    voz: 'Os 22 caminhos da Árvore da Vida. As 22 letras do alfabeto hebraico — a linguagem com que o Infinito criou o mundo segundo o Sefer Yetzirah. Os 22 arcanos maiores do Tarô. Quem carrega o 22 tem acesso à linguagem da criação. Não sonha apenas — manifesta. O que o 11 vê além do véu, o 22 traz pra forma. O maior número construtor.',
+    compatibilidade: { melhor: [4, 22], dificil: [3, 5, 9] },
+  },
+  33: {
+    nome: 'O Guardião dos Segredos',
+    voz: 'O 33 é o número dos segredos que os sistemas guardam. O topo do Rito Escocês e do Rito Egípcio — as duas grandes tradições iniciáticas. Não é conferido, é reconhecido. Quem carrega esse número está próximo de um conhecimento que poucos acessam e que carrega o peso do silêncio. Os mistérios do Egito, os caminhos de Thoth, o que Hermes Trismegisto chamou de como acima, assim abaixo — o 33 guarda tudo isso. Sobre o 33, o silêncio fala mais que as palavras.',
+    compatibilidade: { melhor: [6, 33], dificil: [1, 5, 7] },
+  },
 };
 
 const ENERGIA_DIA = {
@@ -2592,21 +2641,26 @@ async function fetchNumerologiaItems(fields) {
   const numExpressao = calcNumeroExpressao(nome);
   const numHora = calcNumeroHora(hora);
 
+  const infoExp = NUMEROS_SISTEMA[numExpressao];
+  const infoVida = NUMEROS_SISTEMA[numVida];
+  const infoHora = numHora ? NUMEROS_SISTEMA[numHora] : null;
+  const infoDia = NUMEROS_SISTEMA[numDia];
+
   // Primeiro acesso: apresenta os números fixos da pessoa (nome/nascimento/hora).
   // Nos dias seguintes, só o número pessoal do dia (que muda toda data).
   let textoBase = '';
   if (!localStorage.getItem('infohub_num_apresentou')) {
     localStorage.setItem('infohub_num_apresentou', '1');
-    textoBase = `Sua numerologia pitagórica: Número de Expressão ${numExpressao}, baseado no seu nome completo — ${NUMEROS_DESC[numExpressao] || ''} Número do Caminho de Vida ${numVida}, baseado na sua data de nascimento — ${NUMEROS_DESC[numVida] || ''}. ` +
-      (numHora ? `Número da Hora ${numHora} — ${NUMEROS_DESC[numHora] || ''}. ` : '');
+    textoBase = `Sua numerologia pitagórica. Número de Expressão ${numExpressao}: ${infoExp ? infoExp.voz : ''} Número do Caminho de Vida ${numVida}: ${infoVida ? infoVida.voz : ''} ` +
+      (infoHora ? `Número da Hora ${numHora}: ${infoHora.voz} ` : '');
   }
 
-  const compat = COMPATIBILIDADE_NUM[numDia] || {};
+  const compat = (infoDia && infoDia.compatibilidade) || {};
   const melhor = (compat.melhor || []).join(', ');
   const dificil = (compat.dificil || []).join(', ');
   const textoDia = `Seu número pessoal hoje é ${numDia}. ${ENERGIA_DIA[numDia] || ''} ` +
-    (melhor ? `Energia fluindo melhor com quem tem número ${melhor}. ` : '') +
-    (dificil ? `Mais cuidado com energia ${dificil} hoje.` : '');
+    (melhor ? `Sua energia flui melhor hoje com quem tem número ${melhor}. ` : '') +
+    (dificil ? `Mais atenção com energia ${dificil} hoje.` : '');
 
   return [{
     category: 'Místico', sub: 'Numerologia pitagórica',
