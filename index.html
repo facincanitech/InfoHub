@@ -733,6 +733,82 @@
           <b>facincanitech@gmail.com</b>
         </div>
       </div>
+      <div class="account-card">
+        <button class="btn-connect" id="privacy-open-btn" style="background: var(--c-border2); color: var(--c-text);">🔒 Política de Privacidade</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ POLÍTICA DE PRIVACIDADE (overlay) ============ -->
+<div class="overlay" id="privacy-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <button class="back-btn" id="privacy-close-btn">←</button>
+      <h2>🔒 Política de Privacidade</h2>
+    </div>
+    <div class="account-card">
+      <div class="scope-list">
+        <b>Última atualização: junho de 2026</b><br><br>
+
+        <b>Resumo direto:</b> o InfoHub não tem servidor próprio guardando seus dados
+        pessoais. Suas configurações, histórico e itens salvos ficam só no seu
+        celular/navegador (armazenamento local). Contas externas (Google, Microsoft,
+        Mercado Livre) você conecta diretamente com cada serviço — o InfoHub nunca vê
+        nem guarda sua senha, e só usa o acesso concedido pra ler e falar a informação
+        que você pediu pra ativar.<br><br>
+
+        <b>O que ficamos sabendo, e onde fica:</b><br><br>
+
+        📍 <b>Localização (GPS)</b>: usada só quando você ativa o GPS auditivo, pra
+        calcular sua rota (enviada ao Google Maps/Routes, que processa e devolve o
+        trajeto) e pra preencher automaticamente a cidade do Clima. Não guardamos
+        histórico de onde você esteve.<br><br>
+
+        📧 <b>E-mail (Google/Outlook)</b>: lemos só assunto/remetente/resumo dos
+        e-mails mais recentes ou de rastreio, pra ler em voz alta. Acesso só de
+        leitura — o app nunca envia, apaga ou modifica e-mail nenhum.<br><br>
+
+        📅 <b>Agenda e Contatos (Google)</b>: lemos eventos de hoje e aniversários
+        salvos, só pra falar no briefing. Também só leitura.<br><br>
+
+        📤 <b>Google Drive</b>: a feature de backup de fotos sobe, direto do seu
+        celular pro seu próprio Drive, só os arquivos que <b>você escolhe
+        manualmente</b>. Não passa pelo nosso servidor em nenhum momento, e o app só
+        tem acesso aos arquivos que ele mesmo cria (pasta "InfoHub Backup"), não ao
+        resto do seu Drive.<br><br>
+
+        📦 <b>Mercado Livre</b>: usado só pra buscar suas encomendas em trânsito,
+        quando você conecta essa conta.<br><br>
+
+        💳 <b>Pagamento (Mercado Pago)</b>: o processamento da assinatura Premium é
+        feito inteiramente pelo Mercado Pago — o InfoHub não vê nem guarda número de
+        cartão nenhum.<br><br>
+
+        ⚙️ <b>Configurações, histórico e itens salvos</b>: tudo isso (categorias
+        ativadas, cidades configuradas, itens que você salvou com o botão 💾) fica
+        guardado só no armazenamento local do seu navegador/celular
+        (<code>localStorage</code>), nunca é enviado pra nenhum servidor nosso.<br><br>
+
+        🔍 <b>Buscas de conteúdo</b> (notícia, clima, filme, cotação, endereço, etc):
+        o app consulta serviços de terceiros (OpenWeatherMap, GNews, TMDB,
+        TheSportsDB, Google Maps, Banco Central, CoinGecko, OpenStreetMap/Photon,
+        YouTube, Unsplash) através de um servidor intermediário nosso (Supabase, que
+        só repassa a pergunta e a resposta, sem guardar nada) — isso é só pra
+        esconder as chaves de API, não pra coletar dado seu.<br><br>
+
+        <b>O que NÃO fazemos:</b> não vendemos dado pra ninguém, não mostramos
+        anúncio, não temos sistema de rastreamento/analytics de uso, não criamos
+        conta/perfil de usuário no nosso lado (a "conta" é literalmente o login
+        direto com Google/Microsoft, sem cópia nossa da sua identidade).<br><br>
+
+        <b>Excluir seus dados</b>: como tudo fica local, basta desinstalar o app ou
+        limpar os dados do site no navegador. Pra desconectar uma conta (Google,
+        Microsoft, Mercado Livre), use o botão "Desconectar" na própria Central de
+        Contas — isso revoga o acesso imediatamente.<br><br>
+
+        Dúvida sobre essa política? <b>facincanitech@gmail.com</b>
+      </div>
     </div>
   </div>
 </div>
@@ -1823,6 +1899,13 @@ document.querySelectorAll('[data-action="gear"]').forEach(btn => {
   btn.addEventListener('click', () => { accountsOverlay.classList.add('open'); updateAccountsUI(); });
 });
 document.getElementById('accounts-close-btn').addEventListener('click', () => accountsOverlay.classList.remove('open'));
+
+document.getElementById('privacy-open-btn').addEventListener('click', () => {
+  document.getElementById('privacy-overlay').classList.add('open');
+});
+document.getElementById('privacy-close-btn').addEventListener('click', () => {
+  document.getElementById('privacy-overlay').classList.remove('open');
+});
 
 const helpOverlay = document.getElementById('help-overlay');
 document.querySelectorAll('[data-action="help"]').forEach(btn => {
