@@ -586,6 +586,11 @@
         <div class="desc" style="opacity: 0.6;">🚧 Em breve.</div>
       </div>
 
+      <div class="premium-feature">
+        <div class="title">🆘 Botão SOS</div>
+        <div class="desc">Um toque manda sua localização na hora pro contato de emergência, por SMS e e-mail — sem precisar abrir nenhum outro app.</div>
+      </div>
+
       <button id="subscribe-btn">Assinar</button>
       <button id="check-subscription-btn" style="background: var(--c-surface); color: var(--c-text); margin-top: 10px; width: 100%; padding: 12px;">Já assinei, verificar</button>
       <div class="result" id="subscribe-result" style="text-align:center; margin-top: 8px;"></div>
@@ -631,6 +636,19 @@
         </div>
         <div id="rastreio-subcategories" style="display:none;">
           <div class="desc" style="opacity: 0.6;">🚧 Em breve.</div>
+        </div>
+      </div>
+
+      <div class="premium-feature">
+        <div class="title" id="sos-toggle" style="cursor:pointer; justify-content: space-between;">
+          <span>🆘 Botão SOS</span><span class="chev">›</span>
+        </div>
+        <div id="sos-subcategories" style="display:none;">
+          <div class="desc">Manda sua localização na hora pro contato configurado, por SMS e e-mail (Gmail conectado). Configure antes de precisar usar.</div>
+          <input type="tel" id="sos-telefone-input" placeholder="Telefone (com DDD), ex: 11999999999">
+          <input type="email" id="sos-email-input" placeholder="E-mail de contato" style="margin-top: 8px;">
+          <button id="sos-btn" style="margin-top: 10px; background: var(--c-red, #e53935);">🆘 Enviar SOS agora</button>
+          <div class="result" id="sos-result"></div>
         </div>
       </div>
     </div>
@@ -1213,6 +1231,7 @@ const GOOGLE_SCOPES_BASE = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send', // botão SOS, manda e-mail com localização
 ];
 const GOOGLE_SCOPES = GOOGLE_SCOPES_BASE.join(' ');
 const GOOGLE_SCOPES_NATIVE = GOOGLE_SCOPES_BASE.join(' ');
@@ -1974,8 +1993,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '1.3';
+const APP_VERSION = '1.4';
 const CHANGELOG = [
+  {
+    version: '1.4', date: '23/06/2026',
+    items: [
+      'Novo: Botão SOS (Premium) — manda sua localização por SMS e e-mail pro contato configurado, com um toque só',
+    ],
+  },
   {
     version: '1.3', date: '23/06/2026',
     items: [
@@ -3999,6 +4024,86 @@ document.getElementById('drive-backup-input').addEventListener('change', async (
     resultEl.textContent = 'Erro: ' + e.message;
   }
 });
+
+/* =========================================================================
+   PREMIUM, Botão SOS — manda localização por SMS (nativo, sem segundo
+   toque) e e-mail (via Gmail já conectado) pro contato configurado.
+   ========================================================================= */
+const nativeSms = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Sms;
+
+async function sendEmailViaGmail(to, subject, bodyText) {
+  const raw = [`To: ${to}`, `Subject: ${subject}`, 'Content-Type: text/plain; charset=utf-8', '', bodyText].join('\r\n');
+  const rawEncoded = base64UrlEncode(new TextEncoder().encode(raw));
+  const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw: rawEncoded }),
+  });
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}));
+    throw new Error((data.error && data.error.message) || `HTTP ${resp.status}`);
+  }
+}
+
+async function triggerSOS() {
+  const resultEl = document.getElementById('sos-result');
+  const fs = getFeatureState('premium', 'sos');
+  const telefone = (fs.fields.telefone || '').trim();
+  const email = (fs.fields.email || '').trim();
+  if (!telefone && !email) {
+    resultEl.textContent = 'Configure um telefone ou e-mail de contato primeiro.';
+    return;
+  }
+  resultEl.textContent = 'Obtendo localização...';
+  let mapsLink = '';
+  try {
+    const pos = await getCurrentPosition();
+    mapsLink = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+  } catch (e) {
+    resultEl.textContent = 'Não foi possível obter sua localização: ' + e.message;
+    return;
+  }
+  const mensagem = `🆘 Preciso de ajuda! Minha localização: ${mapsLink}`;
+  const falhas = [];
+
+  if (telefone) {
+    resultEl.textContent = 'Enviando SMS...';
+    try {
+      if (nativeSms) await nativeSms.send({ to: telefone, message: mensagem });
+      else window.location.href = `sms:${telefone}?body=${encodeURIComponent(mensagem)}`; // sem app nativo, abre o app de mensagens pronto
+    } catch (e) { falhas.push('SMS: ' + e.message); }
+  }
+  if (email) {
+    resultEl.textContent = 'Enviando e-mail...';
+    if (!accessToken) {
+      falhas.push('E-mail: conecte sua conta Google em ⚙️ Central de Contas primeiro.');
+    } else {
+      try { await sendEmailViaGmail(email, '🆘 SOS - Preciso de ajuda', mensagem); }
+      catch (e) { falhas.push('E-mail: ' + e.message); }
+    }
+  }
+  resultEl.textContent = falhas.length === 0 ? 'SOS enviado.' : 'Alguns envios falharam: ' + falhas.join(' | ');
+}
+
+document.getElementById('sos-toggle').addEventListener('click', () => {
+  const el = document.getElementById('sos-subcategories');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('sos-telefone-input').addEventListener('input', (ev) => {
+  getFeatureState('premium', 'sos').fields.telefone = ev.target.value;
+  saveState();
+});
+document.getElementById('sos-email-input').addEventListener('input', (ev) => {
+  getFeatureState('premium', 'sos').fields.email = ev.target.value;
+  saveState();
+});
+document.getElementById('sos-btn').addEventListener('click', triggerSOS);
+{
+  const sosFields = getFeatureState('premium', 'sos').fields;
+  document.getElementById('sos-telefone-input').value = sosFields.telefone || '';
+  document.getElementById('sos-email-input').value = sosFields.email || '';
+}
 
 /* =========================================================================
    ALARMES DO BRIEFING (local, via Service Worker, sem servidor)
