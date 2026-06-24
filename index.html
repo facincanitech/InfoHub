@@ -758,42 +758,6 @@
 </div>
 
 <!-- ============ SOS (overlay) — básico gratuito, modo contínuo Premium ============ -->
-<div class="overlay" id="sos-overlay">
-  <div class="overlay-inner">
-    <div class="overlay-header">
-      <button class="back-btn" id="sos-close-btn">←</button>
-      <h2>🆘 SOS</h2>
-    </div>
-    <div class="account-card">
-      <div class="scope-list" style="margin-bottom: 10px;">
-        Telefone e e-mail de contato ficam no Guia → Pessoal → SOS. O disparo de
-        verdade é segurando o ícone 🆘 (aqui no topo de Meu Dia) por 5 segundos —
-        vibra quando confirma e manda localização, SMS, e-mail com um áudio
-        gravado de ~15s. Esse botão abaixo é só pra testar sem precisar segurar.
-      </div>
-      <button id="sos-btn" style="background: var(--c-red, #e53935);">🧪 Testar envio agora</button>
-      <div class="result" id="sos-result"></div>
-    </div>
-    <div class="account-card" id="sos-premium-card" style="display:none;">
-      <div class="scope-list" style="margin-bottom: 10px;">
-        <b>Modo segurança ativo (Premium)</b>: continua mandando sua localização
-        em intervalo, sem precisar apertar de novo, até você encerrar ou o tempo acabar.
-      </div>
-      <div class="btn-group" id="sos-modo-options" style="margin-bottom: 10px;">
-        <button type="button" class="btn-opt selected" data-intervalo="15" data-duracao="60">15 em 15 min, por 1 hora</button>
-        <button type="button" class="btn-opt" data-intervalo="30" data-duracao="120">30 em 30 min, por 2 horas</button>
-      </div>
-      <button id="sos-modo-toggle-btn">Iniciar modo segurança</button>
-      <div class="result" id="sos-modo-result"></div>
-    </div>
-    <div class="account-card" id="sos-premium-locked-card">
-      <div class="scope-list" style="opacity: 0.6;">
-        🚧 Modo segurança ativo (atualização contínua de localização) é Premium.
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ============ VERSÃO E NOVIDADES (overlay) ============ -->
 <div class="overlay" id="changelog-overlay">
   <div class="overlay-inner">
@@ -1900,6 +1864,10 @@ function openCategoryDetail(catId) {
       fieldsEl.appendChild(hint);
     }
 
+    if (cat.id === 'pessoal' && feat.id === 'sos') {
+      fieldsEl.appendChild(buildSosExtraCard());
+    }
+
     featEl.appendChild(fieldsEl);
     detailView.appendChild(featEl);
 
@@ -2155,8 +2123,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.3';
+const APP_VERSION = '3.4';
 const CHANGELOG = [
+  {
+    version: '3.4', date: '24/06/2026',
+    items: [
+      'SOS: o ícone 🆘 em Meu Dia agora é só gatilho (segura 5s, vibra, dispara) — sem abrir tela nenhuma',
+      'Teste manual e Modo segurança (Premium) do SOS mudaram para dentro do Guia → Pessoal → SOS',
+    ],
+  },
   {
     version: '3.3', date: '24/06/2026',
     items: [
@@ -4997,45 +4972,82 @@ async function startModoSeguranca() {
   modoSegurancaInterval = setInterval(enviarAtualizacaoSeguranca, modoSegurancaConfig.intervalo * 60 * 1000);
   modoSegurancaTimeout = setTimeout(stopModoSeguranca, modoSegurancaConfig.duracao * 60 * 1000);
 
-  document.getElementById('sos-modo-toggle-btn').textContent = 'Encerrar modo segurança';
+  const btn = document.getElementById('sos-modo-toggle-btn');
+  if (btn) btn.textContent = 'Encerrar modo segurança'; // tela do Guia pode não estar aberta nesse momento
 }
 
 function stopModoSeguranca() {
   if (modoSegurancaInterval) { clearInterval(modoSegurancaInterval); modoSegurancaInterval = null; }
   if (modoSegurancaTimeout) { clearTimeout(modoSegurancaTimeout); modoSegurancaTimeout = null; }
   if (modoSegurancaWakeLock) { modoSegurancaWakeLock.release().catch(() => {}); modoSegurancaWakeLock = null; }
-  document.getElementById('sos-modo-toggle-btn').textContent = 'Iniciar modo segurança';
-  document.getElementById('sos-modo-result').textContent = 'Modo segurança encerrado.';
+  const btn = document.getElementById('sos-modo-toggle-btn');
+  const result = document.getElementById('sos-modo-result');
+  if (btn) btn.textContent = 'Iniciar modo segurança';
+  if (result) result.textContent = 'Modo segurança encerrado.';
 }
 
-document.getElementById('sos-modo-toggle-btn').addEventListener('click', () => {
-  if (modoSegurancaInterval) stopModoSeguranca();
-  else startModoSeguranca();
-});
+// Card extra dentro do Guia → Pessoal → SOS: botão de teste manual + Modo
+// segurança (Premium). Criado de novo (com listeners de novo) cada vez que
+// a categoria abre, porque openCategoryDetail() limpa e reconstrói a tela
+// toda — diferente do antigo overlay fixo, que só existia uma vez.
+function buildSosExtraCard() {
+  const wrap = document.createElement('div');
+  wrap.style.marginTop = '10px';
 
-document.querySelectorAll('#sos-modo-options .btn-opt').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#sos-modo-options .btn-opt').forEach((b) => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    modoSegurancaConfig = { intervalo: parseInt(btn.dataset.intervalo, 10), duracao: parseInt(btn.dataset.duracao, 10) };
-  });
-});
+  const testBtn = document.createElement('button');
+  testBtn.id = 'sos-btn';
+  testBtn.style.cssText = 'background: var(--c-red, #e53935); width: 100%;';
+  testBtn.textContent = '🧪 Testar envio agora';
+  testBtn.addEventListener('click', triggerSOS);
+  const testResult = document.createElement('div');
+  testResult.className = 'result';
+  testResult.id = 'sos-result';
+  wrap.appendChild(testBtn);
+  wrap.appendChild(testResult);
 
-document.getElementById('sos-btn').addEventListener('click', triggerSOS);
+  const unlocked = state.premiumUnlocked && !!accessToken;
+  const premiumWrap = document.createElement('div');
+  premiumWrap.style.marginTop = '14px';
+  if (unlocked) {
+    premiumWrap.innerHTML = `
+      <div class="hint" style="margin-bottom: 8px;">
+        <b>Modo segurança ativo (Premium)</b>: continua mandando sua localização
+        em intervalo, sem precisar apertar de novo, até você encerrar ou o tempo acabar.
+      </div>
+      <div class="btn-group" id="sos-modo-options" style="margin-bottom: 10px;">
+        <button type="button" class="btn-opt selected" data-intervalo="15" data-duracao="60">15 em 15 min, por 1 hora</button>
+        <button type="button" class="btn-opt" data-intervalo="30" data-duracao="120">30 em 30 min, por 2 horas</button>
+      </div>
+      <button id="sos-modo-toggle-btn" style="width: 100%;">Iniciar modo segurança</button>
+      <div class="result" id="sos-modo-result"></div>
+    `;
+    premiumWrap.querySelector('#sos-modo-toggle-btn').addEventListener('click', () => {
+      if (modoSegurancaInterval) stopModoSeguranca();
+      else startModoSeguranca();
+    });
+    premiumWrap.querySelectorAll('#sos-modo-options .btn-opt').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        premiumWrap.querySelectorAll('#sos-modo-options .btn-opt').forEach((b) => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        modoSegurancaConfig = { intervalo: parseInt(btn.dataset.intervalo, 10), duracao: parseInt(btn.dataset.duracao, 10) };
+      });
+    });
+  } else {
+    premiumWrap.innerHTML = `<div class="hint" style="opacity: 0.6;">🚧 Modo segurança ativo (atualização contínua de localização) é Premium.</div>`;
+  }
+  wrap.appendChild(premiumWrap);
+  return wrap;
+}
 
-// Segura 5s no ícone 🆘 (Meu Dia) pra disparar o SOS de verdade, sem abrir
-// tela nenhuma — vibra quando completa o tempo, pra confirmar sem precisar
-// olhar. Toque rápido (menos de 5s) só abre o painel (teste manual + modo
-// segurança Premium), não dispara nada.
+// Segura 5s no ícone 🆘 (Meu Dia) pra disparar o SOS — sem abrir tela
+// nenhuma, o ícone ali é só gatilho. Vibra ~1s quando completa, pra
+// confirmar sem precisar olhar a tela. Soltar antes dos 5s cancela.
 let sosHoldTimeoutId = null;
-let sosHoldFired = false;
 const sosHeaderBtn = document.getElementById('sos-header-btn');
 
 function startSosHold() {
-  sosHoldFired = false;
   sosHoldTimeoutId = setTimeout(() => {
-    sosHoldFired = true;
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+    if (navigator.vibrate) navigator.vibrate(1000);
     triggerSOS();
   }, 5000);
 }
@@ -5045,25 +5057,12 @@ function cancelSosHold() {
 
 // Bloquear o menu de contexto evita que o toque-e-segure padrão do
 // Android/WebView (menu de copiar/compartilhar) cancele nosso gesto no meio
-// do caminho, antes de completar os 5s — sem usar preventDefault no
-// pointerdown, que em touch suprime o "click" sintético depois e quebraria
-// o toque rápido (abrir o painel).
+// do caminho, antes de completar os 5s.
 sosHeaderBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 sosHeaderBtn.addEventListener('pointerdown', startSosHold);
 sosHeaderBtn.addEventListener('pointerup', cancelSosHold);
 sosHeaderBtn.addEventListener('pointerleave', cancelSosHold);
 sosHeaderBtn.addEventListener('pointercancel', cancelSosHold);
-
-sosHeaderBtn.addEventListener('click', () => {
-  if (sosHoldFired) return; // já disparou pelo hold, não abre o painel também
-  const unlocked = state.premiumUnlocked && !!accessToken;
-  document.getElementById('sos-premium-card').style.display = unlocked ? 'block' : 'none';
-  document.getElementById('sos-premium-locked-card').style.display = unlocked ? 'none' : 'block';
-  document.getElementById('sos-overlay').classList.add('open');
-});
-document.getElementById('sos-close-btn').addEventListener('click', () => {
-  document.getElementById('sos-overlay').classList.remove('open');
-});
 
 /* =========================================================================
    ALARMES DO BRIEFING (local, via Service Worker, sem servidor)
