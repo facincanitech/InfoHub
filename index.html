@@ -460,7 +460,7 @@
         <button class="icon-btn" data-action="voice">🎤</button>
         <button class="icon-btn" data-action="help">❓</button>
         <button class="icon-btn" id="saved-header-btn">💾</button>
-        <button class="icon-btn" id="sos-header-btn" style="color: var(--c-red, #e53935);">🆘</button>
+        <button class="icon-btn" id="sos-header-btn" style="color: var(--c-red, #e53935); touch-action: none; -webkit-user-select: none; user-select: none;">🆘</button>
         <button class="icon-btn" data-action="gear">⚙️</button>
       </div>
     </div>
@@ -2155,8 +2155,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.2';
+const APP_VERSION = '3.3';
 const CHANGELOG = [
+  {
+    version: '3.3', date: '24/06/2026',
+    items: [
+      'Corrigido: segurar o ícone 🆘 não disparava o SOS — o menu de toque-longo padrão do Android cancelava o gesto antes de completar os 5 segundos',
+    ],
+  },
   {
     version: '3.2', date: '24/06/2026',
     items: [
@@ -5037,6 +5043,12 @@ function cancelSosHold() {
   if (sosHoldTimeoutId) { clearTimeout(sosHoldTimeoutId); sosHoldTimeoutId = null; }
 }
 
+// Bloquear o menu de contexto evita que o toque-e-segure padrão do
+// Android/WebView (menu de copiar/compartilhar) cancele nosso gesto no meio
+// do caminho, antes de completar os 5s — sem usar preventDefault no
+// pointerdown, que em touch suprime o "click" sintético depois e quebraria
+// o toque rápido (abrir o painel).
+sosHeaderBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 sosHeaderBtn.addEventListener('pointerdown', startSosHold);
 sosHeaderBtn.addEventListener('pointerup', cancelSosHold);
 sosHeaderBtn.addEventListener('pointerleave', cancelSosHold);
