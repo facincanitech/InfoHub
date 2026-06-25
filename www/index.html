@@ -472,6 +472,8 @@
         <div class="item-action-menu" id="more-menu">
           <button type="button" class="item-action-menu-opt" data-action="help">❓ Ajuda</button>
           <button type="button" class="item-action-menu-opt" data-action="gear">⚙️ Configurações</button>
+          <button type="button" class="item-action-menu-opt" id="more-menu-tema">🎨 Tema</button>
+          <button type="button" class="item-action-menu-opt" id="more-menu-contato">✉️ Contato</button>
         </div>
       </div>
     </div>
@@ -551,13 +553,13 @@
       <div id="briefing-label">Configure suas categorias na aba Guia</div>
       <div id="briefing-sub"></div>
       <div class="play-controls">
-        <button class="skip-btn" id="prev-btn">⏮</button>
+        <button class="skip-btn" id="prev-btn">🆘</button>
         <div class="play-wrap" id="play-wrap">
           <div class="play-ring"></div>
           <div class="play-ring r2"></div>
           <div class="play-circle" id="play-circle">▶</div>
         </div>
-        <button class="skip-btn" id="next-btn">⏭</button>
+        <button class="skip-btn" id="next-btn">🎤</button>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
 
@@ -2151,6 +2153,17 @@ const accountsOverlay = document.getElementById('accounts-overlay');
 document.querySelectorAll('[data-action="gear"]').forEach(btn => {
   btn.addEventListener('click', () => { accountsOverlay.classList.add('open'); updateAccountsUI(); });
 });
+
+// Atalhos do menu "⋯" pra abrir direto numa aba específica da Central de
+// Contas, em vez de cair sempre na primeira (Email).
+function openAccountsTab(tab) {
+  accountsOverlay.classList.add('open');
+  updateAccountsUI();
+  document.querySelectorAll('.account-tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.account === tab));
+  document.querySelectorAll('.account-panel').forEach((p) => p.classList.toggle('active', p.id === `account-${tab}`));
+}
+document.getElementById('more-menu-tema').addEventListener('click', () => openAccountsTab('tema'));
+document.getElementById('more-menu-contato').addEventListener('click', () => openAccountsTab('contato'));
 document.getElementById('accounts-close-btn').addEventListener('click', () => accountsOverlay.classList.remove('open'));
 
 document.getElementById('privacy-open-btn').addEventListener('click', () => {
@@ -2162,8 +2175,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.7';
+const APP_VERSION = '3.8';
 const CHANGELOG = [
+  {
+    version: '3.8', date: '24/06/2026',
+    items: [
+      'Corrigido: 🆘/🎤 não apareciam nos círculos ao abrir o app (só trocavam de ⏮/⏭ depois de tocar algo uma vez)',
+      'Menu "⋯" ganhou atalho direto pra Tema e Contato, além de Ajuda e Configurações',
+    ],
+  },
   {
     version: '3.7', date: '24/06/2026',
     items: [
