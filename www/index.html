@@ -505,10 +505,7 @@
             <span class="slider"></span>
           </label>
         </div>
-        <div class="settings-row">
-          <div class="label">Voz</div>
-          <select id="voice-select"></select>
-        </div>
+        <select id="voice-select" style="display: none;"></select>
         <div class="settings-row">
           <div class="label">Velocidade</div>
           <input type="range" id="briefing-rate" min="0.6" max="1.6" step="0.1" value="1">
@@ -2183,8 +2180,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.12';
+const APP_VERSION = '3.13';
 const CHANGELOG = [
+  {
+    version: '3.13', date: '24/06/2026',
+    items: [
+      'Removido o seletor "Voz" (TTS) da Customização, que não fazia nada de útil — já escolhia a melhor voz do Android sozinho. Fica só o Narrador.',
+    ],
+  },
   {
     version: '3.12', date: '24/06/2026',
     items: [
