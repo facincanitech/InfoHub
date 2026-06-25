@@ -290,7 +290,7 @@
     touch-action: none;
   }
   .skip-btn:hover { background: var(--c-border); }
-  .sos-mic-row { display: flex; justify-content: space-between; margin-bottom: 14px; }
+  .sos-mic-row { display: flex; justify-content: space-between; margin-bottom: 14px; width: 100%; }
   #sos-badge-btn, #mic-badge-btn {
     touch-action: none; width: 52px; height: 52px; font-size: 1.5rem;
   }
@@ -2183,8 +2183,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.11';
+const APP_VERSION = '3.12';
 const CHANGELOG = [
+  {
+    version: '3.12', date: '24/06/2026',
+    items: [
+      'Corrigido: 🆘 e 🎤 ficavam presos no meio (a linha deles não ocupava a largura toda, então "espalhar pros lados" não tinha efeito)',
+    ],
+  },
   {
     version: '3.11', date: '24/06/2026',
     items: [
