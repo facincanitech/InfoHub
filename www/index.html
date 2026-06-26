@@ -541,7 +541,6 @@
 
     <div class="md-bento-detail" id="alarms-detail">
       <div class="settings-panel">
-        <div class="desc" style="margin-bottom: 10px;">Toca sozinho se a aba já estiver aberta; senão, manda notificação pra abrir. Cada horário toca só o que você marcar nele — toque numa tag pra ligar/desligar nesse horário.</div>
         <div class="settings-row">
           <div class="label">Ativar</div>
           <label class="switch">
@@ -549,16 +548,13 @@
             <span class="slider"></span>
           </label>
         </div>
-        <div class="settings-row">
-          <div class="label">Se eu estiver usando outro app, falar o briefing completo (não só avisar)</div>
-          <label class="switch">
-            <input type="checkbox" id="alarms-falar-completo-toggle">
-            <span class="slider"></span>
-          </label>
-        </div>
         <div id="alarms-list"></div>
         <div class="settings-row">
-          <input type="time" id="new-alarm-time-input" value="07:00" lang="pt-BR" style="flex:1; max-width: 160px;">
+          <div style="display:flex; gap:6px; align-items:center;">
+            <select id="new-alarm-hour-input" style="width:64px;"></select>
+            <span>:</span>
+            <select id="new-alarm-minute-input" style="width:64px;"></select>
+          </div>
           <button type="button" id="add-alarm-btn" style="background: var(--c-accent-blue); color: var(--c-on-accent); padding: 8px 14px; font-size: 0.85rem;">+ Adicionar horário</button>
         </div>
       </div>
@@ -2343,8 +2339,16 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.18';
+const APP_VERSION = '3.19';
 const CHANGELOG = [
+  {
+    version: '3.19', date: '26/06/2026',
+    items: [
+      'Briefing automático reorganizado: texto explicativo e seletor de "completo ou não" removidos (fica sempre completo), horário agora usa seletores próprios de 24h (sem depender do aparelho)',
+      'Cada horário vira uma linha recolhida (toque pra abrir e editar as tags)',
+      'Lembretes personalizados agora aparecem como grupo nas tags de cada horário, com cada lembrete selecionável individualmente',
+    ],
+  },
   {
     version: '3.18', date: '25/06/2026',
     items: [
@@ -3001,11 +3005,14 @@ async function fetchFeriadosItems(limit) {
 // Lembretes personalizados, guardados localmente (sem API) — fala uma vez,
 // no dia exato marcado. Não some sozinho depois (fica no histórico de
 // configuração até você apagar manualmente, igual os horários do alarme).
-async function fetchLembretesItems(itens) {
+// selecionados (opcional): lista de "texto" dos lembretes marcados pra esse
+// horário específico — sem isso (play manual, "Meu Dia"), fala todos do dia.
+async function fetchLembretesItems(itens, selecionados) {
   if (!itens || itens.length === 0) return [];
   const hojeIso = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local, sem fuso
   return itens
     .filter((item) => item.data === hojeIso)
+    .filter((item) => !selecionados || selecionados.includes(item.texto))
     .map((item) => ({
       category: 'Pessoal', sub: 'Lembrete',
       title: item.texto,
@@ -3852,8 +3859,17 @@ function getEnabledFeatureSummaries(featureKeys) {
     cat.features.forEach(feat => {
       const fs = getFeatureState(cat.id, feat.id);
       if (!fs.enabled) return;
-      if (featureKeys && !featureKeys.includes(`${cat.id}.${feat.id}`)) return;
-      summaries.push({ catId: cat.id, featId: feat.id, fields: fs.fields });
+      // Lembretes específicos ("lembrete:Médico") contam como a feature
+      // "pessoal.lembretes" estar incluída nesse horário — sem isso, marcar
+      // só os lembretes (sem marcar a categoria toda) nunca disparava nada.
+      const isLembretesComEspecificos = cat.id === 'pessoal' && feat.id === 'lembretes'
+        && featureKeys && featureKeys.some((k) => k.startsWith('lembrete:'));
+      if (featureKeys && !featureKeys.includes(`${cat.id}.${feat.id}`) && !isLembretesComEspecificos) return;
+      const fields = { ...fs.fields };
+      if (isLembretesComEspecificos) {
+        fields.selecionados = featureKeys.filter((k) => k.startsWith('lembrete:')).map((k) => k.slice('lembrete:'.length));
+      }
+      summaries.push({ catId: cat.id, featId: feat.id, fields });
     });
   });
   return summaries;
@@ -3870,7 +3886,7 @@ async function buildQueue(featureKeys) {
       else if (s.catId === 'pessoal' && s.featId === 'agenda') items = await fetchAgendaItems(limit);
       else if (s.catId === 'pessoal' && s.featId === 'aniversarios') items = await fetchAniversariosItems(limit);
       else if (s.catId === 'pessoal' && s.featId === 'feriados') items = await fetchFeriadosItems(limit);
-      else if (s.catId === 'pessoal' && s.featId === 'lembretes') items = await fetchLembretesItems(s.fields.itens);
+      else if (s.catId === 'pessoal' && s.featId === 'lembretes') items = await fetchLembretesItems(s.fields.itens, s.fields.selecionados);
       else if (s.catId === 'horoscopo' && s.featId === 'fase-lua') items = await fetchFaseLuaItems();
       else if (s.catId === 'horoscopo' && s.featId === 'numerologia') items = await fetchNumerologiaItems(s.fields);
       else if (s.catId === 'horoscopo' && s.featId === 'signo-solar') items = await fetchSignoSolarItems(s.fields);
@@ -5654,16 +5670,39 @@ sosHoldBtn.addEventListener('pointercancel', cancelSosHold);
    ========================================================================= */
 const alarmsActiveToggle = document.getElementById('alarms-active-toggle');
 const alarmsListEl = document.getElementById('alarms-list');
-const newAlarmTimeInput = document.getElementById('new-alarm-time-input');
+const newAlarmHourInput = document.getElementById('new-alarm-hour-input');
+const newAlarmMinuteInput = document.getElementById('new-alarm-minute-input');
 let alarmTimeoutIds = [];
+
+// Select próprio em vez de <input type="time"> — esse depende da
+// configuração de 12h/24h do aparelho e tava vindo errado em alguns
+// celulares; aqui é sempre 24h, garantido.
+for (let h = 0; h < 24; h++) {
+  const opt = document.createElement('option');
+  opt.value = String(h).padStart(2, '0');
+  opt.textContent = String(h).padStart(2, '0');
+  newAlarmHourInput.appendChild(opt);
+}
+for (let m = 0; m < 60; m += 5) {
+  const opt = document.createElement('option');
+  opt.value = String(m).padStart(2, '0');
+  opt.textContent = String(m).padStart(2, '0');
+  newAlarmMinuteInput.appendChild(opt);
+}
+newAlarmHourInput.value = '07';
+newAlarmMinuteInput.value = '00';
 
 // Tudo que tá ativo no Guia agora — vira a lista de tags que cada horário
 // pode marcar pra tocar (toque pra marcar, sem arrastar — mais confiável em
 // WebView do que drag-and-drop por toque).
+// "pessoal.lembretes" não entra na lista normal — vira um grupo expansível
+// próprio (renderLembreteTagGroup), porque cada lembrete precisa de seleção
+// individual, não só "ligado/desligado" pra feature inteira.
 function getEnabledFeatureTags() {
   const tags = [];
   CATEGORY_DEFS.forEach((cat) => {
     cat.features.forEach((feat) => {
+      if (cat.id === 'pessoal' && feat.id === 'lembretes') return;
       if (getFeatureState(cat.id, feat.id).enabled) {
         tags.push({ key: `${cat.id}.${feat.id}`, label: `${cat.icon} ${feat.label}` });
       }
@@ -5672,19 +5711,70 @@ function getEnabledFeatureTags() {
   return tags;
 }
 
+// Horário que está expandido pra edição agora — só um por vez, o resto fica
+// recolhido só com o horário + ✕, pra não acumular lista gigante quando tem
+// vários horários configurados.
+let expandedAlarmTime = null;
+
+function renderLembreteTagGroup(alarm, wrap) {
+  const lembretesFs = getFeatureState('pessoal', 'lembretes');
+  const itens = Array.isArray(lembretesFs.fields.itens) ? lembretesFs.fields.itens : [];
+
+  const groupBtn = document.createElement('button');
+  groupBtn.type = 'button';
+  const algumSelecionado = alarm.features.some((k) => k.startsWith('lembrete:'));
+  groupBtn.className = 'btn-opt' + (algumSelecionado ? ' selected' : '');
+  groupBtn.textContent = '📝 Lembretes personalizados ›';
+  const subWrap = document.createElement('div');
+  subWrap.className = 'btn-group';
+  subWrap.style.cssText = 'display:none; margin: 6px 0 0 14px;';
+  if (itens.length === 0) {
+    subWrap.innerHTML = '<div class="desc" style="opacity:0.6;">Nenhum lembrete cadastrado ainda (Guia → Pessoal → Lembretes).</div>';
+  } else {
+    itens.forEach((item) => {
+      const key = `lembrete:${item.texto}`;
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'btn-opt' + (alarm.features.includes(key) ? ' selected' : '');
+      chip.textContent = item.texto;
+      chip.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (alarm.features.includes(key)) alarm.features = alarm.features.filter((k) => k !== key);
+        else alarm.features.push(key);
+        saveState();
+        renderAlarmsList();
+      });
+      subWrap.appendChild(chip);
+    });
+  }
+  groupBtn.addEventListener('click', () => {
+    subWrap.style.display = subWrap.style.display === 'none' ? 'flex' : 'none';
+    subWrap.style.flexWrap = 'wrap';
+  });
+  wrap.appendChild(groupBtn);
+  wrap.appendChild(subWrap);
+}
+
 function renderAlarmsList() {
   alarmsListEl.innerHTML = '';
   const tags = getEnabledFeatureTags();
   state.alarmTimes.slice().sort((a, b) => a.time.localeCompare(b.time)).forEach((alarm) => {
+    const expanded = expandedAlarmTime === alarm.time;
     const row = document.createElement('div');
     row.className = 'alarm-item';
+    row.style.cursor = 'pointer';
     const span = document.createElement('span');
     span.className = 'time';
     span.textContent = alarm.time;
+    row.addEventListener('click', () => {
+      expandedAlarmTime = expanded ? null : alarm.time;
+      renderAlarmsList();
+    });
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.textContent = '✕';
-    delBtn.addEventListener('click', () => {
+    delBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
       state.alarmTimes = state.alarmTimes.filter((a) => a.time !== alarm.time);
       saveState();
       renderAlarmsList();
@@ -5693,6 +5783,8 @@ function renderAlarmsList() {
     row.appendChild(span);
     row.appendChild(delBtn);
     alarmsListEl.appendChild(row);
+
+    if (!expanded) return;
 
     const tagWrap = document.createElement('div');
     tagWrap.className = 'btn-group';
@@ -5714,6 +5806,7 @@ function renderAlarmsList() {
         tagWrap.appendChild(chip);
       });
     }
+    renderLembreteTagGroup(alarm, tagWrap);
     alarmsListEl.appendChild(tagWrap);
   });
 }
@@ -5900,16 +5993,9 @@ alarmsActiveToggle.addEventListener('change', async () => {
   updateAlarmsTileStatus();
 });
 
-// "Falar completo" só importa pro nativo (é ele quem fala sozinho quando o
-// app não está na tela) — o JS só guarda a preferência e avisa o plugin.
-const alarmsFalarCompletoToggle = document.getElementById('alarms-falar-completo-toggle');
-alarmsFalarCompletoToggle.checked = state.alarmFalarCompleto;
-if (nativeAlarm) nativeAlarm.setFalarCompleto({ enabled: state.alarmFalarCompleto }).catch(() => {});
-alarmsFalarCompletoToggle.addEventListener('change', () => {
-  state.alarmFalarCompleto = alarmsFalarCompletoToggle.checked;
-  saveState();
-  if (nativeAlarm) nativeAlarm.setFalarCompleto({ enabled: state.alarmFalarCompleto }).catch(() => {});
-});
+// Sempre fala completo agora (sem seletor) — só importa pro nativo (é ele
+// quem fala sozinho quando o app não está na tela).
+if (nativeAlarm) nativeAlarm.setFalarCompleto({ enabled: true }).catch(() => {});
 
 const BENTO_TILE_DETAIL_IDS = { 'custom-tile': 'custom-detail', 'alarms-tile': 'alarms-detail' };
 document.getElementById('saved-header-btn').addEventListener('click', () => {
@@ -5927,9 +6013,10 @@ document.querySelectorAll('.md-bento-tile').forEach((tile) => {
 });
 
 document.getElementById('add-alarm-btn').addEventListener('click', () => {
-  const time = newAlarmTimeInput.value;
+  const time = `${newAlarmHourInput.value}:${newAlarmMinuteInput.value}`;
   if (!time || state.alarmTimes.some((a) => a.time === time)) return;
   state.alarmTimes.push({ time, features: [] });
+  expandedAlarmTime = time; // abre direto pra já marcar as tags, sem precisar tocar de novo
   saveState();
   renderAlarmsList();
   scheduleAllAlarms();
