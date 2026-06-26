@@ -71,7 +71,7 @@ public class PlayerForegroundService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = nm.getNotificationChannel(CHANNEL_ID);
             if (channel == null) {
-                channel = new NotificationChannel(CHANNEL_ID, "Player InfoHub", NotificationManager.IMPORTANCE_LOW);
+                channel = new NotificationChannel(CHANNEL_ID, "Player SonorHub", NotificationManager.IMPORTANCE_LOW);
                 nm.createNotificationChannel(channel);
             }
         }
@@ -87,7 +87,7 @@ public class PlayerForegroundService extends Service {
             : new Notification.Builder(this);
 
         builder
-            .setContentTitle("InfoHub Player")
+            .setContentTitle("SonorHub Player")
             .setContentText("Tocando em segundo plano")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(contentIntent)

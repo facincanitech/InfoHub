@@ -142,7 +142,7 @@ public class BriefingAlarmReceiver extends BroadcastReceiver {
             : new Notification.Builder(context);
 
         builder
-            .setContentTitle("InfoHub, Meu Dia")
+            .setContentTitle("SonorHub, Meu Dia")
             .setContentText(fullScreen
                 ? "Tocando seu briefing das " + time + "..."
                 : "Seu briefing das " + time + " está pronto. Toca pra ouvir.")
