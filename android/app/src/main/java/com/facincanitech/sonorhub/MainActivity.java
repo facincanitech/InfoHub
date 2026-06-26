@@ -55,6 +55,11 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     @Override
     public void onStop() {
         super.onStop();
+        // Reforço pro botão de "apps recentes" (Overview) — em alguns aparelhos
+        // ele só passa por aqui (onStop), não por onUserLeaveHint/onPause a
+        // tempo de entrar em PiP. isFinishing() exclui o caso de fechar de
+        // verdade (botão Voltar na tela raiz) — aí não é pra abrir PiP.
+        if (!isFinishing()) tryEnterPip();
         if (pipReceiverRegistered) {
             unregisterReceiver(pipControlReceiver);
             pipReceiverRegistered = false;

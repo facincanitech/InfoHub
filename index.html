@@ -2347,8 +2347,16 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.1';
+const APP_VERSION = '4.2';
 const CHANGELOG = [
+  {
+    version: '4.2', date: '26/06/2026',
+    items: [
+      'PiP do Player agora mostra a capa do álbum (ou o vídeo, se ligado), não mais só o texto',
+      'Ícone de trocar vídeo/áudio agora é tela/fone, igual o YouTube Music (era olho/macaco)',
+      'PiP agora também entra ao abrir o gerenciador de apps recentes, não só ao ir pra tela inicial',
+    ],
+  },
   {
     version: '4.1', date: '26/06/2026',
     items: [
@@ -4170,11 +4178,14 @@ async function abrirArtistaPlayerMedia(art) {
 const nativePlayerPip = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PlayerPip;
 
 // Sem isso o PiP recorta a Activity inteira (por isso só aparecia o título
-// "Player" escrito) — manda pro nativo onde o vídeo está desenhado na tela
-// normal, em px de tela real (CSS px × devicePixelRatio).
+// "Player" escrito) — manda pro nativo onde a capa/vídeo tá desenhado na
+// tela normal, em px de tela real (CSS px × devicePixelRatio). Usa o
+// player-cover-wrap (não o player-yt-container) porque ele é o que fica
+// visível sempre — capa quando é só áudio, vídeo quando o 👁/🎧 liga o
+// vídeo — assim o PiP mostra a coisa certa nos dois modos.
 function updatePipVideoRect() {
   if (!nativePlayerPip) return;
-  const el = document.getElementById('player-yt-container');
+  const el = document.getElementById('player-cover-wrap');
   if (!el || el.offsetParent === null) return;
   const rect = el.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
@@ -4228,7 +4239,8 @@ async function ensurePlayerYt() {
 
 // Música e Vídeo agora são a mesma aba/busca — abre sempre mostrando a capa
 // (estilo YouTube Music) e o usuário decide se quer ver o vídeo de verdade
-// apertando o 👁 no canto da capa.
+// apertando o ícone no canto da capa — tela (📺) pra ligar o vídeo, fone
+// (🎧) pra voltar a só áudio, igual o YouTube Music faz (lá não é olho/macaco).
 let playerVideoVisible = false;
 
 function setPlayerVideoVisible(visible) {
@@ -4238,7 +4250,7 @@ function setPlayerVideoVisible(visible) {
   wrap.style.aspectRatio = visible ? '16/9' : '1/1';
   container.style.display = visible ? 'block' : 'none';
   document.getElementById('player-cover-img').style.display = visible ? 'none' : 'block';
-  document.getElementById('player-ctrl-video-toggle').textContent = visible ? '🙈' : '👁';
+  document.getElementById('player-ctrl-video-toggle').textContent = visible ? '🎧' : '📺';
   if (visible) {
     requestAnimationFrame(() => {
       container.style.height = `${wrap.clientHeight}px`;
