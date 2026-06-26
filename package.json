@@ -1,5 +1,5 @@
 {
-  "name": "sunohub",
+  "name": "sonorhub",
   "version": "1.0.0",
   "description": "Não reutilizar / projeto proprietário.",
   "main": "sw.js",
@@ -11,16 +11,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/facincanitech/SunoHub.git"
+    "url": "git+https://github.com/facincanitech/SonorHub.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/facincanitech/SunoHub/issues"
+    "url": "https://github.com/facincanitech/SonorHub/issues"
   },
-  "homepage": "https://github.com/facincanitech/SunoHub#readme",
+  "homepage": "https://github.com/facincanitech/SonorHub#readme",
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor-community/text-to-speech": "^8.0.2",

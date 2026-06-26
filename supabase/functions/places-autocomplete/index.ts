@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
       params.set('lon', String(lng));
     }
     const resp = await fetch(`https://photon.komoot.io/api/?${params}`, {
-      headers: { 'User-Agent': 'SunoHub/1.0 (briefing app)' },
+      headers: { 'User-Agent': 'SonorHub/1.0 (briefing app)' },
     });
     if (!resp.ok) {
       return Response.json({ suggestions: [], error: `Photon: HTTP ${resp.status}` }, { headers: CORS_HEADERS });

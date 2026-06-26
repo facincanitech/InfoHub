@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
       return Response.json({ items: [], error: `Podcast "${name}" não encontrado.` }, { headers: CORS_HEADERS });
     }
 
-    const feedRes = await fetch(feedUrl, { headers: { 'User-Agent': 'SunoHub/1.0 (briefing app)' } });
+    const feedRes = await fetch(feedUrl, { headers: { 'User-Agent': 'SonorHub/1.0 (briefing app)' } });
     const text = await feedRes.text();
     const blocks = text.match(/<item[\s\S]*?<\/item>/gi) || [];
     const items = blocks
