@@ -47,6 +47,20 @@
     background: var(--c-bg);
     color: var(--c-text);
     min-height: 100vh;
+    /* Sem isso, segurar em qualquer lugar do app entra em modo de seleção de
+       texto/ícone (o quadrado azul, "copiar") — comportamento de página web,
+       não de app. Campos de digitar (input/textarea) ficam de fora da regra
+       de seguida, senão não dava pra editar texto neles. */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+  }
+  input, textarea, select {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    user-select: text;
   }
   #app {
     max-width: 420px;
@@ -2329,8 +2343,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.17';
+const APP_VERSION = '3.18';
 const CHANGELOG = [
+  {
+    version: '3.18', date: '25/06/2026',
+    items: [
+      'Corrigido: segurar em qualquer ícone ou texto do app entrava em modo de seleção (igual página web) — isso quebrava o gatilho do SOS. Bloqueado em todo o app, mantendo seleção normal só nos campos de digitar.',
+    ],
+  },
   {
     version: '3.17', date: '24/06/2026',
     items: [
