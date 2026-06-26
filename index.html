@@ -2333,8 +2333,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.20';
+const APP_VERSION = '3.21';
 const CHANGELOG = [
+  {
+    version: '3.21', date: '26/06/2026',
+    items: [
+      'SOS: botão de teste no Guia renomeado pra "Enviar agora", e o segurar no Meu Dia agora vibra intermitente durante os 5s (não só no final) — confirma visualmente que está contando sem precisar olhar',
+    ],
+  },
   {
     version: '3.20', date: '26/06/2026',
     items: [
@@ -5595,7 +5601,7 @@ function buildSosExtraCard() {
   const testBtn = document.createElement('button');
   testBtn.id = 'sos-btn';
   testBtn.style.cssText = 'background: var(--c-red, #e53935); width: 100%;';
-  testBtn.textContent = '🧪 Testar envio agora';
+  testBtn.textContent = '🆘 Enviar agora';
   testBtn.addEventListener('click', triggerSOS);
   const testResult = document.createElement('div');
   testResult.className = 'result';
@@ -5643,14 +5649,20 @@ function buildSosExtraCard() {
 let sosHoldTimeoutId = null;
 const sosHoldBtn = document.getElementById('sos-badge-btn');
 
+// Vibração intermitente (liga/desliga) durante todo o segurar, não só uma
+// vibração no final — confirma visualmente (sem precisar olhar) que está
+// contando, e some na hora se soltar antes dos 5s.
+const SOS_VIBRATE_PATTERN = Array(13).fill(200); // 200ms on, 200ms off, repete ~5s
+
 function startSosHold() {
+  if (navigator.vibrate) navigator.vibrate(SOS_VIBRATE_PATTERN);
   sosHoldTimeoutId = setTimeout(() => {
-    if (navigator.vibrate) navigator.vibrate(1000);
     triggerSOS();
   }, 5000);
 }
 function cancelSosHold() {
   if (sosHoldTimeoutId) { clearTimeout(sosHoldTimeoutId); sosHoldTimeoutId = null; }
+  if (navigator.vibrate) navigator.vibrate(0); // para a vibração na hora se soltar antes dos 5s
 }
 
 // Bloquear o menu de contexto e seleção de texto evita que o toque-e-segure
