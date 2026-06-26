@@ -727,10 +727,10 @@
     </div>
 
     <div id="player-now-playing" style="display:none; margin-bottom: 16px;">
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom: 8px;">
-        <button id="player-ctrl-favorite" style="background: var(--c-surface); border: 1px solid var(--c-border2); color: var(--c-text); font-size:1.1rem; width:40px; height:40px; border-radius:50%; padding:0; display:none;">☆</button>
-        <button id="player-ctrl-share" style="background: var(--c-surface); border: 1px solid var(--c-border2); color: var(--c-text); font-size:1.1rem; width:40px; height:40px; border-radius:50%; padding:0; display:none;">📤</button>
-        <button id="player-ctrl-video-toggle" style="background: var(--c-surface); border: 1px solid var(--c-border2); color: var(--c-text); font-size:1.1rem; width:40px; height:40px; border-radius:50%; padding:0; display:none;">📺</button>
+      <div style="display:flex; justify-content:center; align-items:center; gap:28px; margin-bottom: 10px;">
+        <button id="player-ctrl-video-toggle" style="background:none; color: var(--c-text); padding:4px; display:none;"></button>
+        <button id="player-ctrl-favorite" style="background:none; color: var(--c-text); font-size:1.4rem; padding:4px; display:none;">☆</button>
+        <button id="player-ctrl-share" style="background:none; color: var(--c-text); padding:4px; display:none;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg></button>
       </div>
       <div id="player-cover-wrap" style="position:relative; width:100%; max-width:280px; margin:0 auto 16px; aspect-ratio:1/1; border-radius:14px; overflow:hidden; background:#000; box-shadow:0 8px 24px -8px rgba(0,0,0,0.4);">
         <img id="player-cover-img" style="width:100%; height:100%; object-fit:cover; display:none;">
@@ -2366,8 +2366,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.9';
+const APP_VERSION = '4.10';
 const CHANGELOG = [
+  {
+    version: '4.10', date: '26/06/2026',
+    items: [
+      'MultiSonor: ícones centralizados (tela/fone, favorito, compartilhar), sem mais o fundo redondo',
+      'Ícones de tela/fone e compartilhar agora são desenho de linha, não emoji',
+    ],
+  },
   {
     version: '4.9', date: '26/06/2026',
     items: [
@@ -4425,8 +4432,12 @@ async function ensurePlayerYt() {
 
 // Música e Vídeo agora são a mesma aba/busca — abre sempre mostrando a capa
 // (estilo YouTube Music) e o usuário decide se quer ver o vídeo de verdade
-// apertando o ícone no canto da capa — tela (📺) pra ligar o vídeo, fone
-// (🎧) pra voltar a só áudio, igual o YouTube Music faz (lá não é olho/macaco).
+// apertando o ícone — tela pra ligar o vídeo, fone pra voltar a só áudio,
+// igual o YouTube Music faz. Ícones de linha (não emoji) — se um dia
+// trocarmos por arquivo próprio (ex: icones/tela.svg, icones/fone.svg), só
+// trocar o innerHTML aqui por uma tag <img>.
+const ICON_SCREEN_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+const ICON_HEADPHONES_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><rect x="2" y="14" width="5" height="7" rx="2"/><rect x="17" y="14" width="5" height="7" rx="2"/></svg>';
 let playerVideoVisible = false;
 
 function setPlayerVideoVisible(visible) {
@@ -4436,7 +4447,7 @@ function setPlayerVideoVisible(visible) {
   wrap.style.aspectRatio = visible ? '16/9' : '1/1';
   container.style.display = visible ? 'block' : 'none';
   document.getElementById('player-cover-img').style.display = visible ? 'none' : 'block';
-  document.getElementById('player-ctrl-video-toggle').textContent = visible ? '🎧' : '📺';
+  document.getElementById('player-ctrl-video-toggle').innerHTML = visible ? ICON_HEADPHONES_SVG : ICON_SCREEN_SVG;
   if (visible) {
     requestAnimationFrame(() => {
       container.style.height = `${wrap.clientHeight}px`;
