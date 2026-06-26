@@ -690,7 +690,7 @@
     <div class="navbar-inner">
       <button class="nav-btn active" data-tab="briefing"><span class="ic">▶</span>Meu Dia</button>
       <button class="nav-btn" data-tab="gratis"><span class="ic">🎚️</span>Guia</button>
-      <button class="nav-btn" id="player-nav-btn"><span class="ic">🎵</span>MultiSonor</button>
+      <button class="nav-btn" id="player-nav-btn" data-tab="player"><span class="ic">🎵</span>MultiSonor</button>
       <button class="nav-btn" data-tab="premium"><span class="ic">⭐</span>Premium</button>
     </div>
   </nav>
@@ -926,69 +926,72 @@
   </div>
 </div>
 
-<!-- ============ PLAYER (Música/Vídeo/Rádio, tela cheia) ============
-     Busca fica sempre fixa no topo de cada aba — tocando algo ou não. Quando
-     toca, o player grande ocupa o resto do espaço (nada de lista embaixo);
-     apertar buscar de novo volta a mostrar os resultados, sem parar o que
-     tá tocando. O navbar de abas (Música/Vídeo vs Rádio) embaixo nunca some. -->
-<div class="nav-overlay" id="player-overlay">
-  <div class="nav-top-bar">
-    <button class="nav-back-btn" id="player-close-btn">←</button>
-    <div style="font-weight:600;">🎵 MultiSonor</div>
-    <span style="width:30px;"></span>
+<!-- ============ TAB: MULTISONOR (Música/Vídeo/Rádio) ============
+     Era uma tela cheia separada (.nav-overlay) que cobria até o navbar de
+     baixo — virou aba normal igual Meu Dia/Guia/Premium, então o navbar
+     principal continua visível, e o botão físico de voltar não fica mais
+     "perdido" tentando fechar uma camada que não existe mais. O switcher
+     Música/Vídeo vs Rádio mora no topo (onde antes tinha a barra com a
+     setinha de voltar), busca fica sempre fixa logo abaixo dele. -->
+<section class="tab" id="tab-player">
+  <div class="screen-header">
+    <h1>🎵 MultiSonor</h1>
+    <div class="header-actions">
+      <button class="icon-btn" data-action="voice">🎤</button>
+      <button class="icon-btn" data-action="help">❓</button>
+      <button class="icon-btn" data-action="gear">⚙️</button>
+    </div>
+  </div>
+
+  <div style="display:flex; border-bottom: 1px solid var(--c-border2); margin-bottom: 14px;">
+    <button class="player-tab-btn active" id="player-tab-btn-media" style="flex:1; background:none; color:var(--c-text); padding:10px; opacity:1;">🎵 Música/Vídeo</button>
+    <button class="player-tab-btn" id="player-tab-btn-radio" style="flex:1; background:none; color:var(--c-text); padding:10px; opacity:0.5;">📻 Rádio</button>
   </div>
 
   <audio id="player-radio-audio" style="display:none;"></audio>
 
-  <div style="flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
-    <div id="player-media-searchbar" style="padding: 14px 20px 10px; display:flex; gap:8px; flex-shrink:0;">
-      <input type="text" id="player-media-search" placeholder="Buscar artista, música ou vídeo" style="flex:1;">
-      <button id="player-media-search-btn">🔍</button>
-    </div>
-    <div id="player-radio-searchbar" style="padding: 14px 20px 10px; display:none; gap:8px; flex-shrink:0;">
-      <input type="text" id="player-radio-search" placeholder="Buscar rádio (nome, cidade, gênero)" style="flex:1;">
-      <button id="player-radio-search-btn">🔍</button>
-    </div>
-
-    <div id="player-now-playing" style="display:none; flex:1; overflow-y:auto; padding: 4px 24px 18px;">
-      <div id="player-cover-wrap" style="position:relative; width:100%; max-width:280px; margin:0 auto 16px; aspect-ratio:1/1; border-radius:14px; overflow:hidden; background:#000; box-shadow:0 8px 24px -8px rgba(0,0,0,0.6);">
-        <img id="player-cover-img" style="width:100%; height:100%; object-fit:cover; display:none;">
-        <div id="player-yt-container" style="width:100%; height:100%; display:none;"></div>
-        <button id="player-ctrl-video-toggle" style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.55); color:#fff; font-size:1.1rem; width:36px; height:36px; border-radius:50%; padding:0; display:none;">👁</button>
-      </div>
-      <div id="player-now-playing-title" style="font-weight:600; text-align:center; font-size:1.05rem;"></div>
-      <div id="player-now-playing-sub" style="font-size:0.8rem; opacity:0.7; margin-bottom:12px; text-align:center;"></div>
-      <div id="player-progress-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-        <span id="player-time-current" style="font-size:0.72rem; opacity:0.7; min-width:34px;">0:00</span>
-        <div id="player-progress-bar" style="flex:1; height:4px; background:#333; border-radius:2px; overflow:hidden;">
-          <div id="player-progress-fill" style="height:100%; width:0%; background: var(--c-accent-blue);"></div>
-        </div>
-        <span id="player-time-total" style="font-size:0.72rem; opacity:0.7; min-width:34px; text-align:right;">0:00</span>
-      </div>
-      <div style="display:flex; justify-content:center; align-items:center; gap:26px; margin-top:8px;">
-        <button id="player-ctrl-prev" style="background:none; font-size:1.6rem; color:#fff;">⏮</button>
-        <button id="player-ctrl-playpause" style="background:#fff; color:#000; width:58px; height:58px; border-radius:50%; font-size:1.3rem;">⏸</button>
-        <button id="player-ctrl-next" style="background:none; font-size:1.6rem; color:#fff;">⏭</button>
-      </div>
-      <div class="hint" style="text-align:center; margin-top:10px;">Sai do app pra ver em janelinha (PiP) sobre as outras telas.</div>
-    </div>
-
-    <div id="player-tab-media" class="player-tab-content" style="flex:1; overflow-y:auto; padding: 0 20px 14px;">
-      <div id="player-media-results"></div>
-    </div>
-
-    <div id="player-tab-radio" class="player-tab-content" style="flex:1; overflow-y:auto; padding: 0 20px 14px; display:none;">
-      <div class="hint" style="margin-bottom: 6px;">⭐ Favoritas</div>
-      <div id="player-radio-favoritos" style="margin-bottom: 16px;"></div>
-      <div id="player-radio-results"></div>
-    </div>
+  <div id="player-media-searchbar" style="display:flex; gap:8px; margin-bottom: 14px;">
+    <input type="text" id="player-media-search" placeholder="Buscar artista, música ou vídeo" style="flex:1;">
+    <button id="player-media-search-btn">🔍</button>
+  </div>
+  <div id="player-radio-searchbar" style="display:none; gap:8px; margin-bottom: 14px;">
+    <input type="text" id="player-radio-search" placeholder="Buscar rádio (nome, cidade, gênero)" style="flex:1;">
+    <button id="player-radio-search-btn">🔍</button>
   </div>
 
-  <div style="display:flex; border-top: 1px solid #222;">
-    <button class="player-tab-btn active" id="player-tab-btn-media" style="flex:1; background:none; color:#fff; padding:12px; opacity:1;">🎵 Música/Vídeo</button>
-    <button class="player-tab-btn" id="player-tab-btn-radio" style="flex:1; background:none; color:#fff; padding:12px; opacity:0.5;">📻 Rádio</button>
+  <div id="player-now-playing" style="display:none; margin-bottom: 16px;">
+    <div id="player-cover-wrap" style="position:relative; width:100%; max-width:280px; margin:0 auto 16px; aspect-ratio:1/1; border-radius:14px; overflow:hidden; background:#000; box-shadow:0 8px 24px -8px rgba(0,0,0,0.4);">
+      <img id="player-cover-img" style="width:100%; height:100%; object-fit:cover; display:none;">
+      <div id="player-yt-container" style="width:100%; height:100%; display:none;"></div>
+      <button id="player-ctrl-video-toggle" style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.55); color:#fff; font-size:1.1rem; width:36px; height:36px; border-radius:50%; padding:0; display:none;">👁</button>
+    </div>
+    <div id="player-now-playing-title" style="font-weight:600; text-align:center; font-size:1.05rem;"></div>
+    <div id="player-now-playing-sub" style="font-size:0.8rem; opacity:0.7; margin-bottom:12px; text-align:center;"></div>
+    <div id="player-progress-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+      <span id="player-time-current" style="font-size:0.72rem; opacity:0.7; min-width:34px;">0:00</span>
+      <div id="player-progress-bar" style="flex:1; height:4px; background: var(--c-border2); border-radius:2px; overflow:hidden;">
+        <div id="player-progress-fill" style="height:100%; width:0%; background: var(--c-accent-blue);"></div>
+      </div>
+      <span id="player-time-total" style="font-size:0.72rem; opacity:0.7; min-width:34px; text-align:right;">0:00</span>
+    </div>
+    <div style="display:flex; justify-content:center; align-items:center; gap:26px; margin-top:8px;">
+      <button id="player-ctrl-prev" style="background:none; font-size:1.6rem; color:var(--c-text);">⏮</button>
+      <button id="player-ctrl-playpause" style="background: var(--c-accent-blue); color: var(--c-on-accent); width:58px; height:58px; border-radius:50%; font-size:1.3rem;">⏸</button>
+      <button id="player-ctrl-next" style="background:none; font-size:1.6rem; color:var(--c-text);">⏭</button>
+    </div>
+    <div class="hint" style="text-align:center; margin-top:10px;">Sai do app pra ver em janelinha (PiP) sobre as outras telas.</div>
   </div>
-</div>
+
+  <div id="player-tab-media" class="player-tab-content">
+    <div id="player-media-results"></div>
+  </div>
+
+  <div id="player-tab-radio" class="player-tab-content" style="display:none;">
+    <div class="hint" style="margin-bottom: 6px;">⭐ Favoritas</div>
+    <div id="player-radio-favoritos" style="margin-bottom: 16px;"></div>
+    <div id="player-radio-results"></div>
+  </div>
+</section>
 
 <!-- ============ SALVOS (overlay) ============ -->
 <div class="overlay" id="saved-overlay">
@@ -2347,8 +2350,17 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.3';
+const APP_VERSION = '4.4';
 const CHANGELOG = [
+  {
+    version: '4.4', date: '26/06/2026',
+    items: [
+      'MultiSonor virou aba normal (não some mais o navbar de baixo, igual Meu Dia/Guia/Premium)',
+      'Corrigido: voltar do MultiSonor deixava a tela preta e o botão preso "selecionado"',
+      'Busca/sub-abas (Música-Vídeo vs Rádio) do MultiSonor agora ficam no topo',
+      'Corrigido: vibração de confirmação do SOS não funcionava no WebView do Android — agora usa o vibrador nativo do aparelho, pulsando a cada 1s durante os 5s do toque',
+    ],
+  },
   {
     version: '4.3', date: '26/06/2026',
     items: [
@@ -4042,20 +4054,16 @@ document.getElementById('more-menu-btn').addEventListener('click', (ev) => {
 document.getElementById('more-menu').addEventListener('click', (ev) => ev.stopPropagation());
 
 /* =========================================================================
-   PLAYER, tela cheia (Música/Vídeo/Rádio) — joga tudo pra abrir no
-   navegador (tocarNoNavegador), que sustenta áudio em segundo plano de
-   verdade. Não tem como controlar play/pause/pular de dentro do app depois
-   de abrir — isso exigiria uma ponte nativa (MediaSession) que não foi
-   construída ainda; "Encerrar exibição" só limpa o card local, não fecha
-   a aba do navegador.
+   MULTISONOR (Música/Vídeo/Rádio) — aba normal igual Meu Dia/Guia/Premium
+   (era uma tela cheia separada, .nav-overlay, que escondia até o navbar de
+   baixo). O clique no botão de nav já é tratado pelo loop genérico de abas
+   (data-tab="player" mais abaixo); aqui só roda o que é específico desse
+   player: mostrar favoritas de rádio e reabrir já no sub-tab certo (o que
+   tava tocando, se tiver algo).
    ========================================================================= */
 document.getElementById('player-nav-btn').addEventListener('click', () => {
-  document.getElementById('player-overlay').classList.add('open');
   renderPlayerRadioFavoritos();
-  switchPlayerTab(playerActiveTab || 'media'); // reabre mostrando o que já tava tocando, se tiver
-});
-document.getElementById('player-close-btn').addEventListener('click', () => {
-  document.getElementById('player-overlay').classList.remove('open');
+  switchPlayerTab(playerActiveTab || 'media');
 });
 
 // Só uma aba toca por vez (Música/Vídeo unificados vs Rádio) — playerActiveTab
@@ -5979,28 +5987,36 @@ function buildSosExtraCard() {
 }
 
 // Selo no canto do botão de retroceder é o gatilho do SOS — segura 5s, vibra
-// ~1s confirmando, dispara. Soltar antes dos 5s cancela. Independente do
-// botão ⏮ embaixo, que continua voltando item normalmente a qualquer momento.
+// confirmando, dispara. Soltar antes dos 5s cancela. Independente do botão
+// ⏮ embaixo, que continua voltando item normalmente a qualquer momento.
 let sosHoldTimeoutId = null;
+let sosHoldPulseInterval = null;
 const sosHoldBtn = document.getElementById('sos-badge-btn');
 
-// Vibração intermitente (liga/desliga) durante todo o segurar, não só uma
-// vibração no final — confirma visualmente (sem precisar olhar) que está
-// contando, e some na hora se soltar antes dos 5s.
-const SOS_VIBRATE_PATTERN = Array(25).fill(200); // 200ms on, 200ms off × 25 = 5000ms (13 dava só 2.6s, parava antes da hora)
+// navigator.vibrate (Web Vibration API) não tem suporte confiável no WebView
+// do Android — em muitos aparelhos simplesmente não faz nada, sem erro
+// nenhum, por isso parecia que o SOS "não fazia nada" (o disparo em si
+// funcionava, só a vibração de confirmação que nunca rodava). O plugin
+// nativo de Haptics fala direto com o vibrador do aparelho, sem essa
+// limitação. Pulsa 1x por segundo durante os 5s do hold, em vez de 1
+// vibração só — confirma visualmente (sem precisar olhar) que tá contando.
+const nativeHaptics = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
 
 function startSosHold() {
-  // Isolado num try/catch — se vibrar falhar/travar em algum aparelho, o
-  // agendamento do disparo (a parte que importa de verdade) não pode
-  // depender disso pra acontecer.
-  try { if (navigator.vibrate) navigator.vibrate(SOS_VIBRATE_PATTERN); } catch (e) { console.error('vibrate:', e); }
+  if (nativeHaptics) {
+    pulseSosHaptic();
+    sosHoldPulseInterval = setInterval(pulseSosHaptic, 1000);
+  }
   sosHoldTimeoutId = setTimeout(() => {
     triggerSOS();
   }, 5000);
 }
+function pulseSosHaptic() {
+  try { nativeHaptics.vibrate({ duration: 200 }); } catch (e) { console.error('haptics:', e); }
+}
 function cancelSosHold() {
   if (sosHoldTimeoutId) { clearTimeout(sosHoldTimeoutId); sosHoldTimeoutId = null; }
-  if (navigator.vibrate) navigator.vibrate(0); // para a vibração na hora se soltar antes dos 5s
+  if (sosHoldPulseInterval) { clearInterval(sosHoldPulseInterval); sosHoldPulseInterval = null; }
 }
 
 // Bloquear o menu de contexto e seleção de texto evita que o toque-e-segure
