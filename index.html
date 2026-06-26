@@ -497,6 +497,14 @@
       </div>
     </div>
 
+    <div id="update-banner" style="display:none; background: var(--c-accent-blue); color: var(--c-on-accent); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; align-items:center; gap:10px; justify-content:space-between;">
+      <span id="update-banner-text" style="font-size: 0.85rem; flex: 1;"></span>
+      <div style="display:flex; gap:6px; flex-shrink:0;">
+        <button id="update-banner-dismiss" style="background: transparent; border: 1px solid var(--c-on-accent); color: var(--c-on-accent); padding: 6px 10px; font-size: 0.78rem;">Agora não</button>
+        <a id="update-banner-download" href="downloads/SonorHub.apk" download style="background: var(--c-on-accent); color: var(--c-accent-blue); padding: 6px 10px; font-size: 0.78rem; border-radius: 6px; text-decoration: none; font-weight: 600;">Baixar</a>
+      </div>
+    </div>
+
     <div class="md-settings-bento">
       <div class="md-bento-tile" id="custom-tile" style="--tile-color: var(--c-accent-blue);">
         <div class="top-row"><span class="ic">🎛️</span><span class="chev">›</span></div>
@@ -2350,8 +2358,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.5';
+const APP_VERSION = '4.6';
 const CHANGELOG = [
+  {
+    version: '4.6', date: '26/06/2026',
+    items: [
+      'Novo: o app agora avisa quando tem uma versão nova disponível pra baixar (antes só dava pra saber entrando no site)',
+    ],
+  },
   {
     version: '4.5', date: '26/06/2026',
     items: [
@@ -2732,6 +2746,42 @@ function renderChangelog() {
     listEl.appendChild(card);
   });
 }
+
+/* =========================================================================
+   AVISO DE ATUALIZAÇÃO — sem Play Store não tem instalação automática (o
+   Android exige toque de confirmação pra instalar fora de loja), então isso
+   só checa version.json no GitHub Pages e mostra um aviso com botão de
+   baixar. Só roda no app nativo — a versão web já é sempre a mais nova.
+   ========================================================================= */
+function compareVersions(a, b) {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+async function checkForUpdate() {
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  if (!isNative) return;
+  try {
+    const resp = await fetch(`https://facincanitech.github.io/SonorHub/version.json?t=${Date.now()}`);
+    if (!resp.ok) return;
+    const remote = await resp.json();
+    if (!remote.versionName || compareVersions(remote.versionName, APP_VERSION) <= 0) return;
+    if (localStorage.getItem('sonorhub_update_dismissed_version') === remote.versionName) return;
+    document.getElementById('update-banner-text').textContent =
+      `Nova versão disponível (v${remote.versionName})${remote.notes ? ' — ' + remote.notes : ''}`;
+    document.getElementById('update-banner').style.display = 'flex';
+    document.getElementById('update-banner-dismiss').onclick = () => {
+      localStorage.setItem('sonorhub_update_dismissed_version', remote.versionName);
+      document.getElementById('update-banner').style.display = 'none';
+    };
+  } catch (e) { console.error('update check:', e); }
+}
+checkForUpdate();
 
 document.getElementById('changelog-open-btn').addEventListener('click', () => {
   renderChangelog();
