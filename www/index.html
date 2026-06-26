@@ -145,8 +145,9 @@
   .settings-row .desc { color: var(--c-text-dim); font-size: 0.75rem; margin-top: 2px; }
   .settings-row select, .settings-row input[type=range] { flex: 1; max-width: 160px; }
   .alarm-item {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 0; border-bottom: 1px solid var(--c-border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 12px; border: 1px solid var(--c-border2); border-radius: 10px;
+    margin-bottom: 8px; background: var(--c-surface);
   }
   .alarm-item .time { font-size: 0.95rem; font-weight: 600; }
   .alarm-item button { background: var(--c-bg); color: var(--c-text-dim); width: 30px; height: 30px; border-radius: 50%; font-size: 0.85rem; padding: 0; }
@@ -541,13 +542,6 @@
 
     <div class="md-bento-detail" id="alarms-detail">
       <div class="settings-panel">
-        <div class="settings-row">
-          <div class="label">Ativar</div>
-          <label class="switch">
-            <input type="checkbox" id="alarms-active-toggle">
-            <span class="slider"></span>
-          </label>
-        </div>
         <div id="alarms-list"></div>
         <div class="settings-row">
           <div style="display:flex; gap:6px; align-items:center;">
@@ -2339,8 +2333,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '3.19';
+const APP_VERSION = '3.20';
 const CHANGELOG = [
+  {
+    version: '3.20', date: '26/06/2026',
+    items: [
+      'Cada item do Briefing automático (horários, lembretes, rádios) ganhou um contorno, fica mais fácil de visualizar igual no Guia',
+      'Removido o liga/desliga do Briefing automático — agora fica sempre ativo quando tem pelo menos um horário configurado',
+    ],
+  },
   {
     version: '3.19', date: '26/06/2026',
     items: [
@@ -5668,7 +5669,6 @@ sosHoldBtn.addEventListener('pointercancel', cancelSosHold);
    cada um. Ao disparar: toca direto se a aba estiver visível, senão manda
    notificação. Guarda por horário evita disparar 2x no mesmo dia.
    ========================================================================= */
-const alarmsActiveToggle = document.getElementById('alarms-active-toggle');
 const alarmsListEl = document.getElementById('alarms-list');
 const newAlarmHourInput = document.getElementById('new-alarm-hour-input');
 const newAlarmMinuteInput = document.getElementById('new-alarm-minute-input');
@@ -5824,7 +5824,7 @@ const nativeAlarm = window.Capacitor && window.Capacitor.Plugins && window.Capac
 const nativeNotifications = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
 
 async function scheduleAllAlarmsNative() {
-  if (!state.alarmsActive || state.alarmTimes.length === 0) {
+  if (state.alarmTimes.length === 0) {
     await nativeAlarm.cancel().catch((e) => console.error('BriefingAlarm.cancel:', e));
     return;
   }
@@ -5884,7 +5884,7 @@ function scheduleAlarm(time) {
         }
       }
     }
-    if (state.alarmsActive && state.alarmTimes.some((a) => a.time === time)) scheduleAlarm(time); // reagenda pro dia seguinte
+    if (state.alarmTimes.some((a) => a.time === time)) scheduleAlarm(time); // reagenda pro dia seguinte
   }, ms);
   alarmTimeoutIds.push(id);
 }
@@ -5892,15 +5892,15 @@ function scheduleAlarm(time) {
 function scheduleAllAlarms() {
   if (nativeAlarm) { scheduleAllAlarmsNative(); return; }
   clearAllAlarmTimeouts();
-  if (!state.alarmsActive) return;
   state.alarmTimes.forEach((a) => scheduleAlarm(a.time));
 }
 
+// Sempre "Ativado" quando tem pelo menos um horário — não tem mais botão de
+// ligar/desligar separado, ter horário configurado já significa que vai usar.
 function updateAlarmsTileStatus() {
-  document.getElementById('alarms-tile-status').textContent = state.alarmsActive ? 'Ativado' : 'Desativado';
+  document.getElementById('alarms-tile-status').textContent = state.alarmTimes.length > 0 ? 'Ativado' : 'Sem horário';
 }
 
-alarmsActiveToggle.checked = state.alarmsActive;
 renderAlarmsList();
 updateAlarmsTileStatus();
 
@@ -5954,44 +5954,38 @@ function renderSavedItems() {
 }
 renderSavedItems();
 
-alarmsActiveToggle.addEventListener('change', async () => {
-  if (alarmsActiveToggle.checked) {
-    // Android 12+ exige uma permissão especial ("Alarmes e lembretes") pra
-    // alarme EXATO funcionar — sem ela, o alarme nunca dispara, sem nenhum
-    // erro visível (silêncio total, mesmo com tag marcada certinho). Checa e
-    // direciona pra Configurações antes de deixar ativar.
-    if (nativeAlarm) {
-      try {
-        const { granted } = await nativeAlarm.checkExactAlarmPermission();
-        if (!granted) {
-          alarmsActiveToggle.checked = false;
-          alert('Pra funcionar de verdade, o InfoHub precisa de permissão de "Alarmes e lembretes" no Android. Vai abrir a tela de configuração — procura o InfoHub e libera, depois volta aqui e ativa de novo.');
-          await nativeAlarm.openExactAlarmSettings();
-          return;
-        }
-      } catch (e) { console.error('checkExactAlarmPermission:', e); }
+// Sem botão de ligar/desligar separado — checa as permissões na hora de
+// adicionar o PRIMEIRO horário (antes não tinha mais nenhum, então não fazia
+// diferença pedir antes). Retorna false se faltou permissão (cancela o add).
+async function checkAlarmPermissions() {
+  // Android 12+ exige uma permissão especial ("Alarmes e lembretes") pra
+  // alarme EXATO funcionar — sem ela, o alarme nunca dispara, sem nenhum
+  // erro visível (silêncio total, mesmo com tag marcada certinho).
+  if (nativeAlarm) {
+    try {
+      const { granted } = await nativeAlarm.checkExactAlarmPermission();
+      if (!granted) {
+        alert('Pra funcionar de verdade, o InfoHub precisa de permissão de "Alarmes e lembretes" no Android. Vai abrir a tela de configuração — procura o InfoHub e libera, depois volta aqui e adiciona o horário de novo.');
+        await nativeAlarm.openExactAlarmSettings();
+        return false;
+      }
+    } catch (e) { console.error('checkExactAlarmPermission:', e); }
+  }
+  if (nativeNotifications) {
+    const perm = await nativeNotifications.requestPermissions();
+    if (perm.display !== 'granted') {
+      alert('Permissão de notificação negada, não vai dar pra avisar nos horários sem isso.');
+      return false;
     }
-    if (nativeNotifications) {
-      const perm = await nativeNotifications.requestPermissions();
-      if (perm.display !== 'granted') {
-        alarmsActiveToggle.checked = false;
-        alert('Permissão de notificação negada, não vai dar pra avisar nos horários sem isso.');
-        return;
-      }
-    } else {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        alarmsActiveToggle.checked = false;
-        alert('Permissão de notificação negada, não vai dar pra avisar nos horários sem isso.');
-        return;
-      }
+  } else {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      alert('Permissão de notificação negada, não vai dar pra avisar nos horários sem isso.');
+      return false;
     }
   }
-  state.alarmsActive = alarmsActiveToggle.checked;
-  saveState();
-  scheduleAllAlarms();
-  updateAlarmsTileStatus();
-});
+  return true;
+}
 
 // Sempre fala completo agora (sem seletor) — só importa pro nativo (é ele
 // quem fala sozinho quando o app não está na tela).
@@ -6012,9 +6006,15 @@ document.querySelectorAll('.md-bento-tile').forEach((tile) => {
   });
 });
 
-document.getElementById('add-alarm-btn').addEventListener('click', () => {
+document.getElementById('add-alarm-btn').addEventListener('click', async () => {
   const time = `${newAlarmHourInput.value}:${newAlarmMinuteInput.value}`;
   if (!time || state.alarmTimes.some((a) => a.time === time)) return;
+  if (state.alarmTimes.length === 0) {
+    // Primeiro horário de todos — checa as permissões agora, antes não tinha
+    // porque não tinha nada pra ativar ainda.
+    const ok = await checkAlarmPermissions();
+    if (!ok) return;
+  }
   state.alarmTimes.push({ time, features: [] });
   expandedAlarmTime = time; // abre direto pra já marcar as tags, sem precisar tocar de novo
   saveState();
@@ -6466,7 +6466,7 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
-if (state.alarmsActive) scheduleAllAlarms();
+if (state.alarmTimes.length > 0) scheduleAllAlarms();
 
 if (new URLSearchParams(window.location.search).get('autoplay') === '1') {
   window.addEventListener('load', () => setTimeout(() => playCircle.click(), 600));
