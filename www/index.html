@@ -727,10 +727,12 @@
     </div>
 
     <div id="player-now-playing" style="display:none; margin-bottom: 16px;">
+      <div style="display:flex; justify-content:flex-end; margin-bottom: 8px;">
+        <button id="player-ctrl-video-toggle" style="background: var(--c-surface); border: 1px solid var(--c-border2); color: var(--c-text); font-size:1.1rem; width:40px; height:40px; border-radius:50%; padding:0; display:none;">📺</button>
+      </div>
       <div id="player-cover-wrap" style="position:relative; width:100%; max-width:280px; margin:0 auto 16px; aspect-ratio:1/1; border-radius:14px; overflow:hidden; background:#000; box-shadow:0 8px 24px -8px rgba(0,0,0,0.4);">
         <img id="player-cover-img" style="width:100%; height:100%; object-fit:cover; display:none;">
         <div id="player-yt-container" style="width:100%; height:100%; display:none;"></div>
-        <button id="player-ctrl-video-toggle" style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.55); color:#fff; font-size:1.1rem; width:36px; height:36px; border-radius:50%; padding:0; display:none;">👁</button>
       </div>
       <div id="player-now-playing-title" style="font-weight:600; text-align:center; font-size:1.05rem;"></div>
       <div id="player-now-playing-sub" style="font-size:0.8rem; opacity:0.7; margin-bottom:12px; text-align:center;"></div>
@@ -2358,8 +2360,16 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.6';
+const APP_VERSION = '4.7';
 const CHANGELOG = [
+  {
+    version: '4.7', date: '26/06/2026',
+    items: [
+      'Corrigido: canal de vídeo (não-música) mostrava só 1 vídeo ao abrir o artista — agora lista até 50, direto dos uploads do canal',
+      'Artista de música agora mostra os álbuns/playlists dele (quando existem), além da lista de vídeos',
+      'Botão de trocar vídeo/áudio saiu de cima da capa e foi pra uma linha própria, acima da telinha',
+    ],
+  },
   {
     version: '4.6', date: '26/06/2026',
     items: [
@@ -4219,14 +4229,21 @@ function renderPlayerMediaSearchResults(artists, videos, error) {
   }
 }
 
+// Lembra o último artista aberto pra "Playlist > Voltar" voltar pra lista de
+// álbuns dele, em vez de voltar direto pra busca (um nível só de cada vez).
+let playerCurrentArtist = null;
+
 async function abrirArtistaPlayerMedia(art) {
+  playerCurrentArtist = art;
   const container = document.getElementById('player-media-results');
-  container.innerHTML = `<div class="hint">Carregando músicas de ${art.title}...</div>`;
+  container.innerHTML = `<div class="hint">Carregando ${art.title}...</div>`;
   let videos = [];
+  let playlists = [];
   let error = null;
   try {
     const resp = await callEdgeFunction('youtube-music', { channelId: art.channelId });
     videos = resp.videos || [];
+    playlists = resp.playlists || [];
     error = resp.error;
   } catch (e) { error = 'Falha ao buscar: ' + e.message; }
 
@@ -4243,10 +4260,79 @@ async function abrirArtistaPlayerMedia(art) {
   header.textContent = art.title;
   container.appendChild(header);
 
+  if (!videos.length && !playlists.length) {
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = error || 'Nada encontrado pra esse canal.';
+    container.appendChild(hint);
+    return;
+  }
+
+  // Playlists públicas do canal são a aproximação mais próxima de "álbuns"
+  // que a API do YouTube dá pra gente — nem todo canal tem (ex: canais que
+  // não são de música, como vlogs/gameplay, geralmente não têm nenhuma).
+  if (playlists.length) {
+    const label = document.createElement('div');
+    label.className = 'hint';
+    label.style.margin = '4px 0 8px';
+    label.textContent = '💿 Álbuns/playlists';
+    container.appendChild(label);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; margin-bottom:16px;';
+    playlists.forEach((pl) => {
+      const tile = document.createElement('div');
+      tile.style.cssText = 'flex:0 0 110px; text-align:center; cursor:pointer;';
+      tile.innerHTML = `
+        <img src="${pl.thumbnail || ''}" style="width:100px; height:100px; border-radius:8px; object-fit:cover; background:#222;">
+        <div style="font-size:0.72rem; margin-top:6px; line-height:1.2;">${pl.title}</div>
+      `;
+      tile.addEventListener('click', () => abrirPlaylistPlayerMedia(pl));
+      grid.appendChild(tile);
+    });
+    container.appendChild(grid);
+  }
+
+  if (videos.length) {
+    const label = document.createElement('div');
+    label.className = 'hint';
+    label.style.margin = '4px 0 8px';
+    label.textContent = '🎬 Vídeos';
+    container.appendChild(label);
+    videos.forEach((v, i) => container.appendChild(buildPlayerResultRow(v, 'Música/Vídeo', 'media', videos, i)));
+  }
+}
+
+async function abrirPlaylistPlayerMedia(playlist) {
+  const container = document.getElementById('player-media-results');
+  container.innerHTML = `<div class="hint">Carregando ${playlist.title}...</div>`;
+  let videos = [];
+  let error = null;
+  try {
+    const resp = await callEdgeFunction('youtube-music', { playlistId: playlist.playlistId });
+    videos = resp.videos || [];
+    error = resp.error;
+  } catch (e) { error = 'Falha ao buscar: ' + e.message; }
+
+  container.innerHTML = '';
+  const backBtn = document.createElement('button');
+  backBtn.type = 'button';
+  backBtn.textContent = '← Voltar';
+  backBtn.style.cssText = 'margin-bottom: 12px;';
+  backBtn.addEventListener('click', () => {
+    if (playerCurrentArtist) abrirArtistaPlayerMedia(playerCurrentArtist);
+    else fazerBuscaPlayerMedia();
+  });
+  container.appendChild(backBtn);
+
+  const header = document.createElement('div');
+  header.style.cssText = 'font-weight:600; margin-bottom:10px;';
+  header.textContent = playlist.title;
+  container.appendChild(header);
+
   if (!videos.length) {
     const hint = document.createElement('div');
     hint.className = 'hint';
-    hint.textContent = error || 'Nenhuma música encontrada pra esse artista.';
+    hint.textContent = error || 'Playlist vazia.';
     container.appendChild(hint);
     return;
   }
