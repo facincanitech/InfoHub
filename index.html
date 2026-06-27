@@ -2486,8 +2486,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.36';
+const APP_VERSION = '4.37';
 const CHANGELOG = [
+  {
+    version: '4.37', date: '27/06/2026',
+    items: [
+      'Mensagem de erro de cota da busca não mostra mais texto técnico do Google — agora avisa de um jeito que faz sentido pro usuário',
+    ],
+  },
   {
     version: '4.36', date: '27/06/2026',
     items: [

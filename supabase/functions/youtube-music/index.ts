@@ -128,6 +128,18 @@ function apiErrorMessage(resp: any): string | null {
   return resp?.error?.message || null;
 }
 
+// Mensagem técnica do Google ("Quota exceeded for quota metric...") não diz
+// nada útil pro usuário final — troca por algo que ele entenda, mas mantém o
+// texto original no log do servidor (console.error) pra continuar dando pra
+// diagnosticar de verdade quando precisar.
+function friendlyErrorMessage(apiError: string): string {
+  console.error('Erro da API do YouTube:', apiError);
+  if (/quota/i.test(apiError)) {
+    return 'Muita gente buscando música agora — tenta de novo em alguns minutos.';
+  }
+  return 'Não foi possível buscar agora. Tenta de novo em alguns minutos.';
+}
+
 async function buscarArtistas(apiKey: string, termo: string) {
   const params = new URLSearchParams({
     part: 'snippet', q: termo, type: 'channel', order: 'relevance', maxResults: '15', key: apiKey,
@@ -246,7 +258,7 @@ Deno.serve(async (req: Request) => {
       if (cached) return Response.json(cached, { headers: CORS_HEADERS });
 
       const { video, apiError } = await buscarVideoPorId(apiKey, videoId);
-      const result = { video, error: video ? null : (apiError ? `Erro do YouTube: ${apiError}` : 'Vídeo não encontrado.') };
+      const result = { video, error: video ? null : (apiError ? friendlyErrorMessage(apiError) : 'Vídeo não encontrado.') };
       if (video) await setCached(cacheKey, result);
       return Response.json(result, { headers: CORS_HEADERS });
     }
@@ -287,7 +299,7 @@ Deno.serve(async (req: Request) => {
     const { artists, videos, playlists, apiError } = await buscarMisto(apiKey, name);
     const result = {
       artists, videos, playlists,
-      error: (artists.length || videos.length || playlists.length) ? null : (apiError ? `Erro do YouTube: ${apiError}` : `Nada encontrado pra "${name}".`),
+      error: (artists.length || videos.length || playlists.length) ? null : (apiError ? friendlyErrorMessage(apiError) : `Nada encontrado pra "${name}".`),
     };
     if (artists.length || videos.length || playlists.length) await setCached(cacheKey, result);
     return Response.json(result, { headers: CORS_HEADERS });

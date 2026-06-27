@@ -1,4 +1,4 @@
 {
-  "versionName": "4.36",
-  "notes": "Corrigido: tocar uma faixa dentro de playlist/álbum agora segue automático pra próxima."
+  "versionName": "4.37",
+  "notes": "Erro de cota da busca agora mostra mensagem amigável em vez de texto técnico do Google."
 }
