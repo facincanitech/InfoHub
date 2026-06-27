@@ -718,12 +718,10 @@
     <audio id="player-radio-audio" style="display:none;"></audio>
 
     <div id="player-media-searchbar" style="display:flex; gap:8px; margin-bottom: 14px;">
-      <input type="text" id="player-media-search" placeholder="Buscar artista, música ou vídeo" style="flex:1;">
-      <button id="player-media-search-btn">🔍</button>
+      <input type="text" id="player-media-search" placeholder="Buscar artista, música ou vídeo" enterkeyhint="search" style="flex:1; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius: 8px; padding: 9px 10px;">
     </div>
     <div id="player-radio-searchbar" style="display:none; gap:8px; margin-bottom: 14px;">
-      <input type="text" id="player-radio-search" placeholder="Buscar rádio (nome, cidade, gênero)" style="flex:1;">
-      <button id="player-radio-search-btn">🔍</button>
+      <input type="text" id="player-radio-search" placeholder="Buscar rádio (nome, cidade, gênero)" enterkeyhint="search" style="flex:1; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius: 8px; padding: 9px 10px;">
     </div>
 
     <div id="player-now-playing" style="display:none; margin-bottom: 16px;">
@@ -2366,8 +2364,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.12';
+const APP_VERSION = '4.13';
 const CHANGELOG = [
+  {
+    version: '4.13', date: '26/06/2026',
+    items: [
+      'MultiSonor: removida a lupa da busca — agora usa o Enter/Buscar do teclado',
+      'Corrigido: campo de busca do MultiSonor ficava branco no tema escuro',
+    ],
+  },
   {
     version: '4.12', date: '26/06/2026',
     items: [
@@ -4622,7 +4627,6 @@ async function fazerBuscaPlayerMedia() {
   } catch (e) { error = 'Falha ao buscar: ' + e.message; }
   renderPlayerMediaSearchResults(artists, videos, error);
 }
-document.getElementById('player-media-search-btn').addEventListener('click', fazerBuscaPlayerMedia);
 document.getElementById('player-media-search').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') fazerBuscaPlayerMedia(); });
 
 /* ----- Rádio: busca de verdade (Radio Browser, igual TuneIn) + favoritas -----
@@ -4831,7 +4835,7 @@ document.getElementById('player-ctrl-share').addEventListener('click', async () 
   }
 });
 
-document.getElementById('player-radio-search-btn').addEventListener('click', async () => {
+async function fazerBuscaPlayerRadio() {
   const termo = document.getElementById('player-radio-search').value.trim();
   if (!termo) return;
   playerShowResults = true; // buscar de novo enquanto tocava: volta a mostrar a lista
@@ -4840,9 +4844,9 @@ document.getElementById('player-radio-search-btn').addEventListener('click', asy
   resultsEl.innerHTML = `<div class="hint">Buscando...</div>`;
   const { estacoes, error } = await buscarRadios(termo);
   renderPlayerRadioResults(estacoes, error);
-});
+}
 document.getElementById('player-radio-search').addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter') document.getElementById('player-radio-search-btn').click();
+  if (ev.key === 'Enter') fazerBuscaPlayerRadio();
 });
 
 // showSave=false na tela de "Salvos" (não tem porque salvar de novo o que já
