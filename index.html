@@ -817,6 +817,11 @@
         <span class="hint" style="margin:0;">⭐ Favoritos</span>
       </button>
       <div id="player-media-favoritos" style="display:none; margin-bottom: 16px;"></div>
+      <button type="button" class="player-fav-category-btn" id="player-playlist-favoritos-toggle" style="display:flex; align-items:center; gap:6px; width:100%; background:none; color:var(--c-text); padding:6px 0; text-align:left;">
+        <span class="player-fav-category-arrow" style="display:inline-block; transition:transform 0.15s;">▸</span>
+        <span class="hint" style="margin:0;">💿 Playlists favoritas</span>
+      </button>
+      <div id="player-playlist-favoritos" style="display:none; margin-bottom: 16px;"></div>
       <div id="player-media-results"></div>
     </div>
 
@@ -2486,8 +2491,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.37';
+const APP_VERSION = '4.38';
 const CHANGELOG = [
+  {
+    version: '4.38', date: '27/06/2026',
+    items: [
+      'Agora dá pra favoritar playlists/álbuns também (☆ na linha da playlist), com categoria "Playlists favoritas" em cascata',
+    ],
+  },
   {
     version: '4.37', date: '27/06/2026',
     items: [
@@ -4456,6 +4467,7 @@ document.querySelectorAll('.more-menu-btn').forEach((btn) => {
 document.getElementById('player-nav-btn').addEventListener('click', () => {
   renderPlayerRadioFavoritos();
   renderPlayerMediaFavoritos();
+  renderPlayerPlaylistFavoritos();
   switchPlayerTab(playerActiveTab || 'media');
 });
 
@@ -4479,6 +4491,7 @@ function setupPlayerFavCategoryToggle(toggleId, listId) {
 }
 setupPlayerFavCategoryToggle('player-media-favoritos-toggle', 'player-media-favoritos');
 setupPlayerFavCategoryToggle('player-radio-favoritos-toggle', 'player-radio-favoritos');
+setupPlayerFavCategoryToggle('player-playlist-favoritos-toggle', 'player-playlist-favoritos');
 let playerActiveTab = null; // qual tipo (media/radio) tá tocando (null = nada)
 let playerShowResults = false; // true = usuário apertou buscar de novo enquanto algo tocava, quer ver a lista de novo
 
@@ -4586,14 +4599,56 @@ function buildPlaylistResultRow(pl) {
   span.className = 'time';
   span.style.flex = '1';
   span.textContent = pl.title;
+  const favBtn = document.createElement('button');
+  favBtn.type = 'button';
+  favBtn.style.cssText = 'background:none; color:var(--c-text); font-size:1.2rem; padding:4px; flex-shrink:0;';
+  favBtn.textContent = isPlaylistFavoritada(pl) ? '⭐' : '☆';
+  favBtn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    togglePlaylistFavorito(pl);
+    favBtn.textContent = isPlaylistFavoritada(pl) ? '⭐' : '☆';
+    renderPlayerPlaylistFavoritos();
+  });
   row.appendChild(playBtn);
   row.appendChild(icon);
   row.appendChild(span);
+  row.appendChild(favBtn);
   row.addEventListener('click', () => {
     playerCurrentArtist = null; // veio da busca direto, não de um artista — "voltar" cai na busca
     abrirPlaylistPlayerMedia(pl);
   });
   return row;
+}
+
+/* ----- Favoritar playlist/álbum (separado dos favoritos de música/vídeo) ----- */
+function getPlayerPlaylistFavoritos() {
+  const fs = getFeatureState('player', 'media');
+  const favoritos = Array.isArray(fs.fields.playlistFavoritos) ? fs.fields.playlistFavoritos : [];
+  fs.fields.playlistFavoritos = favoritos;
+  return favoritos;
+}
+
+function isPlaylistFavoritada(pl) {
+  return getPlayerPlaylistFavoritos().some((f) => f.playlistId === pl.playlistId);
+}
+
+function togglePlaylistFavorito(pl) {
+  const favoritos = getPlayerPlaylistFavoritos();
+  const idx = favoritos.findIndex((f) => f.playlistId === pl.playlistId);
+  if (idx !== -1) favoritos.splice(idx, 1);
+  else favoritos.unshift({ playlistId: pl.playlistId, title: pl.title, thumbnail: pl.thumbnail });
+  saveState();
+}
+
+function renderPlayerPlaylistFavoritos() {
+  const favoritos = getPlayerPlaylistFavoritos();
+  const listEl = document.getElementById('player-playlist-favoritos');
+  listEl.innerHTML = '';
+  if (favoritos.length === 0) {
+    listEl.innerHTML = `<div class="hint">Nenhuma playlist favoritada ainda — toque em ☆ numa playlist.</div>`;
+    return;
+  }
+  favoritos.forEach((pl) => listEl.appendChild(buildPlaylistResultRow(pl)));
 }
 
 function renderPlayerMediaSearchResults(artists, videos, playlists, error) {

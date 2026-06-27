@@ -1,4 +1,4 @@
 {
-  "versionName": "4.37",
-  "notes": "Erro de cota da busca agora mostra mensagem amigável em vez de texto técnico do Google."
+  "versionName": "4.38",
+  "notes": "Agora dá pra favoritar playlists/álbuns também, com categoria em cascata separada."
 }
