@@ -2491,8 +2491,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.38';
+const APP_VERSION = '4.39';
 const CHANGELOG = [
+  {
+    version: '4.39', date: '27/06/2026',
+    items: [
+      'Álbuns/playlists dentro de um artista agora também têm play e favoritar diretos, igual na busca',
+    ],
+  },
   {
     version: '4.38', date: '27/06/2026',
     items: [
@@ -4574,7 +4580,7 @@ async function tocarPlaylistDireto(playlist) {
   playInEmbeddedPlayer(videos[0], 'Música/Vídeo', videos, 0, 'media');
 }
 
-function buildPlaylistResultRow(pl) {
+function buildPlaylistResultRow(pl, fromArtist) {
   const row = document.createElement('div');
   row.className = 'alarm-item';
   row.style.cursor = 'pointer';
@@ -4614,7 +4620,9 @@ function buildPlaylistResultRow(pl) {
   row.appendChild(span);
   row.appendChild(favBtn);
   row.addEventListener('click', () => {
-    playerCurrentArtist = null; // veio da busca direto, não de um artista — "voltar" cai na busca
+    // Só zera o artista "lembrado" quando vem direto da busca — vindo de
+    // dentro de um artista, mantém pra "voltar" cair na lista de álbuns dele.
+    if (!fromArtist) playerCurrentArtist = null;
     abrirPlaylistPlayerMedia(pl);
   });
   return row;
@@ -4776,19 +4784,9 @@ async function abrirArtistaPlayerMedia(art) {
     label.style.margin = '4px 0 8px';
     label.textContent = '💿 Álbuns/playlists';
     container.appendChild(label);
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; margin-bottom:16px;';
-    playlists.forEach((pl) => {
-      const tile = document.createElement('div');
-      tile.style.cssText = 'flex:0 0 110px; text-align:center; cursor:pointer;';
-      tile.innerHTML = `
-        <img src="${pl.thumbnail || ''}" style="width:100px; height:100px; border-radius:8px; object-fit:cover; background:#222;">
-        <div style="font-size:0.72rem; margin-top:6px; line-height:1.2;">${pl.title}</div>
-      `;
-      tile.addEventListener('click', () => abrirPlaylistPlayerMedia(pl));
-      grid.appendChild(tile);
-    });
-    container.appendChild(grid);
+    // Mesma linha (play + favoritar) usada na busca, em vez de um grid de
+    // tiles separado — assim dá pra tocar/favoritar direto daqui também.
+    playlists.forEach((pl) => container.appendChild(buildPlaylistResultRow(pl, true)));
   }
 
   if (videos.length) {

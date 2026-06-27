@@ -1,4 +1,4 @@
 {
-  "versionName": "4.38",
-  "notes": "Agora dá pra favoritar playlists/álbuns também, com categoria em cascata separada."
+  "versionName": "4.39",
+  "notes": "Álbuns/playlists dentro de um artista também têm play e favoritar diretos."
 }
