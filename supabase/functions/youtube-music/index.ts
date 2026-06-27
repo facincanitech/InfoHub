@@ -24,13 +24,16 @@ function mapVideoItem(it: any) {
 }
 
 // Item de playlistItems.list tem formato diferente do de search.list — o id
-// do vídeo vem em snippet.resourceId.videoId, não em id.videoId.
+// do vídeo vem em snippet.resourceId.videoId, não em id.videoId. Guarda
+// publishedAt só pra poder ordenar depois (playlistItems.list não tem
+// parâmetro de "order" como o search.list tem) — não vai pro resultado final.
 function mapPlaylistVideoItem(it: any) {
   return {
     videoId: it.snippet.resourceId?.videoId,
     title: it.snippet.title,
     channelTitle: it.snippet.videoOwnerChannelTitle || it.snippet.channelTitle,
     thumbnail: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url,
+    _publishedAt: it.snippet.publishedAt,
   };
 }
 
@@ -88,9 +91,15 @@ async function getUploadsPlaylistId(apiKey: string, channelId: string) {
 async function listarVideosDaPlaylist(apiKey: string, playlistId: string, maxResults = 50) {
   const params = new URLSearchParams({ part: 'snippet', playlistId, maxResults: String(maxResults), key: apiKey });
   const resp = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?${params}`).then((r) => r.json());
-  return (resp.items || [])
+  const videos = (resp.items || [])
     .filter((it: any) => it.snippet?.resourceId?.videoId)
     .map(mapPlaylistVideoItem);
+  // playlistItems.list não tem parâmetro de ordenação (diferente do
+  // search.list) — ordena aqui mesmo por data, mais recente primeiro. Vale
+  // pra canal (vídeos do artista) e pra playlist/álbum (faixas), já que os
+  // dois usam essa mesma função.
+  videos.sort((a, b) => new Date(b._publishedAt).getTime() - new Date(a._publishedAt).getTime());
+  return videos.map(({ _publishedAt, ...v }) => v);
 }
 
 // As playlists públicas do canal são a aproximação mais próxima de "álbuns"

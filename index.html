@@ -2364,8 +2364,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.13';
+const APP_VERSION = '4.14';
 const CHANGELOG = [
+  {
+    version: '4.14', date: '26/06/2026',
+    items: [
+      'MultiSonor: vídeos/músicas de canal e álbum agora vêm ordenados do mais recente pro mais antigo',
+      'Corrigido: canal com muitos vídeos só mostrava 1 (era versão antiga da função no servidor)',
+    ],
+  },
   {
     version: '4.13', date: '26/06/2026',
     items: [
