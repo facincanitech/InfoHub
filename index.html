@@ -2486,8 +2486,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.35';
+const APP_VERSION = '4.36';
 const CHANGELOG = [
+  {
+    version: '4.36', date: '27/06/2026',
+    items: [
+      'Corrigido: ao tocar uma música dentro de uma playlist/álbum, agora segue automático pra próxima quando termina (antes parava no fim de cada faixa)',
+    ],
+  },
   {
     version: '4.35', date: '27/06/2026',
     items: [
@@ -4814,7 +4820,13 @@ async function ensurePlayerYt() {
     playerYtInstance = new YT.Player('player-yt-container', {
       height: '100%', width: '100%',
       playerVars: { autoplay: 1, controls: 0, playsinline: 1 },
-      events: { onReady: () => resolve(playerYtInstance) },
+      events: {
+        onReady: () => resolve(playerYtInstance),
+        // Sem isso, tocar uma música dentro de uma playlist/álbum parava no
+        // fim dela em vez de seguir pra próxima — só os botões manuais de
+        // avançar/voltar funcionavam. ENDED = 0 no YT.PlayerState.
+        onStateChange: (ev) => { if (ev.data === 0) playerSkip(1); },
+      },
     });
   });
 }

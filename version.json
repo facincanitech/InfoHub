@@ -1,4 +1,4 @@
 {
-  "versionName": "4.35",
-  "notes": "Botão de play direto nas playlists da busca, sem precisar abrir antes."
+  "versionName": "4.36",
+  "notes": "Corrigido: tocar uma faixa dentro de playlist/álbum agora segue automático pra próxima."
 }
