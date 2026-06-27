@@ -36,20 +36,18 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         registerPlugin(SmsPlugin.class);
         registerPlugin(PlayerPipPlugin.class);
         super.onCreate(savedInstanceState);
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        if (!pipReceiverRegistered) {
-            IntentFilter filter = new IntentFilter(PlayerPipPlugin.ACTION_PIP_CONTROL);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(pipControlReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                registerReceiver(pipControlReceiver, filter);
-            }
-            pipReceiverRegistered = true;
+        // Registrado aqui (e só desfeito em onDestroy) em vez de onStart/onStop:
+        // os botões da notificação (visíveis na tela de bloqueio) precisam
+        // funcionar mesmo com a Activity parada (onStop) — era exatamente esse
+        // o motivo de "nav do Sonor não faz nada na tela bloqueada": o receiver
+        // já tinha sido desregistrado antes do toque no botão da notificação.
+        IntentFilter filter = new IntentFilter(PlayerPipPlugin.ACTION_PIP_CONTROL);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(pipControlReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(pipControlReceiver, filter);
         }
+        pipReceiverRegistered = true;
     }
 
     @Override
@@ -60,6 +58,11 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         // tempo de entrar em PiP. isFinishing() exclui o caso de fechar de
         // verdade (botão Voltar na tela raiz) — aí não é pra abrir PiP.
         if (!isFinishing()) tryEnterPip();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
         if (pipReceiverRegistered) {
             unregisterReceiver(pipControlReceiver);
             pipReceiverRegistered = false;

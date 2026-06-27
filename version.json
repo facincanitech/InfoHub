@@ -1,4 +1,4 @@
 {
   "versionName": "4.32",
-  "notes": "Busca mostra playlists numa aba separada; mais resultados de artistas/músicas/playlists."
+  "notes": "Playlists na busca; mais resultados; corrigido botões da notificação na tela bloqueada; tenta manter música tocando ao travar a tela."
 }

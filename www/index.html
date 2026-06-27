@@ -2482,6 +2482,8 @@ const CHANGELOG = [
     items: [
       'Busca de música/vídeo agora mostra playlists também, numa aba separada das músicas/vídeos',
       'Aumentado o número de resultados de artistas, músicas/vídeos e playlists na busca',
+      'Corrigido: botões da notificação (tela bloqueada) paravam de funcionar — ficavam sem efeito porque o app desregistrava o receptor deles cedo demais',
+      'Tentativa de manter a música tocando ao travar a tela — insiste tocando de novo se o player pausar sozinho ao esconder a tela',
     ],
   },
   {
@@ -4893,6 +4895,25 @@ function syncPlayerPlayPauseState() {
 if (nativeApp) {
   nativeApp.addListener('resume', () => setTimeout(syncPlayerPlayPauseState, 300));
 }
+
+// Travar a tela (ou minimizar) deixa o documento "hidden" e o iframe do
+// YouTube pausa por conta própria, mesmo com wake lock nativo mantendo o
+// processo vivo — o wake lock evita o JS ser congelado, mas não evita essa
+// pausa automática do próprio player. Insiste tocando de novo algumas vezes
+// nos primeiros segundos depois de esconder, já que tentar 1x só costuma
+// perder a corrida contra a pausa automática.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  if (playerActiveTab !== 'media' || !playerYtInstance || playerIsPaused) return;
+  if (typeof playerYtInstance.playVideo !== 'function') return;
+  [300, 800, 1500, 3000].forEach((delay) => {
+    setTimeout(() => {
+      if (!playerYtInstance || playerIsPaused) return;
+      const state = playerYtInstance.getPlayerState && playerYtInstance.getPlayerState();
+      if (state === 2) playerYtInstance.playVideo(); // PAUSED — força tocar de novo
+    }, delay);
+  });
+});
 
 function playerTogglePlayPause() {
   if (playerActiveTab === 'radio') {
