@@ -1,4 +1,4 @@
 {
-  "versionName": "4.34",
-  "notes": "Atribuição/privacidade só na busca (não no player); favoritos do MultiSonor em cascata."
+  "versionName": "4.35",
+  "notes": "Botão de play direto nas playlists da busca, sem precisar abrir antes."
 }

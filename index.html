@@ -2486,8 +2486,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.34';
+const APP_VERSION = '4.35';
 const CHANGELOG = [
+  {
+    version: '4.35', date: '27/06/2026',
+    items: [
+      'Playlist na busca agora tem botão de play pra tocar direto, sem precisar abrir ela primeiro',
+    ],
+  },
   {
     version: '4.34', date: '27/06/2026',
     items: [
@@ -4530,6 +4536,19 @@ function buildPlayerResultRow(video, tipoLabel, tab, lista, index) {
 // Resultado misto de busca: grade de artistas (estilo "Descobertas" do YT
 // Music) + lista de músicas/vídeos que bateram direto com o termo. Clicar
 // num artista busca os vídeos daquele canal (abrirArtistaPlayerMedia).
+// Toca a playlist direto, sem passar pela tela de "abrir" — busca os vídeos
+// e já manda tocar o primeiro, com a playlist inteira como lista de
+// próxima/anterior (mesmo formato que buildPlayerResultRow usa pra músicas).
+async function tocarPlaylistDireto(playlist) {
+  let videos = [];
+  try {
+    const resp = await callEdgeFunction('youtube-music', { playlistId: playlist.playlistId });
+    videos = resp.videos || [];
+  } catch (e) { console.error('Falha ao tocar playlist:', e); }
+  if (!videos.length) return;
+  playInEmbeddedPlayer(videos[0], 'Música/Vídeo', videos, 0, 'media');
+}
+
 function buildPlaylistResultRow(pl) {
   const row = document.createElement('div');
   row.className = 'alarm-item';
@@ -4540,6 +4559,14 @@ function buildPlaylistResultRow(pl) {
     thumb.style.cssText = 'width:46px; height:46px; border-radius:6px; object-fit:cover; flex-shrink:0;';
     row.appendChild(thumb);
   }
+  const playBtn = document.createElement('button');
+  playBtn.type = 'button';
+  playBtn.textContent = '▶️';
+  playBtn.style.cssText = 'background: var(--c-green); width: 30px; height: 30px; border-radius: 50%; padding: 0; flex-shrink: 0;';
+  playBtn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    tocarPlaylistDireto(pl);
+  });
   const icon = document.createElement('span');
   icon.textContent = '💿';
   icon.style.cssText = 'flex-shrink:0; font-size:1.1rem;';
@@ -4547,6 +4574,7 @@ function buildPlaylistResultRow(pl) {
   span.className = 'time';
   span.style.flex = '1';
   span.textContent = pl.title;
+  row.appendChild(playBtn);
   row.appendChild(icon);
   row.appendChild(span);
   row.addEventListener('click', () => {
