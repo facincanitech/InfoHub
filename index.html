@@ -767,8 +767,12 @@
 
     <audio id="player-radio-audio" style="display:none;"></audio>
 
-    <div id="player-media-searchbar" style="display:flex; gap:8px; margin-bottom: 14px;">
+    <div id="player-media-searchbar" style="display:flex; gap:8px; margin-bottom: 6px;">
       <input type="text" id="player-media-search" placeholder="Buscar artista, música ou vídeo" enterkeyhint="search" style="flex:1; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius: 8px; padding: 9px 10px;">
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:0.72rem; color: var(--c-text-dim);">
+      <span>▶️ Busca e reprodução fornecidas pelo YouTube</span>
+      <a href="https://facincanitech.github.io/SonorHub/privacidade.html" target="_blank" id="player-privacy-link" style="color: var(--c-accent-blue); text-decoration:underline;">Política de Privacidade</a>
     </div>
     <div id="player-radio-searchbar" style="display:none; gap:8px; margin-bottom: 14px;">
       <input type="text" id="player-radio-search" placeholder="Buscar rádio (nome, cidade, gênero)" enterkeyhint="search" style="flex:1; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius: 8px; padding: 9px 10px;">
@@ -1924,6 +1928,7 @@ function wireApkDownloadLink(id) {
 }
 wireApkDownloadLink('update-banner-download');
 wireApkDownloadLink('help-download-apk-btn');
+wireApkDownloadLink('player-privacy-link');
 
 function renderRadioStationsInput(field, fs) {
   const wrap = document.createElement('div');
@@ -2475,8 +2480,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.32';
+const APP_VERSION = '4.33';
 const CHANGELOG = [
+  {
+    version: '4.33', date: '27/06/2026',
+    items: [
+      'Adicionado link de Política de Privacidade e aviso de atribuição ao YouTube direto na tela de busca do MultiSonor',
+    ],
+  },
   {
     version: '4.32', date: '27/06/2026',
     items: [
