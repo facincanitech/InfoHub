@@ -7,12 +7,59 @@
 //    API pública do YouTube expõe).
 //  - com playlistId: lista os vídeos daquela playlist/álbum específico.
 // Deploy: cole essa função numa function chamada "youtube-music" no painel do Supabase.
-// Secret: YOUTUBE_API_KEY (mesma chave já usada em "Canais do YouTube")
+// Secrets: YOUTUBE_API_KEY (mesma chave já usada em "Canais do YouTube"),
+//          SUPABASE_SERVICE_ROLE_KEY (pro cache — ver tabela youtube_cache em schema.sql)
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const SUPABASE_URL = 'https://xpscjwcqgdldwtmbbzua.supabase.co';
+const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12h — busca repetida nesse período não gasta cota do YouTube
+
+// Cache simples na tabela youtube_cache (ver schema.sql) — uma busca por
+// "michael jackson" feita por uma pessoa hoje responde de graça pra
+// qualquer outra pessoa que buscar o mesmo nos próximos 12h. Falha
+// silenciosa de propósito (sem SUPABASE_SERVICE_ROLE_KEY ou erro de rede,
+// só ignora o cache e segue pra API normal) — cache é otimização, não pode
+// quebrar a busca se o banco estiver fora.
+async function getCached(key: string): Promise<any | null> {
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!serviceRoleKey) return null;
+  try {
+    const resp = await fetch(
+      `${SUPABASE_URL}/rest/v1/youtube_cache?cache_key=eq.${encodeURIComponent(key)}&select=response,created_at`,
+      { headers: { Authorization: `Bearer ${serviceRoleKey}`, apikey: serviceRoleKey } }
+    );
+    const rows = await resp.json();
+    const row = Array.isArray(rows) && rows[0];
+    if (!row) return null;
+    const age = Date.now() - new Date(row.created_at).getTime();
+    return age < CACHE_TTL_MS ? row.response : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+async function setCached(key: string, response: any): Promise<void> {
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!serviceRoleKey) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/youtube_cache`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({ cache_key: key, response, created_at: new Date().toISOString() }),
+    });
+  } catch (_e) {
+    // cache é só otimização — se falhar escrever, a busca já respondeu mesmo assim
+  }
+}
 
 function mapVideoItem(it: any) {
   return {
@@ -161,38 +208,56 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (videoId) {
+      const cacheKey = `video:${videoId}`;
+      const cached = await getCached(cacheKey);
+      if (cached) return Response.json(cached, { headers: CORS_HEADERS });
+
       const { video, apiError } = await buscarVideoPorId(apiKey, videoId);
-      return Response.json({
-        video,
-        error: video ? null : (apiError ? `Erro do YouTube: ${apiError}` : 'Vídeo não encontrado.'),
-      }, { headers: CORS_HEADERS });
+      const result = { video, error: video ? null : (apiError ? `Erro do YouTube: ${apiError}` : 'Vídeo não encontrado.') };
+      if (video) await setCached(cacheKey, result);
+      return Response.json(result, { headers: CORS_HEADERS });
     }
 
     if (playlistId) {
+      const cacheKey = `playlist:${playlistId}`;
+      const cached = await getCached(cacheKey);
+      if (cached) return Response.json(cached, { headers: CORS_HEADERS });
+
       const videos = await listarVideosDaPlaylist(apiKey, playlistId, 50);
-      return Response.json({
-        artists: [], playlists: [], videos,
-        error: videos.length ? null : 'Playlist vazia ou não encontrada.',
-      }, { headers: CORS_HEADERS });
+      const result = { artists: [], playlists: [], videos, error: videos.length ? null : 'Playlist vazia ou não encontrada.' };
+      if (videos.length) await setCached(cacheKey, result);
+      return Response.json(result, { headers: CORS_HEADERS });
     }
 
     if (channelId) {
+      const cacheKey = `channel:${channelId}`;
+      const cached = await getCached(cacheKey);
+      if (cached) return Response.json(cached, { headers: CORS_HEADERS });
+
       const { videos, playlists } = await buscarConteudoDoCanal(apiKey, channelId);
-      return Response.json({
+      const result = {
         artists: [], videos, playlists,
         error: (videos.length || playlists.length) ? null : 'Esse canal não tem vídeos encontráveis.',
-      }, { headers: CORS_HEADERS });
+      };
+      if (videos.length || playlists.length) await setCached(cacheKey, result);
+      return Response.json(result, { headers: CORS_HEADERS });
     }
 
     if (!name) {
       return Response.json({ artists: [], videos: [], playlists: [], error: 'Faltando termo de busca.' }, { headers: CORS_HEADERS });
     }
 
+    const cacheKey = `name:${name.toLowerCase()}`;
+    const cached = await getCached(cacheKey);
+    if (cached) return Response.json(cached, { headers: CORS_HEADERS });
+
     const { artists, videos, apiError } = await buscarMisto(apiKey, name);
-    return Response.json({
+    const result = {
       artists, videos, playlists: [],
       error: (artists.length || videos.length) ? null : (apiError ? `Erro do YouTube: ${apiError}` : `Nada encontrado pra "${name}".`),
-    }, { headers: CORS_HEADERS });
+    };
+    if (artists.length || videos.length) await setCached(cacheKey, result);
+    return Response.json(result, { headers: CORS_HEADERS });
   } catch (e) {
     return Response.json({ artists: [], videos: [], playlists: [], error: 'Erro ao consultar YouTube: ' + e.message }, { headers: CORS_HEADERS });
   }

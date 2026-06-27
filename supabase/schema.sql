@@ -32,3 +32,15 @@ select
   premium_expires_at
 from public.users;
 
+-- Cache de respostas da função "youtube-music" — busca repetida (mesmo
+-- artista/canal/playlist/vídeo) responde daqui sem gastar cota da API do
+-- YouTube (10.000 unidades/dia, cada busca de texto gasta 200). Sem RLS de
+-- propósito: só a Edge Function (service_role key) lê/escreve aqui, nunca
+-- o navegador direto.
+create table if not exists public.youtube_cache (
+  cache_key text primary key,
+  response jsonb not null,
+  created_at timestamptz not null default now()
+);
+alter table public.youtube_cache enable row level security;
+
