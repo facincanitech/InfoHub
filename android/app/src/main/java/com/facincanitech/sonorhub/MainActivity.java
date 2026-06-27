@@ -70,6 +70,10 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     public void onResume() {
         super.onResume();
         AppState.isForeground = true;
+        // Voltou pra tela cheia de verdade (não só restaurou do PiP) — o app
+        // já tá em primeiro plano normal, não precisa mais do serviço com
+        // notificação pra manter prioridade.
+        PlayerForegroundService.stop(this);
     }
 
     @Override
@@ -100,6 +104,12 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         if (!PlayerPipPlugin.isPlaybackActive() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         android.util.Log.d("InfoHubPip", "tryEnterPip: avisando JS (entering=true) e agendando enterPictureInPictureMode em 250ms");
         PlayerPipPlugin.emitPipVisualModeIfActive(true);
+        // Sem isso, o WebView perde prioridade de primeiro plano enquanto o
+        // PiP tá aberto e os botões de avançar/voltar da janelinha (que
+        // dependem do JS responder ao broadcast) ficavam sem efeito — o
+        // serviço aqui mantém o processo com prioridade de mídia o tempo
+        // todo que o PiP estiver ativo, não só depois que ele fecha.
+        PlayerForegroundService.start(this);
         new android.os.Handler(getMainLooper()).postDelayed(() -> {
             android.view.View decor = getWindow().getDecorView();
             android.util.Log.d("InfoHubPip", "Antes de entrar em PiP — decorView: " + decor.getWidth() + "x" + decor.getHeight());

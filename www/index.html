@@ -766,6 +766,10 @@
       <button class="player-tab-btn" id="player-tab-btn-radio" style="flex:1; background:none; color:var(--c-text); padding:10px; opacity:0.5;">📻 Rádio</button>
     </div>
 
+    <!-- Só aparece com algo tocando em tela grande, no lugar do cabeçalho/
+         abas — volta pra busca sem precisar trocar de aba. -->
+    <button id="player-back-to-search-btn" style="display:none; background:none; color: var(--c-text); font-size:1.3rem; padding:6px 0 14px; text-align:left;">←</button>
+
     <audio id="player-radio-audio" style="display:none;"></audio>
 
     <div id="player-media-searchbar" style="display:flex; gap:8px; margin-bottom: 14px;">
@@ -2189,6 +2193,12 @@ if (nativeApp) {
       closeCategoryDetail();
       return;
     }
+    // MultiSonor com algo tocando em tela grande — volta pra busca primeiro,
+    // só sai da aba no próximo toque de Voltar (mesma ideia da setinha).
+    if (document.getElementById('player-back-to-search-btn').style.display !== 'none') {
+      playerBackToSearch();
+      return;
+    }
     const activeTabBtn = document.querySelector('.nav-btn.active');
     if (activeTabBtn && activeTabBtn.dataset.tab !== 'briefing') {
       document.querySelector('.nav-btn[data-tab="briefing"]').click();
@@ -2448,8 +2458,16 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.25';
+const APP_VERSION = '4.26';
 const CHANGELOG = [
+  {
+    version: '4.26', date: '27/06/2026',
+    items: [
+      'PiP agora sempre mostra a capa (não o vídeo) — resolve pausa sozinha e vídeo cortado errado dentro da janelinha',
+      'Avançar/voltar dentro do PiP devem responder melhor agora (app mantém prioridade de mídia enquanto o PiP tá aberto)',
+      'MultiSonor: cabeçalho/abas saem de cena quando algo toca em tela grande, com uma setinha pra voltar pra busca — o botão físico Voltar do Android também volta pra busca primeiro',
+    ],
+  },
   {
     version: '4.25', date: '27/06/2026',
     items: [
@@ -4360,7 +4378,19 @@ function updatePlayerBodyVisibility() {
   });
   const showPlayer = (playerActiveTab === playerViewTab) && !playerShowResults;
   document.getElementById('player-now-playing').style.display = showPlayer ? 'block' : 'none';
+  // Com o player grande ocupando a tela, o cabeçalho/abas só tomam espaço —
+  // troca pela setinha de voltar (mesma função do botão físico de Voltar).
+  document.getElementById('player-screen-header').style.display = showPlayer ? 'none' : 'flex';
+  document.getElementById('player-subtabs-row').style.display = showPlayer ? 'none' : 'flex';
+  document.getElementById('player-back-to-search-btn').style.display = showPlayer ? 'block' : 'none';
 }
+
+function playerBackToSearch() {
+  if (playerActiveTab !== playerViewTab) return;
+  playerShowResults = true;
+  updatePlayerBodyVisibility();
+}
+document.getElementById('player-back-to-search-btn').addEventListener('click', playerBackToSearch);
 
 function switchPlayerTab(tab) {
   playerViewTab = tab;
@@ -4603,6 +4633,7 @@ async function ensurePlayerYt() {
 const ICON_SCREEN_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M9 21h6"/><path d="M12 17v4"/></svg>';
 const ICON_HEADPHONES_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5V12a8 8 0 0 1 16 0v1.5"/><rect x="2.5" y="13" width="5" height="8" rx="2.5"/><rect x="16.5" y="13" width="5" height="8" rx="2.5"/></svg>';
 let playerVideoVisible = false;
+let playerVideoVisibleBeforePip = false; // lembra se tava em modo vídeo antes do PiP, pra restaurar ao sair
 
 function setPlayerVideoVisible(visible) {
   playerVideoVisible = visible;
@@ -4771,6 +4802,20 @@ if (nativePlayerPip) {
     // Por isso: ao SAIR do PiP, espera um tempo (a animação de resize do
     // Android) antes de tirar o pip-active e recalcular qualquer coisa.
     console.log('[InfoHubPip] pipVisualMode evento recebido, entering=', data.entering, 'innerWidth/Height=', window.innerWidth, window.innerHeight);
+
+    // O vídeo de verdade (iframe do YouTube) dentro do PiP vinha com
+    // problema de tamanho/pausava sozinho — a capa (imagem simples) nunca
+    // teve esse problema. Então enquanto o PiP de verdade estiver aberto,
+    // força modo capa/áudio (sem afetar o áudio, que continua tocando),
+    // e volta pro que a pessoa tinha escolhido (vídeo ligado ou não) assim
+    // que sair do PiP.
+    if (data.entering) {
+      if (playerActiveTab === 'media' && playerVideoVisible) {
+        playerVideoVisibleBeforePip = true;
+        setPlayerVideoVisible(false);
+      }
+    }
+
     const delay = data.entering ? 0 : 350;
     setTimeout(() => {
       document.body.classList.toggle('pip-active', !!data.entering);
@@ -4782,6 +4827,10 @@ if (nativePlayerPip) {
           container.style.height = `${wrap.clientHeight}px`;
         }
         window.dispatchEvent(new Event('resize'));
+        if (!data.entering && playerVideoVisibleBeforePip) {
+          playerVideoVisibleBeforePip = false;
+          setPlayerVideoVisible(true);
+        }
       });
     }, delay);
   });
