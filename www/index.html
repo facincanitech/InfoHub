@@ -2517,8 +2517,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.40';
+const APP_VERSION = '4.41';
 const CHANGELOG = [
+  {
+    version: '4.41', date: '27/06/2026',
+    items: [
+      'Posição de leitura do Audiobook agora salva junto com o resto do estado do app, não numa chave separada',
+    ],
+  },
   {
     version: '4.40', date: '27/06/2026',
     items: [
@@ -4617,15 +4623,18 @@ let audiobookFileKey = null; // nome+tamanho do PDF, pra lembrar a posição ent
 let audiobookIsPlaying = false;
 let audiobookIsPaused = false;
 
+// Mesmo mecanismo de salvar usado pelos favoritos do MultiSonor
+// (getFeatureState + saveState, tudo dentro do mesmo state local) — em vez
+// de uma chave de localStorage solta, separada do resto do app.
 function audiobookSavedPositions() {
-  try { return JSON.parse(localStorage.getItem('sonorhub_audiobook_positions') || '{}'); }
-  catch (e) { return {}; }
+  const fs = getFeatureState('player', 'audiobook');
+  if (!fs.fields.positions) fs.fields.positions = {};
+  return fs.fields.positions;
 }
 function audiobookSavePosition() {
   if (!audiobookFileKey) return;
-  const positions = audiobookSavedPositions();
-  positions[audiobookFileKey] = audiobookChunkIndex;
-  localStorage.setItem('sonorhub_audiobook_positions', JSON.stringify(positions));
+  audiobookSavedPositions()[audiobookFileKey] = audiobookChunkIndex;
+  saveState();
 }
 
 function audiobookUpdateProgress() {

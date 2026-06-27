@@ -1,4 +1,4 @@
 {
-  "versionName": "4.40",
-  "notes": "Nova aba Audiobook no MultiSonor: lê PDF de texto em voz alta."
+  "versionName": "4.41",
+  "notes": "Posição de leitura do Audiobook agora salva junto com o resto do estado do app."
 }
