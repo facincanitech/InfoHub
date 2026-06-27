@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Privacidade — SonorHub</title>
+<style>
+  body {
+    background: #0f1115; color: #e8e8e8;
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    max-width: 720px; margin: 0 auto; padding: 24px 20px 60px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  h2 { font-size: 1.1rem; margin-top: 32px; color: #8ab4f8; }
+  p, li { color: #cfd2d8; }
+  .updated { color: #9aa0a6; font-size: 0.85rem; margin-bottom: 24px; }
+  a { color: #8ab4f8; }
+  code { background: #1a1d24; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+  <h1>Política de Privacidade — SonorHub</h1>
+  <p class="updated">Última atualização: 27/06/2026</p>
+
+  <p>O SonorHub é um aplicativo pessoal de produtividade (briefing diário de voz e utilidades) desenvolvido pela FacincaniTech (André Luiz Facincani Pezzarine). Esta página explica quais dados o app acessa, para quê, e como eles são tratados.</p>
+
+  <h2>Contas conectadas (Google, Microsoft/Outlook, Spotify)</h2>
+  <p>O SonorHub permite conectar contas de terceiros para trazer informações pessoais já existentes do usuário (agenda, e-mails, contatos) pro briefing diário. O acesso é sempre via login oficial (OAuth) do próprio provedor — o SonorHub nunca vê ou armazena sua senha.</p>
+  <ul>
+    <li><b>Google:</b> agenda (somente leitura, pra mostrar compromissos do dia), contatos (somente leitura, pra avisar aniversários), YouTube (somente leitura, usado pela busca/reprodução de música e vídeo) e envio de e-mail (usado exclusivamente pelo botão de SOS, pra notificar um contato de confiança com a localização do usuário).</li>
+    <li><b>Microsoft/Outlook:</b> leitura de e-mails, pra mostrar um resumo no briefing.</li>
+    <li><b>Spotify:</b> leitura de músicas/podcasts salvos (recurso em desenvolvimento).</li>
+  </ul>
+  <p>Esses dados são buscados em tempo real diretamente dos servidores do respectivo provedor (Google/Microsoft/Spotify) e exibidos no app — não ficam armazenados em nenhum banco de dados do SonorHub além do necessário pra manter a sessão logada.</p>
+
+  <h2>Localização (GPS)</h2>
+  <p>A localização do dispositivo é usada apenas quando o usuário aciona o recurso de SOS (segurança pessoal) ou outros recursos que dependem explicitamente de localização (como previsão do tempo). A localização nunca é coletada em segundo plano sem uma ação direta do usuário.</p>
+
+  <h2>API de Dados do YouTube</h2>
+  <p>A funcionalidade de busca/reprodução de música e vídeo (MultiSonor) usa a API de Dados do YouTube para buscar artistas, vídeos e playlists por nome. A reprodução acontece sempre dentro do player oficial embutido do YouTube (IFrame Player API) — o SonorHub não baixa, armazena nem extrai mídia do YouTube. Resultados de busca podem ser armazenados em cache no servidor por um período limitado (de 12 horas a 30 dias, dependendo do tipo de busca) para reduzir o número de chamadas repetidas à API — esse cache é só de metadados públicos (títulos, miniaturas, IDs), não de dados pessoais do usuário.</p>
+
+  <h2>Pagamentos (Premium)</h2>
+  <p>A assinatura Premium é processada pelo Mercado Pago. O SonorHub não armazena dados de cartão de crédito — todo o processamento de pagamento acontece diretamente nos servidores do Mercado Pago, seguindo a política de privacidade deles.</p>
+
+  <h2>Dados armazenados pelo SonorHub</h2>
+  <p>O app guarda localmente no dispositivo (e, quando logado, sincronizado com nosso backend) preferências e configurações do usuário — tema, contas conectadas, favoritos de música/vídeo/rádio, status da assinatura Premium. Não vendemos, alugamos nem compartilhamos esses dados com terceiros para fins de publicidade.</p>
+
+  <h2>Contato</h2>
+  <p>Para dúvidas sobre esta política ou para solicitar a exclusão dos seus dados, entre em contato: <a href="mailto:pezzarine@gmail.com">pezzarine@gmail.com</a>.</p>
+</body>
+</html>
