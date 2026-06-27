@@ -728,7 +728,7 @@
 
     <div id="player-now-playing" style="display:none; margin-bottom: 16px;">
       <div style="display:flex; justify-content:center; align-items:center; gap:28px; margin-bottom: 10px;">
-        <button id="player-ctrl-video-toggle" style="background:none; padding:0; display:none;"><img id="player-video-toggle-img" src="icones/tela.png" style="width:32px; height:26px; display:block;"></button>
+        <button id="player-ctrl-video-toggle" style="background:none; color: var(--c-text); padding:4px; display:none;"></button>
         <button id="player-ctrl-favorite" style="background:none; color: var(--c-text); font-size:1.4rem; padding:4px; display:none;">☆</button>
         <button id="player-ctrl-share" style="background:none; color: var(--c-text); padding:4px; display:none;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg></button>
       </div>
@@ -2366,8 +2366,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.11';
+const APP_VERSION = '4.12';
 const CHANGELOG = [
+  {
+    version: '4.12', date: '26/06/2026',
+    items: [
+      'MultiSonor: novo desenho de linha pros ícones de tela/fone (combinam com qualquer tema)',
+    ],
+  },
   {
     version: '4.11', date: '26/06/2026',
     items: [
@@ -4439,7 +4445,10 @@ async function ensurePlayerYt() {
 // Música e Vídeo agora são a mesma aba/busca — abre sempre mostrando a capa
 // (estilo YouTube Music) e o usuário decide se quer ver o vídeo de verdade
 // apertando o ícone — tela pra ligar o vídeo, fone pra voltar a só áudio,
-// igual o YouTube Music faz. Ícones próprios (icones/tela.png, icones/fone.png).
+// igual o YouTube Music faz. Ícones de linha desenhados aqui mesmo (sem
+// emoji, sem PNG) — herdam a cor do tema via currentColor.
+const ICON_SCREEN_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M9 21h6"/><path d="M12 17v4"/></svg>';
+const ICON_HEADPHONES_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5V12a8 8 0 0 1 16 0v1.5"/><rect x="2.5" y="13" width="5" height="8" rx="2.5"/><rect x="16.5" y="13" width="5" height="8" rx="2.5"/></svg>';
 let playerVideoVisible = false;
 
 function setPlayerVideoVisible(visible) {
@@ -4449,7 +4458,7 @@ function setPlayerVideoVisible(visible) {
   wrap.style.aspectRatio = visible ? '16/9' : '1/1';
   container.style.display = visible ? 'block' : 'none';
   document.getElementById('player-cover-img').style.display = visible ? 'none' : 'block';
-  document.getElementById('player-video-toggle-img').src = visible ? 'icones/fone.png' : 'icones/tela.png';
+  document.getElementById('player-ctrl-video-toggle').innerHTML = visible ? ICON_HEADPHONES_SVG : ICON_SCREEN_SVG;
   if (visible) {
     requestAnimationFrame(() => {
       container.style.height = `${wrap.clientHeight}px`;
