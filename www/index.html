@@ -2364,8 +2364,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.14';
+const APP_VERSION = '4.15';
 const CHANGELOG = [
+  {
+    version: '4.15', date: '26/06/2026',
+    items: [
+      'Corrigido: PiP mostrava a tela toda (cabeçalho, navbar) em vez de só a capa/vídeo — recorte agora se atualiza continuamente, não só uma vez',
+    ],
+  },
   {
     version: '4.14', date: '26/06/2026',
     items: [
@@ -4498,6 +4504,12 @@ function setPlayerProgressUI(pct) {
 function startPlayerProgressLoop() {
   stopPlayerProgressLoop();
   playerProgressInterval = setInterval(() => {
+    // Recalcula o retângulo do PiP a cada tick, não só quando o player abre —
+    // a MultiSonor agora é uma aba normal que rola (não mais tela cheia
+    // fixa), então se o usuário rolar a página antes de minimizar, o
+    // retângulo calculado uma vez só ficava velho e o PiP acabava
+    // recortando a Activity inteira (cabeçalho + navbar) em vez da capa/vídeo.
+    updatePipVideoRect();
     if (playerProgressDragging) return;
     if (!playerYtInstance || typeof playerYtInstance.getCurrentTime !== 'function') return;
     const cur = playerYtInstance.getCurrentTime() || 0;

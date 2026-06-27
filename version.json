@@ -1,4 +1,4 @@
 {
-  "versionName": "4.14",
-  "notes": "MultiSonor: vídeos/álbuns ordenados por mais recente."
+  "versionName": "4.15",
+  "notes": "Corrigido: PiP recortando a tela toda em vez da capa/vídeo."
 }
