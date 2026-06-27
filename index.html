@@ -72,7 +72,12 @@
   h1 { font-size: 1.3rem; margin: 4px 0 2px; }
   .sub { color: var(--c-text-dim); font-size: 0.85rem; margin-bottom: 18px; }
   button { border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; font-weight: 600; font-family: inherit; outline: none; }
-  button:focus-visible { outline: 2px solid var(--c-accent-blue); outline-offset: 2px; }
+  /* :focus-visible deveria só reagir a navegação por teclado, mas no WebView
+     do Android também dispara em toque normal — aparecia como um quadrado
+     azul ao redor de qualquer botão tocado (ex: o play do MultiSonor), igual
+     o bug antigo dos ícones do topo (v3.6), só que sem o -webkit-tap-highlight
+     cobrir esse caso porque é um outline, não o highlight de toque. App é
+     100% touch, então não perde nada removendo. */
 
   /* ===== Top bar / gear ===== */
   .screen-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 18px; }
@@ -2517,8 +2522,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.41';
+const APP_VERSION = '4.42';
 const CHANGELOG = [
+  {
+    version: '4.42', date: '27/06/2026',
+    items: [
+      'Corrigido: quadrado azul de destaque aparecia ao tocar em qualquer botão (ex: play do MultiSonor) — mesmo bug dos ícones do topo de antes, agora removido de vez',
+    ],
+  },
   {
     version: '4.41', date: '27/06/2026',
     items: [
