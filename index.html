@@ -763,6 +763,7 @@
     <div id="player-subtabs-row" style="display:flex; border-bottom: 1px solid var(--c-border2); margin-bottom: 14px;">
       <button class="player-tab-btn active" id="player-tab-btn-media" style="flex:1; background:none; color:var(--c-text); padding:10px; opacity:1;">🎵 Música/Vídeo</button>
       <button class="player-tab-btn" id="player-tab-btn-radio" style="flex:1; background:none; color:var(--c-text); padding:10px; opacity:0.5;">📻 Rádio</button>
+      <button class="player-tab-btn" id="player-tab-btn-audiobook" style="flex:1; background:none; color:var(--c-text); padding:10px; opacity:0.5;">📖 Audiobook</button>
     </div>
 
     <audio id="player-radio-audio" style="display:none;"></audio>
@@ -777,6 +778,7 @@
     <div id="player-radio-searchbar" style="display:none; gap:8px; margin-bottom: 14px;">
       <input type="text" id="player-radio-search" placeholder="Buscar rádio (nome, cidade, gênero)" enterkeyhint="search" style="flex:1; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius: 8px; padding: 9px 10px;">
     </div>
+    <div id="player-audiobook-searchbar" style="display:none;"></div>
 
     <div id="player-now-playing" style="display:none; margin-bottom: 16px;">
       <div id="player-icon-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
@@ -832,6 +834,30 @@
       </button>
       <div id="player-radio-favoritos" style="display:none; margin-bottom: 16px;"></div>
       <div id="player-radio-results"></div>
+    </div>
+
+    <div id="player-tab-audiobook" class="player-tab-content" style="display:none;">
+      <input type="file" id="audiobook-file-input" accept="application/pdf" style="display:none;">
+      <button type="button" id="audiobook-pick-btn" class="btn-connect" style="margin-bottom:14px;">📂 Selecionar PDF</button>
+      <div id="audiobook-status" class="hint"></div>
+      <div id="audiobook-reader" style="display:none;">
+        <div id="audiobook-title" style="font-weight:600; margin-bottom:6px;"></div>
+        <div id="audiobook-progress" class="hint" style="margin-bottom:14px;"></div>
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <select id="audiobook-rate" style="flex:1; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius:8px; padding:8px;">
+            <option value="0.8">0.8x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:center; align-items:center; gap:26px;">
+          <button id="audiobook-ctrl-prev" style="background:none; font-size:1.6rem; color:var(--c-text);">⏮</button>
+          <button id="audiobook-ctrl-playpause" style="background: var(--c-accent-blue); color: var(--c-on-accent); width:58px; height:58px; border-radius:50%; font-size:1.3rem;">▶️</button>
+          <button id="audiobook-ctrl-next" style="background:none; font-size:1.6rem; color:var(--c-text);">⏭</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -2491,8 +2517,15 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.39';
+const APP_VERSION = '4.40';
 const CHANGELOG = [
+  {
+    version: '4.40', date: '27/06/2026',
+    items: [
+      'Nova aba 📖 Audiobook no MultiSonor: seleciona um PDF de texto do celular e o app lê em voz alta',
+      'Se o PDF for formado por imagem (escaneado), avisa direto em vez de simplesmente não funcionar',
+    ],
+  },
   {
     version: '4.39', date: '27/06/2026',
     items: [
@@ -4480,7 +4513,7 @@ document.getElementById('player-nav-btn').addEventListener('click', () => {
 // Só uma aba toca por vez (Música/Vídeo unificados vs Rádio) — playerActiveTab
 // vale tanto pra "qual aba mostrar" quanto "o que tá tocando agora", já que
 // cada aba corresponde a exatamente um tipo de player.
-const PLAYER_TABS = ['media', 'radio'];
+const PLAYER_TABS = ['media', 'radio', 'audiobook'];
 let playerViewTab = 'media'; // qual aba o usuário tá vendo agora
 
 // Favoritos como categoria em cascata (recolhida por padrão) em vez de uma
@@ -4540,6 +4573,174 @@ function switchPlayerTab(tab) {
 PLAYER_TABS.forEach((t) => {
   document.getElementById(`player-tab-btn-${t}`).addEventListener('click', () => switchPlayerTab(t));
 });
+
+/* =========================================================================
+   AUDIOBOOK — lê PDF em voz alta com o motor de TTS já usado no resto do
+   app (window.speechSynthesis, shimado lá no topo pra funcionar tanto no
+   navegador quanto no app nativo). Sem custo de API: extração de texto é
+   local (pdf.js, carregado só quando o usuário abre essa aba) e a voz é a
+   do próprio aparelho.
+   ========================================================================= */
+let pdfjsLibPromise = null;
+function loadPdfjsLib() {
+  if (!pdfjsLibPromise) {
+    pdfjsLibPromise = import('./pdfjs/pdf.min.mjs').then((lib) => {
+      lib.GlobalWorkerOptions.workerSrc = 'pdfjs/pdf.worker.min.mjs';
+      return lib;
+    });
+  }
+  return pdfjsLibPromise;
+}
+
+// Texto longo de uma página estoura o limite prático de uma única
+// utterance em muitos motores de TTS (corta ou trava no meio) — quebra em
+// pedaços menores nos limites de frase, sem cortar palavra no meio.
+function splitTextIntoChunks(text, maxLen) {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const chunks = [];
+  let current = '';
+  sentences.forEach((s) => {
+    if (current && (current.length + s.length + 1) > maxLen) {
+      chunks.push(current);
+      current = s;
+    } else {
+      current = current ? `${current} ${s}` : s;
+    }
+  });
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+let audiobookChunks = []; // [{ text, page }]
+let audiobookChunkIndex = 0;
+let audiobookFileKey = null; // nome+tamanho do PDF, pra lembrar a posição entre seleções
+let audiobookIsPlaying = false;
+let audiobookIsPaused = false;
+
+function audiobookSavedPositions() {
+  try { return JSON.parse(localStorage.getItem('sonorhub_audiobook_positions') || '{}'); }
+  catch (e) { return {}; }
+}
+function audiobookSavePosition() {
+  if (!audiobookFileKey) return;
+  const positions = audiobookSavedPositions();
+  positions[audiobookFileKey] = audiobookChunkIndex;
+  localStorage.setItem('sonorhub_audiobook_positions', JSON.stringify(positions));
+}
+
+function audiobookUpdateProgress() {
+  if (!audiobookChunks.length) return;
+  const page = audiobookChunks[audiobookChunkIndex].page;
+  const totalPages = audiobookChunks[audiobookChunks.length - 1].page;
+  document.getElementById('audiobook-progress').textContent = `Página ${page} de ${totalPages}`;
+}
+
+async function handleAudiobookFileSelected(file) {
+  const statusEl = document.getElementById('audiobook-status');
+  document.getElementById('audiobook-reader').style.display = 'none';
+  statusEl.textContent = `Lendo "${file.name}"...`;
+  speechSynthesis.cancel();
+  audiobookIsPlaying = false;
+  audiobookIsPaused = false;
+
+  try {
+    const pdfjsLib = await loadPdfjsLib();
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const chunks = [];
+    let totalChars = 0;
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      const pageText = content.items.map((it) => it.str).join(' ').replace(/\s+/g, ' ').trim();
+      totalChars += pageText.length;
+      if (pageText) splitTextIntoChunks(pageText, 500).forEach((text) => chunks.push({ text, page: pageNum }));
+    }
+
+    // PDF formado só por imagem (escaneado/foto) não tem texto extraível —
+    // avisa isso claramente em vez de simplesmente não funcionar, porque
+    // pra quem não entende a diferença parece só "bug" sem explicação.
+    if (totalChars < 20) {
+      statusEl.textContent = 'Este PDF não contém texto, é formado por imagem — impossibilitando a leitura.';
+      return;
+    }
+
+    audiobookChunks = chunks;
+    audiobookFileKey = `${file.name}:${file.size}`;
+    const savedIndex = audiobookSavedPositions()[audiobookFileKey];
+    audiobookChunkIndex = (typeof savedIndex === 'number' && savedIndex < chunks.length) ? savedIndex : 0;
+
+    statusEl.textContent = '';
+    document.getElementById('audiobook-title').textContent = file.name;
+    document.getElementById('audiobook-reader').style.display = 'block';
+    audiobookUpdateProgress();
+    document.getElementById('audiobook-ctrl-playpause').textContent = '▶️';
+  } catch (e) {
+    console.error('Erro ao ler PDF:', e);
+    statusEl.textContent = 'Não foi possível ler esse PDF — tenta outro arquivo.';
+  }
+}
+
+document.getElementById('audiobook-pick-btn').addEventListener('click', () => {
+  document.getElementById('audiobook-file-input').click();
+});
+document.getElementById('audiobook-file-input').addEventListener('change', (ev) => {
+  const file = ev.target.files && ev.target.files[0];
+  if (file) handleAudiobookFileSelected(file);
+});
+
+function audiobookSpeakCurrentChunk() {
+  if (!audiobookChunks.length) return;
+  const chunk = audiobookChunks[audiobookChunkIndex];
+  const utter = new SpeechSynthesisUtterance(chunk.text);
+  utter.lang = 'pt-BR';
+  utter.rate = parseFloat(document.getElementById('audiobook-rate').value) || 1;
+  utter.onend = () => {
+    if (!audiobookIsPlaying || audiobookIsPaused) return;
+    if (audiobookChunkIndex < audiobookChunks.length - 1) {
+      audiobookChunkIndex++;
+      audiobookSavePosition();
+      audiobookUpdateProgress();
+      audiobookSpeakCurrentChunk();
+    } else {
+      audiobookIsPlaying = false;
+      document.getElementById('audiobook-ctrl-playpause').textContent = '▶️';
+    }
+  };
+  speechSynthesis.speak(utter);
+}
+
+function audiobookTogglePlayPause() {
+  if (!audiobookChunks.length) return;
+  if (audiobookIsPlaying) {
+    speechSynthesis.cancel();
+    audiobookIsPlaying = false;
+    audiobookIsPaused = true;
+    document.getElementById('audiobook-ctrl-playpause').textContent = '▶️';
+  } else {
+    audiobookIsPlaying = true;
+    audiobookIsPaused = false;
+    document.getElementById('audiobook-ctrl-playpause').textContent = '⏸';
+    audiobookSpeakCurrentChunk();
+  }
+}
+
+function audiobookSkipPage(direction) {
+  if (!audiobookChunks.length) return;
+  const currentPage = audiobookChunks[audiobookChunkIndex].page;
+  const targetPage = currentPage + direction;
+  const idx = audiobookChunks.findIndex((c) => c.page === targetPage);
+  if (idx === -1) return;
+  speechSynthesis.cancel();
+  audiobookChunkIndex = idx;
+  audiobookSavePosition();
+  audiobookUpdateProgress();
+  if (audiobookIsPlaying) audiobookSpeakCurrentChunk();
+}
+
+document.getElementById('audiobook-ctrl-playpause').addEventListener('click', audiobookTogglePlayPause);
+document.getElementById('audiobook-ctrl-prev').addEventListener('click', () => audiobookSkipPage(-1));
+document.getElementById('audiobook-ctrl-next').addEventListener('click', () => audiobookSkipPage(1));
 
 function buildPlayerResultRow(video, tipoLabel, tab, lista, index) {
   const row = document.createElement('div');
