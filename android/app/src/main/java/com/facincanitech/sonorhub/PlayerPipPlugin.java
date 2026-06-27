@@ -108,8 +108,20 @@ public class PlayerPipPlugin extends Plugin {
         }
         if (videoRect != null) {
             builder.setSourceRectHint(videoRect);
+            // O Android ignora o sourceRectHint (e cai pra recortar a Activity
+            // inteira) se a proporção declarada aqui não bater com a proporção
+            // real do retângulo — e a capa (modo só-áudio, o padrão) é quadrada
+            // (1:1), não 16:9. Usa a proporção de verdade do recorte atual.
+            int width = videoRect.width();
+            int height = videoRect.height();
+            if (width > 0 && height > 0) {
+                builder.setAspectRatio(new Rational(width, height));
+            } else {
+                builder.setAspectRatio(new Rational(16, 9));
+            }
+        } else {
+            builder.setAspectRatio(new Rational(16, 9));
         }
-        builder.setAspectRatio(new Rational(16, 9));
         return builder.build();
     }
 

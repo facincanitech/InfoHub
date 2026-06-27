@@ -2364,8 +2364,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.15';
+const APP_VERSION = '4.16';
 const CHANGELOG = [
+  {
+    version: '4.16', date: '26/06/2026',
+    items: [
+      'Corrigido de vez: PiP ignorava o recorte da capa por forçar proporção 16:9 numa imagem quadrada — agora usa a proporção real do recorte',
+    ],
+  },
   {
     version: '4.15', date: '26/06/2026',
     items: [
