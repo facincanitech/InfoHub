@@ -1,4 +1,4 @@
 {
-  "versionName": "4.45",
-  "notes": "PiP agora usa auto-entrada nativa do Android 12+, sem corrida de timing manual."
+  "versionName": "4.46",
+  "notes": "Rádio agora tem notificação/controle de bloqueio, favoritar e compartilhar; corrigido tela cinza ao voltar."
 }

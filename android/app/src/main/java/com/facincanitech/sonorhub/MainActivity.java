@@ -92,6 +92,17 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPictureInPictureMode()) {
             PlayerPipPlugin.emitPipVisualModeIfActive(false);
         }
+        // Voltar de um período longo de tela apagada (rádio tocando, tela
+        // bloqueada) às vezes deixava a WebView com um repaint incompleto —
+        // tela cinza até forçar via Home+gerenciador. Força um relayout aqui
+        // como rede de segurança geral, não só pro caminho específico do PiP.
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            final android.webkit.WebView webView = getBridge().getWebView();
+            webView.post(() -> {
+                webView.requestLayout();
+                webView.invalidate();
+            });
+        }
     }
 
     @Override

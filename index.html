@@ -2522,8 +2522,16 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.45';
+const APP_VERSION = '4.46';
 const CHANGELOG = [
+  {
+    version: '4.46', date: '28/06/2026',
+    items: [
+      'Rádio agora tem controle na notificação/tela de bloqueio (igual música/vídeo) — antes não tinha nenhum',
+      'Adicionado favoritar e compartilhar na tela "tocando agora" da rádio',
+      'Corrigido: tela cinza ao voltar de período longo com tela apagada',
+    ],
+  },
   {
     version: '4.45', date: '28/06/2026',
     items: [
@@ -5299,6 +5307,7 @@ function playerTogglePlayPause() {
   if (playerActiveTab === 'radio') {
     if (playerRadioAudio.paused) playerRadioAudio.play(); else playerRadioAudio.pause();
     document.getElementById('player-ctrl-playpause').textContent = playerRadioAudio.paused ? '▶️' : '⏸';
+    if (nativePlayerPip) nativePlayerPip.setPaused({ paused: playerRadioAudio.paused });
     return;
   }
   if (!playerYtInstance) return;
@@ -5417,6 +5426,33 @@ function stopRadioForExclusivity() {
   if (!playerRadioAudio.paused) playerRadioAudio.pause();
 }
 
+let playerCurrentRadioObj = null;
+
+function isRadioFavoritada(est) {
+  const fs = getFeatureState('player', 'radio');
+  const favoritos = Array.isArray(fs.fields.estacoes) ? fs.fields.estacoes : [];
+  const url = est.url_resolved || est.url;
+  return favoritos.some((f) => f.url === url);
+}
+
+function updateRadioFavoriteIcon() {
+  const btn = document.getElementById('player-ctrl-favorite');
+  if (!playerCurrentRadioObj) { btn.textContent = '☆'; return; }
+  btn.textContent = isRadioFavoritada(playerCurrentRadioObj) ? '⭐' : '☆';
+}
+
+function toggleRadioFavorito(est) {
+  const fs = getFeatureState('player', 'radio');
+  const favoritos = Array.isArray(fs.fields.estacoes) ? fs.fields.estacoes : [];
+  fs.fields.estacoes = favoritos;
+  const url = est.url_resolved || est.url;
+  const idx = favoritos.findIndex((f) => f.url === url);
+  if (idx !== -1) favoritos.splice(idx, 1);
+  else favoritos.push({ nome: est.name || est.nome, url, country: est.country });
+  saveState();
+  renderPlayerRadioFavoritos();
+}
+
 function playRadioStation(est) {
   stopMediaForExclusivity();
   stopPlayerProgressLoop();
@@ -5425,6 +5461,7 @@ function playRadioStation(est) {
   playerShowResults = false;
   const url = est.url_resolved || est.url;
   if (!url) return;
+  playerCurrentRadioObj = est;
   playerRadioAudio.src = url;
   playerRadioAudio.play().catch((e) => console.error('radio play:', e));
   setPlayerNowPlaying(est.name || est.nome, `📻 Rádio${est.country ? ' · ' + est.country : ''}`);
@@ -5437,14 +5474,15 @@ function playRadioStation(est) {
   document.getElementById('player-ctrl-prev').style.display = 'none';
   document.getElementById('player-ctrl-next').style.display = 'none';
   document.getElementById('player-ctrl-video-toggle').style.display = 'none';
-  document.getElementById('player-ctrl-favorite').style.display = 'none';
-  document.getElementById('player-ctrl-share').style.display = 'none';
+  document.getElementById('player-ctrl-favorite').style.display = 'flex';
+  document.getElementById('player-ctrl-share').style.display = 'flex';
+  updateRadioFavoriteIcon();
   document.getElementById('player-progress-row').style.display = 'none';
   document.getElementById('player-ctrl-playpause').textContent = '⏸';
-  // Rádio não tem vídeo pra mostrar no PiP — desliga o gatilho de PiP
-  // enquanto ela toca (background de áudio puro ainda não é garantido, é
-  // a mesma limitação de motor de áudio nativo que falta pro Rádio hoje).
-  if (nativePlayerPip) nativePlayerPip.setActive({ active: false });
+  // Liga o mesmo gatilho de PiP/notificação que a música usa — sem isso a
+  // rádio não tinha controle nenhum na tela de bloqueio/notificação, mesmo
+  // sendo áudio puro e sobrevivendo à tela travada (diferente do YouTube).
+  if (nativePlayerPip) { nativePlayerPip.setActive({ active: true }); nativePlayerPip.setPaused({ paused: false }); }
 }
 
 async function buscarRadios(termo) {
@@ -5547,6 +5585,12 @@ function updatePlayerFavoriteIcon() {
 }
 
 document.getElementById('player-ctrl-favorite').addEventListener('click', () => {
+  if (playerActiveTab === 'radio') {
+    if (!playerCurrentRadioObj) return;
+    toggleRadioFavorito(playerCurrentRadioObj);
+    updateRadioFavoriteIcon();
+    return;
+  }
   if (!playerCurrentVideoObj) return;
   const favoritos = getPlayerMediaFavoritos();
   const idx = favoritos.findIndex((f) => f.videoId === playerCurrentVideoObj.videoId);
@@ -5591,14 +5635,23 @@ function renderPlayerMediaFavoritos() {
 }
 
 document.getElementById('player-ctrl-share').addEventListener('click', async () => {
-  if (!playerCurrentVideoObj) return;
-  // Link próprio (não o youtube.com direto) — sem app instalado cai no
-  // navegador e já toca (ver checkForUpdate/playVideoFromDeepLink); com o
-  // app instalado e o App Link verificado (assetlinks.json), abre o
-  // SonorHub direto em vez do navegador.
-  const link = `https://facincanitech.github.io/SonorHub/?play=${playerCurrentVideoObj.videoId}`;
-  const attribution = `📲 Compartilhado usando o app SonorHub — ${APP_DOWNLOAD_LINK}`;
-  const text = [attribution, `${playerCurrentVideoObj.title} — ${playerCurrentVideoObj.channelTitle}`].join('\n\n');
+  let link, text;
+  if (playerActiveTab === 'radio') {
+    if (!playerCurrentRadioObj) return;
+    const url = playerCurrentRadioObj.url_resolved || playerCurrentRadioObj.url;
+    const attribution = `📲 Compartilhado usando o app SonorHub — ${APP_DOWNLOAD_LINK}`;
+    text = [attribution, `📻 ${playerCurrentRadioObj.name || playerCurrentRadioObj.nome}`].join('\n\n');
+    link = url;
+  } else {
+    if (!playerCurrentVideoObj) return;
+    // Link próprio (não o youtube.com direto) — sem app instalado cai no
+    // navegador e já toca (ver checkForUpdate/playVideoFromDeepLink); com o
+    // app instalado e o App Link verificado (assetlinks.json), abre o
+    // SonorHub direto em vez do navegador.
+    link = `https://facincanitech.github.io/SonorHub/?play=${playerCurrentVideoObj.videoId}`;
+    const attribution = `📲 Compartilhado usando o app SonorHub — ${APP_DOWNLOAD_LINK}`;
+    text = [attribution, `${playerCurrentVideoObj.title} — ${playerCurrentVideoObj.channelTitle}`].join('\n\n');
+  }
   if (nativeShare) {
     try { await nativeShare.share({ text, url: link }); } catch (e) {}
   } else if (navigator.share) {
