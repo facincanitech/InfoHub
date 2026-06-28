@@ -57,7 +57,13 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         // ele só passa por aqui (onStop), não por onUserLeaveHint/onPause a
         // tempo de entrar em PiP. isFinishing() exclui o caso de fechar de
         // verdade (botão Voltar na tela raiz) — aí não é pra abrir PiP.
-        if (!isFinishing()) tryEnterPip();
+        // Chega aqui já tarde (Activity já parada) — o delay de 250ms usado
+        // no caminho normal (onUserLeaveHint/onPause) faz a chamada real do
+        // PiP perder a corrida contra o sistema saindo do estado RESUMED,
+        // e enterPictureInPictureMode lança "Activity must be resumed" (visto
+        // no Logcat). Por isso aqui entra imediato, sem esperar o JS preparar
+        // a tela — prioriza o PiP realmente abrir sobre o visual ficar perfeito.
+        if (!isFinishing()) tryEnterPip(true);
     }
 
     @Override
@@ -87,7 +93,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         // aparelhos/gestos não chamam ele) — tenta de novo aqui como reforço,
         // já que entrar em PiP enquanto já está em PiP é inofensivo (a chamada
         // simplesmente não faz nada/lança, cai no catch).
-        tryEnterPip();
+        tryEnterPip(false);
     }
 
     // Disparado quando o usuário sai do app (home, troca de app) — se tem
@@ -95,7 +101,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     @Override
     public void onUserLeaveHint() {
         super.onUserLeaveHint();
-        tryEnterPip();
+        tryEnterPip(false);
     }
 
     // Em vez de tentar recortar coordenadas certas pro PiP (não deu certo de
@@ -103,9 +109,16 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     // deixar só a capa/vídeo ocupando a tela inteira ANTES de entrar em PiP —
     // assim o Android só "fotografa" o que já está sozinho ali. O delay
     // pequeno dá tempo do JS aplicar a mudança de CSS antes da captura.
-    private void tryEnterPip() {
+    // immediate=true pula esse delay (usado no fallback de onStop, onde já
+    // não tem tempo a perder — ver comentário lá).
+    private void tryEnterPip(boolean immediate) {
         if (!PlayerPipPlugin.isPlaybackActive() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        android.util.Log.d("InfoHubPip", "tryEnterPip: avisando JS (entering=true) e agendando enterPictureInPictureMode em 250ms");
+        // onPause/onUserLeaveHint/onStop podem chamar isso em sequência rápida
+        // (ex: onPause tenta com delay, onStop tenta de novo imediato antes do
+        // delay terminar) — sem essa checagem, a segunda chamada lançava
+        // exceção por já estar em PiP e desfazia o modo visual que a primeira
+        // tinha acabado de aplicar com sucesso.
+        if (isInPictureInPictureMode()) return;
         PlayerPipPlugin.emitPipVisualModeIfActive(true);
         // Sem isso, o WebView perde prioridade de primeiro plano enquanto o
         // PiP tá aberto e os botões de avançar/voltar da janelinha (que
@@ -113,12 +126,10 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         // serviço aqui mantém o processo com prioridade de mídia o tempo
         // todo que o PiP estiver ativo, não só depois que ele fecha.
         PlayerForegroundService.start(this);
-        new android.os.Handler(getMainLooper()).postDelayed(() -> {
-            android.view.View decor = getWindow().getDecorView();
-            android.util.Log.d("InfoHubPip", "Antes de entrar em PiP — decorView: " + decor.getWidth() + "x" + decor.getHeight());
+        Runnable enterPip = () -> {
+            if (isInPictureInPictureMode()) return; // outra chamada (onStop imediato) já conseguiu antes desse delay terminar
             try {
                 enterPictureInPictureMode(PlayerPipPlugin.buildPipParams(this));
-                android.util.Log.d("InfoHubPip", "enterPictureInPictureMode chamado sem lançar exceção; isInPictureInPictureMode=" + isInPictureInPictureMode());
             } catch (Exception e) {
                 android.util.Log.e("InfoHubPip", "Falha ao entrar em PiP: " + e.getMessage(), e);
                 // Já tínhamos avisado o JS pra preparar a tela cheia (entering=true)
@@ -129,7 +140,9 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
                 // animar a volta.
                 PlayerPipPlugin.emitPipVisualModeIfActive(false);
             }
-        }, 250);
+        };
+        if (immediate) enterPip.run();
+        else new android.os.Handler(getMainLooper()).postDelayed(enterPip, 250);
     }
 
     // PiP foi fechado (usuário arrastou pro X, ou voltou pro app normal)

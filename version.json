@@ -1,4 +1,4 @@
 {
-  "versionName": "4.42",
-  "notes": "Corrigido: quadrado azul de destaque aparecia ao tocar em qualquer botão."
+  "versionName": "4.43",
+  "notes": "Corrigido: apps recentes sem PiP ativo pausava a música em vez de entrar em PiP."
 }
