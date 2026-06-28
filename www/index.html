@@ -2522,8 +2522,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.44';
+const APP_VERSION = '4.45';
 const CHANGELOG = [
+  {
+    version: '4.45', date: '28/06/2026',
+    items: [
+      'PiP reescrito pra usar o auto-entrada nativa do Android 12+ em vez de tentar controlar o momento manualmente — elimina a corrida contra o sistema que causava "Activity must be resumed" e pausava a música',
+    ],
+  },
   {
     version: '4.44', date: '28/06/2026',
     items: [

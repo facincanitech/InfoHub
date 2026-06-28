@@ -1,4 +1,4 @@
 {
-  "versionName": "4.44",
-  "notes": "Corrigido de fato (via Logcat): entrada em PiP agora é síncrona, sem delay."
+  "versionName": "4.45",
+  "notes": "PiP agora usa auto-entrada nativa do Android 12+, sem corrida de timing manual."
 }

@@ -83,6 +83,15 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         // já tá em primeiro plano normal, não precisa mais do serviço com
         // notificação pra manter prioridade.
         PlayerForegroundService.stop(this);
+        // Rede de segurança: com autoEnterEnabled (Android 12+), a gente
+        // avisa o JS pra preparar a tela cheia ANTES de saber se o sistema
+        // vai mesmo entrar em PiP — se por algum motivo ele decidir não
+        // entrar, isInPictureInPictureMode() aqui vai estar false e isso
+        // desfaz o "modo preparação" que ficaria travado pra sempre (mesmo
+        // bug do "tela presa preta/cinza" de antes, por outro caminho).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPictureInPictureMode()) {
+            PlayerPipPlugin.emitPipVisualModeIfActive(false);
+        }
     }
 
     @Override
@@ -104,20 +113,23 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         tryEnterPip();
     }
 
-    // Logcat (real, não suposição) provou que mesmo um delay pequeno (250ms)
-    // antes de chamar enterPictureInPictureMode já é tempo demais em alguns
-    // aparelhos/gestos — onPause→onStop aconteceu em ~20ms num teste, e a
-    // chamada atrasada sempre lançava "Activity must be resumed". A entrada
-    // em PiP em si TEM que ser síncrona, na mesma chamada de onPause/
-    // onUserLeaveHint. O aviso pro JS preparar a tela (esconder navbar, capa
-    // ocupando tudo) sai em paralelo, sem esperar — pode aparecer 1 frame
-    // atrasado na miniatura do PiP, troca aceitável por o PiP realmente abrir.
+    // Muitas rodadas tentando controlar a entrada em PiP manualmente
+    // (onPause/onUserLeaveHint/onStop chamando enterPictureInPictureMode na
+    // hora certa, com e sem delay) sempre bateram na mesma corrida contra o
+    // sistema saindo do estado RESUMED — confirmado por Logcat real,
+    // "Activity must be resumed" mesmo chamando de forma 100% síncrona.
+    //
+    // A partir do Android 12 (S) existe o jeito certo: autoEnterEnabled(true)
+    // (configurado em PlayerPipPlugin.setActive, ANTES do usuário minimizar)
+    // deixa o PRÓPRIO SISTEMA decidir o momento exato de entrar em PiP — sem
+    // essa corrida, porque é tratado internamente pela plataforma, não pelo
+    // nosso código tentando adivinhar o timing certo. Aqui só avisamos o JS
+    // pra preparar a tela com antecedência (best-effort) e mantemos o
+    // foreground service; NÃO chamamos enterPictureInPictureMode nós mesmos
+    // nesse caso. Só em Android 8-11 (O a R), onde autoEnterEnabled não
+    // existe, ainda precisamos chamar manualmente.
     private void tryEnterPip() {
         if (!PlayerPipPlugin.isPlaybackActive() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        // onPause/onUserLeaveHint/onStop podem chamar isso em sequência rápida
-        // — sem essa checagem, a segunda chamada lançava exceção por já estar
-        // em PiP e desfazia o modo visual que a primeira tinha acabado de
-        // aplicar com sucesso.
         if (isInPictureInPictureMode()) return;
         PlayerPipPlugin.emitPipVisualModeIfActive(true);
         // Sem isso, o WebView perde prioridade de primeiro plano enquanto o
@@ -126,6 +138,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         // serviço aqui mantém o processo com prioridade de mídia o tempo
         // todo que o PiP estiver ativo, não só depois que ele fecha.
         PlayerForegroundService.start(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return; // deixa o autoEnterEnabled cuidar
         try {
             enterPictureInPictureMode(PlayerPipPlugin.buildPipParams(this));
         } catch (Exception e) {

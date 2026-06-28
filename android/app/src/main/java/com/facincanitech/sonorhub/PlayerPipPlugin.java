@@ -70,6 +70,16 @@ public class PlayerPipPlugin extends Plugin {
     public void setActive(PluginCall call) {
         playbackActive = Boolean.TRUE.equals(call.getBoolean("active", false));
         if (!playbackActive) isPaused = false;
+        // Atualiza os parâmetros (incluindo autoEnterEnabled) na hora que a
+        // mídia começa/para — o sistema precisa já ter esses parâmetros
+        // configurados ANTES do usuário minimizar, pra auto-entrada funcionar.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && getActivity() != null) {
+            try {
+                getActivity().setPictureInPictureParams(buildPipParams(getActivity()));
+            } catch (Exception e) {
+                // aparelho sem suporte — ignora
+            }
+        }
         call.resolve();
     }
 
@@ -101,12 +111,25 @@ public class PlayerPipPlugin extends Plugin {
     }
 
     // Chamado pela MainActivity bem antes de entrar em PiP, pra montar os
-    // botões com o ícone certo (play vs pause) no momento.
+    // botões com o ícone certo (play vs pause) no momento — e também
+    // chamado proativamente em setActive(), pra deixar o autoEnterEnabled
+    // já configurado ANTES do usuário minimizar.
+    //
+    // Tentamos por muitas rodadas controlar a entrada em PiP manualmente
+    // (onPause/onUserLeaveHint/onStop chamando enterPictureInPictureMode na
+    // hora certa) e sempre batia numa corrida contra o sistema saindo do
+    // estado RESUMED — confirmado por Logcat real, "Activity must be
+    // resumed" mesmo chamando de forma síncrona, sem delay nenhum. A partir
+    // do Android 12 (S) existe o jeito certo: autoEnterEnabled(true) deixa o
+    // PRÓPRIO SISTEMA decidir o momento exato de entrar em PiP ao minimizar,
+    // sem essa corrida (é tratado internamente pela plataforma, não pelo
+    // nosso código). Mantém os botões manuais como fallback só pra Android
+    // 8-11 (O a R), onde essa API não existe.
     public static PictureInPictureParams buildPipParams(Context context) {
         PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setActions(buildActions(context));
-            builder.setAutoEnterEnabled(false); // controlado manualmente em onUserLeaveHint
+            builder.setAutoEnterEnabled(playbackActive);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder.setActions(buildActions(context));
         }
