@@ -753,6 +753,7 @@
             <button type="button" id="audiobook-premium-drive-btn" style="flex-shrink:0;">🔗 Adicionar</button>
           </div>
           <div id="audiobook-premium-status" class="hint"></div>
+          <div id="audiobook-premium-drive-folder-list" style="display:none; margin-bottom:14px;"></div>
           <div id="audiobook-premium-shelf" style="display:flex; flex-wrap:wrap; gap:14px; margin-bottom:16px;"></div>
 
           <div id="audiobook-premium-reader" style="display:none;">
@@ -890,6 +891,7 @@
         <button type="button" id="audiobook-drive-btn" class="btn-connect" style="flex-shrink:0;">🔗 Usar</button>
       </div>
       <div id="audiobook-status" class="hint"></div>
+      <div id="audiobook-drive-folder-list" style="display:none; margin-bottom:14px;"></div>
       <div id="audiobook-reader" style="display:none;">
         <div id="audiobook-title" style="font-weight:600; margin-bottom:6px;"></div>
         <div id="audiobook-progress" class="hint" style="margin-bottom:14px;"></div>
@@ -2567,8 +2569,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.55';
+const APP_VERSION = '4.56';
 const CHANGELOG = [
+  {
+    version: '4.56', date: '29/06/2026',
+    items: [
+      'Audiobook (grátis e Premium) agora aceita link de PASTA do Google Drive — mostra a lista de PDFs encontrados pra escolher qual abrir',
+    ],
+  },
   {
     version: '4.55', date: '29/06/2026',
     items: [
@@ -4872,6 +4880,33 @@ function extrairGoogleDriveFileId(link) {
   return null;
 }
 
+// Link de PASTA (/drive/folders/ID) é outra coisa — tem vários arquivos
+// dentro, não um "ID de arquivo" único. Detecta separado pra mostrar a
+// lista de PDFs em vez de tentar (e falhar) interpretar como 1 arquivo só.
+function extrairGoogleDriveFolderId(link) {
+  const m = link.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
+  return m ? m[1] : null;
+}
+
+// Linha clicável de PDF encontrado numa pasta do Drive — usado tanto no
+// Audiobook grátis quanto na Biblioteca Premium.
+function renderGoogleDrivePdfPicker(containerEl, files, onPick) {
+  containerEl.innerHTML = '';
+  containerEl.style.display = 'block';
+  files.forEach((f) => {
+    const row = document.createElement('div');
+    row.className = 'alarm-item';
+    row.style.cursor = 'pointer';
+    const span = document.createElement('span');
+    span.className = 'time';
+    span.style.flex = '1';
+    span.textContent = f.name;
+    row.appendChild(span);
+    row.addEventListener('click', () => onPick(f));
+    containerEl.appendChild(row);
+  });
+}
+
 async function carregarAudiobookDoGoogleDrive(fileId) {
   const statusEl = document.getElementById('audiobook-status');
   document.getElementById('audiobook-reader').style.display = 'none';
@@ -4896,13 +4931,37 @@ async function carregarAudiobookDoGoogleDrive(fileId) {
   }
 }
 
+async function handleAudiobookGoogleDriveFolder(folderId) {
+  const statusEl = document.getElementById('audiobook-status');
+  const listEl = document.getElementById('audiobook-drive-folder-list');
+  listEl.style.display = 'none';
+  statusEl.textContent = 'Buscando PDFs na pasta...';
+  try {
+    const resp = await callEdgeFunction('google-drive-folder', { folderId });
+    if (resp.error || !resp.files || !resp.files.length) {
+      statusEl.textContent = resp.error || 'Nenhum PDF encontrado nessa pasta.';
+      return;
+    }
+    statusEl.textContent = `${resp.files.length} PDF(s) encontrados — escolhe um:`;
+    renderGoogleDrivePdfPicker(listEl, resp.files, (f) => {
+      listEl.style.display = 'none';
+      carregarAudiobookDoGoogleDrive(f.id);
+    });
+  } catch (e) {
+    console.error('Erro ao buscar PDFs da pasta:', e);
+    statusEl.textContent = 'Erro ao buscar PDFs dessa pasta.';
+  }
+}
+
 function handleAudiobookGoogleDriveLink() {
   const input = document.getElementById('audiobook-drive-input');
   const link = input.value.trim();
   if (!link) return;
+  const folderId = extrairGoogleDriveFolderId(link);
+  if (folderId) { handleAudiobookGoogleDriveFolder(folderId); return; }
   const fileId = extrairGoogleDriveFileId(link);
   if (!fileId) {
-    document.getElementById('audiobook-status').textContent = 'Não consegui achar o ID do arquivo nesse link — confere se é um link de compartilhamento do Google Drive.';
+    document.getElementById('audiobook-status').textContent = 'Não consegui achar o ID do arquivo/pasta nesse link — confere se é um link de compartilhamento do Google Drive.';
     return;
   }
   carregarAudiobookDoGoogleDrive(fileId);
@@ -5138,26 +5197,54 @@ document.getElementById('audiobook-premium-file-input').addEventListener('change
   ev.target.value = '';
 });
 
+async function addPremiumAudiobookFromDriveId(fileId, name, statusEl) {
+  statusEl.textContent = `Adicionando "${name}"...`;
+  try {
+    const pdfjsLib = await loadPdfjsLib();
+    const pdf = await pdfjsLib.getDocument({ url: `https://drive.google.com/uc?export=download&id=${fileId}` }).promise;
+    await openOrAddPremiumAudiobook(pdf, name, `drive:${fileId}`, 'drive');
+  } catch (e) {
+    console.error('Erro ao ler PDF do Google Drive:', e);
+    statusEl.textContent = 'Não consegui abrir esse PDF do Google Drive. Confere se está compartilhado como "Qualquer pessoa com o link".';
+  }
+}
+
 document.getElementById('audiobook-premium-drive-btn').addEventListener('click', async () => {
   const input = document.getElementById('audiobook-premium-drive-input');
   const link = input.value.trim();
   if (!link) return;
   const statusEl = document.getElementById('audiobook-premium-status');
-  const fileId = extrairGoogleDriveFileId(link);
-  if (!fileId) {
-    statusEl.textContent = 'Não consegui achar o ID do arquivo nesse link — confere se é um link de compartilhamento do Google Drive.';
+  const listEl = document.getElementById('audiobook-premium-drive-folder-list');
+
+  const folderId = extrairGoogleDriveFolderId(link);
+  if (folderId) {
+    listEl.style.display = 'none';
+    statusEl.textContent = 'Buscando PDFs na pasta...';
+    try {
+      const resp = await callEdgeFunction('google-drive-folder', { folderId });
+      if (resp.error || !resp.files || !resp.files.length) {
+        statusEl.textContent = resp.error || 'Nenhum PDF encontrado nessa pasta.';
+        return;
+      }
+      statusEl.textContent = `${resp.files.length} PDF(s) encontrados — escolhe um pra adicionar:`;
+      renderGoogleDrivePdfPicker(listEl, resp.files, (f) => {
+        listEl.style.display = 'none';
+        addPremiumAudiobookFromDriveId(f.id, f.name, statusEl);
+      });
+    } catch (e) {
+      console.error('Erro ao buscar PDFs da pasta:', e);
+      statusEl.textContent = 'Erro ao buscar PDFs dessa pasta.';
+    }
     return;
   }
-  statusEl.textContent = 'Carregando do Google Drive...';
-  try {
-    const pdfjsLib = await loadPdfjsLib();
-    const pdf = await pdfjsLib.getDocument({ url: `https://drive.google.com/uc?export=download&id=${fileId}` }).promise;
-    await openOrAddPremiumAudiobook(pdf, 'Livro do Google Drive', `drive:${fileId}`, 'drive');
-    input.value = '';
-  } catch (e) {
-    console.error('Erro ao ler PDF do Google Drive:', e);
-    statusEl.textContent = 'Não consegui abrir esse PDF do Google Drive. Confere se está compartilhado como "Qualquer pessoa com o link", ou baixa e adiciona o arquivo direto.';
+
+  const fileId = extrairGoogleDriveFileId(link);
+  if (!fileId) {
+    statusEl.textContent = 'Não consegui achar o ID do arquivo/pasta nesse link — confere se é um link de compartilhamento do Google Drive.';
+    return;
   }
+  await addPremiumAudiobookFromDriveId(fileId, 'Livro do Google Drive', statusEl);
+  input.value = '';
 });
 
 document.getElementById('audiobook-premium-back-btn').addEventListener('click', () => {
