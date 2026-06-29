@@ -30,6 +30,20 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         }
     };
 
+    // ACTION_SCREEN_OFF só pode ser recebido via registerReceiver em código —
+    // não é permitido declarar no Manifest, nem em versões recentes do
+    // Android (é um broadcast protegido do sistema). Avisa o JS pra abrir o
+    // YouTube Music (que tem reprodução em segundo plano de graça, diferente
+    // do player embutido do YouTube comum que usamos) bem na hora que a tela
+    // física desliga, antes do nosso vídeo morrer de qualquer jeito.
+    private boolean screenOffReceiverRegistered = false;
+    private final BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            PlayerPipPlugin.emitScreenOffIfActive();
+        }
+    };
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(BriefingAlarmPlugin.class);
@@ -48,6 +62,14 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
             registerReceiver(pipControlReceiver, filter);
         }
         pipReceiverRegistered = true;
+
+        IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(screenOffReceiver, screenOffFilter);
+        }
+        screenOffReceiverRegistered = true;
     }
 
     @Override
@@ -73,12 +95,20 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
             unregisterReceiver(pipControlReceiver);
             pipReceiverRegistered = false;
         }
+        if (screenOffReceiverRegistered) {
+            unregisterReceiver(screenOffReceiver);
+            screenOffReceiverRegistered = false;
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
         AppState.isForeground = true;
+        // Voltou pra tela cheia de verdade (não só restaurou do PiP) — o app
+        // já tá em primeiro plano normal, não precisa mais do serviço com
+        // notificação pra manter prioridade.
+        PlayerForegroundService.stop(this);
         // Rede de segurança: com autoEnterEnabled (Android 12+), a gente
         // avisa o JS pra preparar a tela cheia ANTES de saber se o sistema
         // vai mesmo entrar em PiP — se por algum motivo ele decidir não
@@ -139,6 +169,12 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         if (!PlayerPipPlugin.isPlaybackActive() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         if (isInPictureInPictureMode()) return;
         PlayerPipPlugin.emitPipVisualModeIfActive(true);
+        // Sem isso, o WebView perde prioridade de primeiro plano enquanto o
+        // PiP tá aberto e os botões de avançar/voltar da janelinha (que
+        // dependem do JS responder ao broadcast) ficavam sem efeito — o
+        // serviço aqui mantém o processo com prioridade de mídia o tempo
+        // todo que o PiP estiver ativo, não só depois que ele fecha.
+        PlayerForegroundService.start(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return; // deixa o autoEnterEnabled cuidar
         try {
             enterPictureInPictureMode(PlayerPipPlugin.buildPipParams(this));
@@ -156,7 +192,8 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
 
     // PiP foi fechado (usuário arrastou pro X, ou voltou pro app normal)
     // — avisa o JS pra desfazer o "modo visual de PiP" e mostrar a tela
-    // normal de novo.
+    // normal de novo. Se foi fechado de propósito enquanto a mídia ainda
+    // devia tocar, também sobe o Foreground Service com a notificação.
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
@@ -166,6 +203,9 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
             + " newConfig.screenWidthDp=" + newConfig.screenWidthDp + " screenHeightDp=" + newConfig.screenHeightDp);
         if (!isInPictureInPictureMode) {
             PlayerPipPlugin.emitPipVisualModeIfActive(false);
+            if (PlayerPipPlugin.isPlaybackActive()) {
+                PlayerForegroundService.start(this);
+            }
             // Log confirmou: nesse instante o decorView AINDA está no tamanho
             // pequeno do PiP — o resize de verdade pro tamanho cheio acontece
             // em paralelo, depois desse callback. Espera a animação de resize

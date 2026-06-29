@@ -63,6 +63,13 @@ public class PlayerPipPlugin extends Plugin {
         notifyListeners("pipVisualMode", data);
     }
 
+    // Tela física desligando (bloqueio) com algo tocando — avisa o JS pra
+    // decidir o que fazer (ex: abrir o YouTube Music pra continuar em
+    // segundo plano, já que o player embutido de vídeo não sobrevive a isso).
+    public static void emitScreenOffIfActive() {
+        if (activeInstance != null && playbackActive) activeInstance.notifyListeners("screenOff", new JSObject());
+    }
+
     // JS chama isso quando começa/para de tocar algo no Player — controla se
     // minimizar o app entra em PiP ou não (não queremos PiP fora da tela do
     // Player, só quando tem mídia rolando).

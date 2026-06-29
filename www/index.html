@@ -2522,20 +2522,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.50';
+const APP_VERSION = '4.48';
 const CHANGELOG = [
-  {
-    version: '4.50', date: '29/06/2026',
-    items: [
-      'Removida a troca automática pro YouTube Music ao travar a tela — voltou a só pausar, sem sair do app de surpresa',
-      'Removida a notificação/controle na bandeja do MultiSonor',
-      'Busca de música/vídeo continua escondendo Shorts automaticamente',
-    ],
-  },
   {
     version: '4.48', date: '28/06/2026',
     items: [
       'Busca de música/vídeo agora esconde Shorts (vídeos de até 1 minuto) automaticamente',
+      'A troca pro YouTube Music ao travar a tela só acontece no modo "música/capa" — no modo vídeo de verdade, o PiP cuida da troca de app e aceita parar ao travar',
+      'Audiobook agora também tem controle na notificação/tela de bloqueio',
     ],
   },
   {
@@ -5358,6 +5352,25 @@ document.getElementById('player-ctrl-playpause').addEventListener('click', playe
 document.getElementById('player-ctrl-prev').addEventListener('click', () => playerSkip(-1));
 document.getElementById('player-ctrl-next').addEventListener('click', () => playerSkip(1));
 
+// A tela física desligando mata o player de vídeo embutido do YouTube de
+// qualquer jeito (decodificador de vídeo precisa de superfície de tela —
+// sem solução sem violar Termos do YouTube, já confirmado e documentado).
+// O YouTube Music tem reprodução em segundo plano de graça — manda pra lá
+// automaticamente nesse instante, antes do nosso vídeo morrer sozinho.
+// Só faz sentido no modo "música" (capa, sem vídeo visível) — quem está
+// vendo o vídeo de verdade (modo 📺) escolheu isso de propósito, e a
+// maioria desse conteúdo (vlog, tutorial etc.) nem existe no catálogo do
+// YouTube Music mesmo; aí só aceita que para ao travar a tela, com PiP
+// cuidando da troca de app normalmente. Rádio/Audiobook não precisam
+// disso, já sobrevivem (áudio puro).
+if (nativePlayerPip) {
+  nativePlayerPip.addListener('screenOff', () => {
+    if (playerActiveTab === 'media' && !playerVideoVisible && playerCurrentVideoObj && !playerIsPaused) {
+      tocarNoNavegador(`https://music.youtube.com/watch?v=${playerCurrentVideoObj.videoId}`);
+    }
+  });
+}
+
 // Controles que vieram da janelinha PiP ou da notificação (bandeja) —
 // chegam aqui pelo mesmo evento, não importa de onde vieram. Audiobook usa
 // o mesmo canal (não é uma aba do playerActiveTab como média/rádio), então
@@ -5515,6 +5528,9 @@ function playRadioStation(est) {
   updateRadioFavoriteIcon();
   document.getElementById('player-progress-row').style.display = 'none';
   document.getElementById('player-ctrl-playpause').textContent = '⏸';
+  // Liga o mesmo gatilho de PiP/notificação que a música usa — sem isso a
+  // rádio não tinha controle nenhum na tela de bloqueio/notificação, mesmo
+  // sendo áudio puro e sobrevivendo à tela travada (diferente do YouTube).
   if (nativePlayerPip) { nativePlayerPip.setActive({ active: true }); nativePlayerPip.setPaused({ paused: false }); }
 }
 
