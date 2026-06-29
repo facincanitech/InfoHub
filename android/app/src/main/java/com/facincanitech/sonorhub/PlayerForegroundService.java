@@ -140,6 +140,18 @@ public class PlayerForegroundService extends Service {
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
     }
 
+    // Sem isso, fechar o app pelo gerenciador de tarefas (sem nunca mais
+    // reabrir) deixava a notificação presa pra sempre — o único lugar que
+    // chamava stop() era MainActivity.onResume(), que nunca rodava de novo
+    // nesse caso. Tarefa removida = não tem mais ninguém pra controlar isso,
+    // encerra o serviço/notificação também.
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        stopForeground(true);
+        stopSelf();
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;

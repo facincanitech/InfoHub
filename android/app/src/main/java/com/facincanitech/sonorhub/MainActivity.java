@@ -30,20 +30,6 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         }
     };
 
-    // ACTION_SCREEN_OFF só pode ser recebido via registerReceiver em código —
-    // não é permitido declarar no Manifest, nem em versões recentes do
-    // Android (é um broadcast protegido do sistema). Avisa o JS pra abrir o
-    // YouTube Music (que tem reprodução em segundo plano de graça, diferente
-    // do player embutido do YouTube comum que usamos) bem na hora que a tela
-    // física desliga, antes do nosso vídeo morrer de qualquer jeito.
-    private boolean screenOffReceiverRegistered = false;
-    private final BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            PlayerPipPlugin.emitScreenOffIfActive();
-        }
-    };
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(BriefingAlarmPlugin.class);
@@ -62,14 +48,6 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
             registerReceiver(pipControlReceiver, filter);
         }
         pipReceiverRegistered = true;
-
-        IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(screenOffReceiver, screenOffFilter);
-        }
-        screenOffReceiverRegistered = true;
     }
 
     @Override
@@ -94,10 +72,6 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         if (pipReceiverRegistered) {
             unregisterReceiver(pipControlReceiver);
             pipReceiverRegistered = false;
-        }
-        if (screenOffReceiverRegistered) {
-            unregisterReceiver(screenOffReceiver);
-            screenOffReceiverRegistered = false;
         }
     }
 
@@ -169,12 +143,10 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         if (!PlayerPipPlugin.isPlaybackActive() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         if (isInPictureInPictureMode()) return;
         PlayerPipPlugin.emitPipVisualModeIfActive(true);
-        // Sem isso, o WebView perde prioridade de primeiro plano enquanto o
-        // PiP tá aberto e os botões de avançar/voltar da janelinha (que
-        // dependem do JS responder ao broadcast) ficavam sem efeito — o
-        // serviço aqui mantém o processo com prioridade de mídia o tempo
-        // todo que o PiP estiver ativo, não só depois que ele fecha.
-        PlayerForegroundService.start(this);
+        // Só pra fontes que sobrevivem à tela travada (rádio/audiobook) —
+        // pra música/vídeo (YouTube) a notificação seria promessa vazia, já
+        // que o som para de qualquer jeito quando a tela trava.
+        if (PlayerPipPlugin.isNotificationCapable()) PlayerForegroundService.start(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return; // deixa o autoEnterEnabled cuidar
         try {
             enterPictureInPictureMode(PlayerPipPlugin.buildPipParams(this));
@@ -203,7 +175,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
             + " newConfig.screenWidthDp=" + newConfig.screenWidthDp + " screenHeightDp=" + newConfig.screenHeightDp);
         if (!isInPictureInPictureMode) {
             PlayerPipPlugin.emitPipVisualModeIfActive(false);
-            if (PlayerPipPlugin.isPlaybackActive()) {
+            if (PlayerPipPlugin.isNotificationCapable()) {
                 PlayerForegroundService.start(this);
             }
             // Log confirmou: nesse instante o decorView AINDA está no tamanho

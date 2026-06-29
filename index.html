@@ -2522,14 +2522,20 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.48';
+const APP_VERSION = '4.51';
 const CHANGELOG = [
+  {
+    version: '4.51', date: '29/06/2026',
+    items: [
+      'Removida a troca automática pro YouTube Music ao travar a tela — voltou a só pausar',
+      'Notificação/controle de bloqueio agora só acende pra Rádio e Audiobook (que sobrevivem à tela travada) — Música/Vídeo do YouTube não mostra mais notificação enganosa',
+      'Corrigido: notificação ficava presa mesmo depois de fechar o app pelo gerenciador de tarefas',
+    ],
+  },
   {
     version: '4.48', date: '28/06/2026',
     items: [
       'Busca de música/vídeo agora esconde Shorts (vídeos de até 1 minuto) automaticamente',
-      'A troca pro YouTube Music ao travar a tela só acontece no modo "música/capa" — no modo vídeo de verdade, o PiP cuida da troca de app e aceita parar ao travar',
-      'Audiobook agora também tem controle na notificação/tela de bloqueio',
     ],
   },
   {
@@ -4786,7 +4792,7 @@ function audiobookTogglePlayPause() {
     audiobookIsPlaying = true;
     audiobookIsPaused = false;
     document.getElementById('audiobook-ctrl-playpause').textContent = '⏸';
-    if (nativePlayerPip) { nativePlayerPip.setActive({ active: true }); nativePlayerPip.setPaused({ paused: false }); }
+    if (nativePlayerPip) { nativePlayerPip.setActive({ active: true, notificationCapable: true }); nativePlayerPip.setPaused({ paused: false }); }
     audiobookSpeakCurrentChunk();
   }
 }
@@ -5528,10 +5534,10 @@ function playRadioStation(est) {
   updateRadioFavoriteIcon();
   document.getElementById('player-progress-row').style.display = 'none';
   document.getElementById('player-ctrl-playpause').textContent = '⏸';
-  // Liga o mesmo gatilho de PiP/notificação que a música usa — sem isso a
-  // rádio não tinha controle nenhum na tela de bloqueio/notificação, mesmo
-  // sendo áudio puro e sobrevivendo à tela travada (diferente do YouTube).
-  if (nativePlayerPip) { nativePlayerPip.setActive({ active: true }); nativePlayerPip.setPaused({ paused: false }); }
+  // notificationCapable: rádio sobrevive à tela travada (áudio puro), então
+  // a notificação faz sentido aqui — diferente do YouTube, que para de
+  // qualquer jeito quando a tela trava.
+  if (nativePlayerPip) { nativePlayerPip.setActive({ active: true, notificationCapable: true }); nativePlayerPip.setPaused({ paused: false }); }
 }
 
 async function buscarRadios(termo) {

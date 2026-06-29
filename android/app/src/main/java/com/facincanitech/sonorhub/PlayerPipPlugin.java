@@ -31,6 +31,11 @@ public class PlayerPipPlugin extends Plugin {
     private static PlayerPipPlugin activeInstance;
     private static boolean playbackActive = false;
     private static boolean isPaused = false;
+    // Rádio/Audiobook sobrevivem à tela travada (áudio puro/TTS, sem
+    // decodificador de vídeo) — só eles devem acender a notificação. Música/
+    // Vídeo (YouTube) param de qualquer jeito quando a tela trava; mostrar
+    // notificação ali é só promessa vazia, então não acende pra esse caso.
+    private static boolean notificationCapable = false;
 
     @Override
     public void load() {
@@ -39,6 +44,10 @@ public class PlayerPipPlugin extends Plugin {
 
     public static boolean isPlaybackActive() {
         return playbackActive;
+    }
+
+    public static boolean isNotificationCapable() {
+        return notificationCapable;
     }
 
     public static void emitControlIfActive(String control) {
@@ -63,19 +72,13 @@ public class PlayerPipPlugin extends Plugin {
         notifyListeners("pipVisualMode", data);
     }
 
-    // Tela física desligando (bloqueio) com algo tocando — avisa o JS pra
-    // decidir o que fazer (ex: abrir o YouTube Music pra continuar em
-    // segundo plano, já que o player embutido de vídeo não sobrevive a isso).
-    public static void emitScreenOffIfActive() {
-        if (activeInstance != null && playbackActive) activeInstance.notifyListeners("screenOff", new JSObject());
-    }
-
     // JS chama isso quando começa/para de tocar algo no Player — controla se
     // minimizar o app entra em PiP ou não (não queremos PiP fora da tela do
     // Player, só quando tem mídia rolando).
     @PluginMethod
     public void setActive(PluginCall call) {
         playbackActive = Boolean.TRUE.equals(call.getBoolean("active", false));
+        notificationCapable = playbackActive && Boolean.TRUE.equals(call.getBoolean("notificationCapable", false));
         if (!playbackActive) isPaused = false;
         // Atualiza os parâmetros (incluindo autoEnterEnabled) na hora que a
         // mídia começa/para — o sistema precisa já ter esses parâmetros
