@@ -4994,11 +4994,11 @@ function renderGoogleDrivePdfPicker(containerEl, files, onPick, page) {
     const nav = document.createElement('div');
     nav.style.cssText = 'display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-size:0.8rem;';
     nav.innerHTML = `
-      <button type="button" style="background: var(--c-surface); color: var(--c-text); padding:6px 10px; border-radius:6px;" ${currentPage === 0 ? 'disabled style="opacity:0.4"' : ''}>‹ Anterior</button>
+      <button type="button" style="background: var(--c-surface); color: var(--c-text); padding:6px 10px; border-radius:6px; ${currentPage === 0 ? 'opacity:0.4' : ''}" ${currentPage === 0 ? 'disabled' : ''}>‹ Anterior</button>
       <span class="hint">${currentPage + 1} de ${totalPages} (${sorted.length} PDFs)</span>
-      <button type="button" style="background: var(--c-surface); color: var(--c-text); padding:6px 10px; border-radius:6px;" ${currentPage >= totalPages - 1 ? 'disabled style="opacity:0.4"' : ''}>Próxima ›</button>
+      <button type="button" style="background: var(--c-surface); color: var(--c-text); padding:6px 10px; border-radius:6px; ${currentPage >= totalPages - 1 ? 'opacity:0.4' : ''}" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>Próxima ›</button>
     `;
-    const [prevBtn, , nextBtn] = nav.querySelectorAll('button');
+    const [prevBtn, nextBtn] = nav.querySelectorAll('button');
     prevBtn.addEventListener('click', () => renderGoogleDrivePdfPicker(containerEl, files, onPick, currentPage - 1));
     nextBtn.addEventListener('click', () => renderGoogleDrivePdfPicker(containerEl, files, onPick, currentPage + 1));
     containerEl.appendChild(nav);

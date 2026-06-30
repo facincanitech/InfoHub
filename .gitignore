@@ -14,3 +14,6 @@ android/app/debug/
 
 # Lista de tarefas pessoal, não é código do projeto
 fazer.json
+
+# Funções Supabase — coladas manualmente no dashboard, não fazem parte do deploy pelo git
+supabase/functions/
