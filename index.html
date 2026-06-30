@@ -778,6 +778,7 @@
             <input type="text" id="audiobook-premium-drive-input" placeholder="Link do Google Drive" enterkeyhint="done" style="flex:1; background:var(--c-bg); border:1px solid var(--c-border2); color:var(--c-text); border-radius:8px; padding:8px 10px; font-size:0.85rem;">
             <button type="button" id="audiobook-premium-drive-btn" style="flex-shrink:0; font-size:0.85rem; padding:8px 10px;">🔗</button>
           </div>
+          <div id="audiobook-premium-folder-history" style="display:none; margin-top:6px;"></div>
           <div id="audiobook-premium-status" class="hint" style="margin-top:8px; font-size:0.8rem;"></div>
           <div id="audiobook-premium-drive-folder-list" style="display:none; margin-top:10px;"></div>
         </div>
@@ -954,6 +955,7 @@
           <button type="button" id="audiobook-drive-btn" class="btn-connect" style="flex-shrink:0;">🔗 Usar</button>
         </div>
         <div id="audiobook-status" class="hint"></div>
+        <div id="audiobook-drive-history" style="display:none; margin-top:8px;"></div>
         <div id="audiobook-drive-folder-list" style="display:none; margin-bottom:14px;"></div>
       </div>
       <div id="audiobook-reader" style="display:none;">
@@ -2639,7 +2641,7 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.67';
+const APP_VERSION = '4.68';
 const CHANGELOG = [
   {
     version: '4.62', date: '30/06/2026',
@@ -5064,6 +5066,7 @@ async function carregarAudiobookDoGoogleDrive(fileId, displayName) {
     const pdf = await pdfjsLib.getDocument({ url: driveFileProxyUrl(fileId), ...driveProxyHeaders }).promise;
     await processAudiobookPdf(pdf, displayName || 'PDF do Google Drive', `drive:${fileId}`, statusEl);
     audiobookSetLastDrive(fileId);
+    saveAbDriveHistory(fileId, displayName || 'PDF do Google Drive');
     renderAudiobookContinueButton();
   } catch (e) {
     console.error('Erro ao ler PDF do Google Drive:', e);
@@ -5095,6 +5098,33 @@ async function handleAudiobookGoogleDriveFolder(folderId) {
     statusEl.textContent = 'Erro ao buscar PDFs dessa pasta.';
   }
 }
+
+// ── Freemium: histórico de arquivos Drive (últimos 5) ─────────────────────
+function getAbDriveHistory() {
+  try { return JSON.parse(localStorage.getItem('infohub_ab_drive_hist') || '[]'); } catch { return []; }
+}
+function saveAbDriveHistory(id, name) {
+  const hist = getAbDriveHistory().filter(h => h.id !== id);
+  hist.unshift({ id, name, ts: Date.now() });
+  localStorage.setItem('infohub_ab_drive_hist', JSON.stringify(hist.slice(0, 5)));
+  renderAbDriveHistory();
+}
+function renderAbDriveHistory() {
+  const hist = getAbDriveHistory();
+  const el = document.getElementById('audiobook-drive-history');
+  if (!hist.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="font-size:0.72rem; color:var(--c-text-dim); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.05em;">Recentes</div>' +
+    hist.map(h =>
+      `<button type="button" data-id="${h.id}" data-name="${encodeURIComponent(h.name)}" style="display:block; width:100%; text-align:left; background:var(--c-surface); color:var(--c-text); border-radius:6px; padding:7px 10px; margin-bottom:4px; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🕒 ${h.name}</button>`
+    ).join('');
+  el.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      carregarAudiobookDoGoogleDrive(btn.dataset.id, decodeURIComponent(btn.dataset.name));
+    });
+  });
+}
+renderAbDriveHistory();
 
 function handleAudiobookGoogleDriveLink() {
   const input = document.getElementById('audiobook-drive-input');
@@ -5443,6 +5473,7 @@ document.getElementById('audiobook-premium-drive-btn').addEventListener('click',
         return;
       }
       statusEl.textContent = `${resp.files.length} PDF(s) encontrados — escolhe um pra adicionar:`;
+      saveAbPremFolderHist(folderId, `Pasta Drive · ${resp.files.length} PDFs`);
       renderGoogleDrivePdfPicker(listEl, resp.files, (f) => {
         listEl.style.display = 'none';
         addPremiumAudiobookFromDriveId(f.id, f.name, statusEl);
@@ -5462,6 +5493,48 @@ document.getElementById('audiobook-premium-drive-btn').addEventListener('click',
   await addPremiumAudiobookFromDriveId(fileId, 'Livro do Google Drive', statusEl);
   input.value = '';
 });
+
+// ── Premium: histórico de pastas Drive (últimas 3) ────────────────────────
+function getAbPremFolderHist() {
+  try { return JSON.parse(localStorage.getItem('infohub_abprem_folders') || '[]'); } catch { return []; }
+}
+function saveAbPremFolderHist(folderId, name) {
+  const hist = getAbPremFolderHist().filter(h => h.id !== folderId);
+  hist.unshift({ id: folderId, name, ts: Date.now() });
+  localStorage.setItem('infohub_abprem_folders', JSON.stringify(hist.slice(0, 3)));
+  renderAbPremFolderHist();
+}
+function renderAbPremFolderHist() {
+  const hist = getAbPremFolderHist();
+  const el = document.getElementById('audiobook-premium-folder-history');
+  if (!hist.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="font-size:0.7rem; color:var(--c-text-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Pastas recentes</div>' +
+    hist.map(h =>
+      `<button type="button" data-id="${h.id}" style="display:block; width:100%; text-align:left; background:var(--c-bg); color:var(--c-text); border-radius:6px; padding:6px 8px; margin-bottom:3px; font-size:0.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🗂 ${h.name}</button>`
+    ).join('');
+  el.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const folderId = btn.dataset.id;
+      const statusEl = document.getElementById('audiobook-premium-status');
+      const listEl = document.getElementById('audiobook-premium-drive-folder-list');
+      listEl.style.display = 'none';
+      statusEl.textContent = 'Buscando PDFs na pasta...';
+      callEdgeFunction('google-drive-folder', { folderId }).then(resp => {
+        if (resp.error || !resp.files || !resp.files.length) {
+          statusEl.textContent = resp.error || 'Nenhum PDF encontrado nessa pasta.';
+          return;
+        }
+        statusEl.textContent = `${resp.files.length} PDF(s) encontrados — escolhe um pra adicionar:`;
+        renderGoogleDrivePdfPicker(listEl, resp.files, (f) => {
+          listEl.style.display = 'none';
+          addPremiumAudiobookFromDriveId(f.id, f.name, statusEl);
+        });
+      }).catch(() => { statusEl.textContent = 'Erro ao buscar PDFs dessa pasta.'; });
+    });
+  });
+}
+renderAbPremFolderHist();
 
 document.getElementById('audiobook-premium-back-btn').addEventListener('click', () => {
   speechSynthesis.cancel();
