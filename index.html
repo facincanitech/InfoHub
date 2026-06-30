@@ -756,48 +756,80 @@
       </div>
 
       <div id="premium-screen-audiobook-premium" style="display:none;">
-          <div class="desc">Versão completa do Audiobook: guarda vários livros com capa (gerada da própria 1ª página do PDF), busca por nome e continua de onde parou em cada um. No MultiSonor grátis só dá pra ter 1 livro de cada vez, sem capa nem busca.</div>
-          <input type="text" id="audiobook-premium-search" placeholder="🔎 Buscar na sua biblioteca" style="width:100%; margin-bottom:10px; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius: 8px; padding: 9px 10px;">
-          <input type="file" id="audiobook-premium-file-input" accept="application/pdf" style="display:none;">
-          <button type="button" id="audiobook-premium-pick-btn" style="margin-bottom:10px;">📂 Adicionar PDF do celular</button>
-          <div style="display:flex; gap:8px; margin-bottom:14px;">
-            <input type="text" id="audiobook-premium-drive-input" placeholder="Ou cola um link do Google Drive" enterkeyhint="done" style="flex:1; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius: 8px; padding: 9px 10px;">
-            <button type="button" id="audiobook-premium-drive-btn" style="flex-shrink:0; font-size:0.85rem; padding:9px 12px;">🔗</button>
-          </div>
-          <div id="audiobook-premium-status" class="hint"></div>
-          <div id="audiobook-premium-drive-folder-list" style="display:none; margin-bottom:14px;"></div>
-          <div id="audiobook-premium-shelf" style="display:flex; flex-wrap:wrap; gap:14px; margin-bottom:16px;"></div>
+        <!-- Inputs ocultos -->
+        <input type="file" id="audiobook-premium-file-input" accept="application/pdf" style="display:none;">
 
-          <div id="audiobook-premium-reader" style="display:none;">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-              <button type="button" id="audiobook-premium-back-btn" style="background: var(--c-surface); color: var(--c-text);">← Estante</button>
-              <div>
-                <div id="audiobook-premium-title" style="font-weight:600; font-size:0.9rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
-                <div id="audiobook-premium-progress" class="hint" style="font-size:0.75rem;"></div>
+        <!-- Painel de adição (recolhido por padrão, abre com o + da estante) -->
+        <div id="audiobook-premium-add-panel" style="display:none; background:var(--c-surface); border-radius:12px; padding:14px; margin-bottom:14px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span style="font-weight:600; font-size:0.9rem; color:var(--c-text);">Adicionar livro</span>
+            <button type="button" id="audiobook-premium-add-close" style="background:none; color:var(--c-text-dim); font-size:1.3rem; padding:0; line-height:1;">✕</button>
+          </div>
+          <button type="button" id="audiobook-premium-pick-btn" style="width:100%; margin-bottom:8px; font-size:0.85rem;">📂 Selecionar PDF do celular</button>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="audiobook-premium-drive-input" placeholder="Link do Google Drive" enterkeyhint="done" style="flex:1; background:var(--c-bg); border:1px solid var(--c-border2); color:var(--c-text); border-radius:8px; padding:8px 10px; font-size:0.85rem;">
+            <button type="button" id="audiobook-premium-drive-btn" style="flex-shrink:0; font-size:0.85rem; padding:8px 10px;">🔗</button>
+          </div>
+          <div id="audiobook-premium-status" class="hint" style="margin-top:8px; font-size:0.8rem;"></div>
+          <div id="audiobook-premium-drive-folder-list" style="display:none; margin-top:10px;"></div>
+        </div>
+
+        <!-- ESTANTE -->
+        <div id="audiobook-premium-shelf-view">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+            <span style="font-size:0.72rem; color:var(--c-text-dim); letter-spacing:0.06em; text-transform:uppercase;">Minha estante</span>
+            <button type="button" id="audiobook-premium-add-btn" style="background:none; color:var(--c-text-dim); font-size:1.4rem; padding:0; line-height:1; width:30px; height:30px; display:flex; align-items:center; justify-content:center;">＋</button>
+          </div>
+          <input type="text" id="audiobook-premium-search" placeholder="🔎 Buscar..." style="width:100%; margin-bottom:14px; background:var(--c-bg); border:1px solid var(--c-border2); color:var(--c-text); border-radius:8px; padding:8px 10px; font-size:0.85rem;">
+          <div id="audiobook-premium-shelf" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:10px;"></div>
+          <div id="audiobook-premium-shelf-count" class="hint" style="font-size:0.75rem;"></div>
+        </div>
+
+        <!-- READER -->
+        <div id="audiobook-premium-reader" style="display:none;">
+          <!-- Header -->
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 0 14px;">
+            <button type="button" id="audiobook-premium-back-btn" style="background:none; color:var(--ab-text-dim,#9b937f); font-size:1.4rem; padding:0; line-height:1;">←</button>
+            <span id="audiobook-premium-title" style="font-size:0.82rem; color:var(--ab-text-dim,#9b937f); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+            <button type="button" id="audiobook-premium-settings-btn" style="background:none; color:var(--ab-text-dim,#9b937f); font-size:1rem; padding:4px; line-height:1;">☰</button>
+          </div>
+
+          <!-- Texto da página atual (modo texto fluido, estilo Kindle) -->
+          <div id="audiobook-premium-text-view" style="min-height:240px; padding:18px 16px; border-radius:10px; margin-bottom:10px; background:var(--ab-bg,#f6f1e7); font-family:Georgia,serif; font-size:17px; line-height:1.85; color:var(--ab-text,#2b2620); position:relative;">
+            <div id="audiobook-premium-tap-prev" style="position:absolute; left:0; top:0; width:28%; height:100%; cursor:pointer; z-index:1;"></div>
+            <div id="audiobook-premium-tap-next" style="position:absolute; right:0; top:0; width:28%; height:100%; cursor:pointer; z-index:1;"></div>
+          </div>
+
+          <!-- canvas mantido oculto — usado internamente só pra gerar capa da 1ª página -->
+          <canvas id="audiobook-premium-page-canvas" style="display:none;"></canvas>
+
+          <!-- Progresso -->
+          <div style="margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+              <span id="audiobook-premium-progress" style="font-size:11px; color:var(--ab-text-dim,#9b937f);"></span>
+              <span id="audiobook-premium-pct" style="font-size:11px; color:var(--ab-text-dim,#9b937f);"></span>
+            </div>
+            <div style="height:2px; background:var(--ab-border,#e3dac6); border-radius:2px; overflow:hidden;">
+              <div id="audiobook-premium-progress-bar" style="height:100%; width:0%; background:var(--ab-accent,#b08d57); border-radius:2px; transition:width 0.3s;"></div>
+            </div>
+          </div>
+
+          <!-- Player bar -->
+          <div style="background:var(--c-surface); border-radius:14px; padding:13px 15px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div style="flex:1; min-width:0;">
+                <div id="audiobook-premium-player-status" style="font-size:12px; font-weight:500; color:var(--c-text);">Pronto para ler</div>
+                <div id="audiobook-premium-player-info" style="font-size:11px; color:var(--c-text-dim); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:18px; flex-shrink:0;">
+                <button id="audiobook-premium-ctrl-prev" style="background:none; color:var(--c-text-dim); font-size:0.75rem; padding:0; line-height:1.3; text-align:center;">⏪<br><span style="font-size:9px;">pág</span></button>
+                <button id="audiobook-premium-ctrl-playpause" style="background:var(--c-text); color:var(--c-bg); width:38px; height:38px; border-radius:50%; font-size:1rem; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;">▶</button>
+                <button id="audiobook-premium-ctrl-next" style="background:none; color:var(--c-text-dim); font-size:0.75rem; padding:0; line-height:1.3; text-align:center;">⏩<br><span style="font-size:9px;">pág</span></button>
               </div>
             </div>
-            <!-- Página atual renderizada — Kindle-style -->
-            <div style="position:relative; margin-bottom:12px; border-radius:8px; overflow:hidden; background: var(--c-surface); box-shadow:0 4px 16px -4px rgba(0,0,0,0.4);">
-              <canvas id="audiobook-premium-page-canvas" style="width:100%; display:block;"></canvas>
-              <!-- Toque nos lados pra virar página -->
-              <div id="audiobook-premium-tap-prev" style="position:absolute; left:0; top:0; width:35%; height:100%; cursor:pointer; opacity:0;"></div>
-              <div id="audiobook-premium-tap-next" style="position:absolute; right:0; top:0; width:35%; height:100%; cursor:pointer; opacity:0;"></div>
-            </div>
-            <div style="display:flex; gap:8px; margin-bottom:14px;">
-              <select id="audiobook-premium-rate" style="flex:1; background: var(--c-bg); border: 1px solid var(--c-border2); color: var(--c-text); border-radius:8px; padding:8px;">
-                <option value="0.8">0.8x</option>
-                <option value="1" selected>1x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2x</option>
-              </select>
-            </div>
-            <div style="display:flex; justify-content:center; align-items:center; gap:26px;">
-              <button id="audiobook-premium-ctrl-prev" style="background:none; font-size:1.6rem; color:var(--c-text);">⏮</button>
-              <button id="audiobook-premium-ctrl-playpause" style="background: var(--c-accent-blue); color: var(--c-on-accent); width:58px; height:58px; border-radius:50%; font-size:1.3rem;">▶️</button>
-              <button id="audiobook-premium-ctrl-next" style="background:none; font-size:1.6rem; color:var(--c-text);">⏭</button>
-            </div>
+          </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -1704,6 +1736,8 @@ function loadState() {
     briefingRate: saved.briefingRate || 1,
     voiceName: saved.voiceName || null,
     vozNarrador: saved.vozNarrador || 'auto', // auto | vagner | james | robo
+    abTheme: saved.abTheme || 'sepia',       // sepia | white | dark
+    abNarrator: saved.abNarrator || 'vagner', // vagner | james
     activeClimateCity: saved.activeClimateCity || 1,
     theme: saved.theme || 'dark',
     premiumUnlocked: saved.premiumUnlocked || false,
@@ -2594,7 +2628,7 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.62';
+const APP_VERSION = '4.64';
 const CHANGELOG = [
   {
     version: '4.62', date: '30/06/2026',
@@ -5188,28 +5222,44 @@ function renderAudiobookShelf(filter) {
     .filter((b) => b.title.toLowerCase().includes(term))
     .sort((a, b) => a.title.localeCompare(b.title, 'pt', { sensitivity: 'base' }));
   shelf.innerHTML = '';
-  if (!filtered.length) {
-    shelf.innerHTML = `<div class="hint">${books.length ? 'Nenhum livro encontrado.' : 'Sua biblioteca está vazia — adiciona um PDF ou link do Drive acima.'}</div>`;
-    return;
+
+  const inProgress = books.filter((b) => b.lastPage > 1 && b.lastPage < b.totalPages).length;
+  const countEl = document.getElementById('audiobook-premium-shelf-count');
+  if (countEl) countEl.textContent = books.length
+    ? `${books.length} livro${books.length !== 1 ? 's' : ''}${inProgress ? ` · ${inProgress} em andamento` : ''}`
+    : '';
+
+  if (!filtered.length && !books.length) {
+    shelf.innerHTML = `<div class="hint" style="grid-column:1/-1; padding:12px 0;">Toque em ＋ para adicionar seu primeiro livro.</div>`;
   }
+
   filtered.forEach((book) => {
-    const card = document.createElement('div');
-    card.style.cssText = 'width:100px; cursor:pointer; text-align:center;';
     const pct = book.totalPages ? Math.min(100, Math.round(((book.lastPage || 1) / book.totalPages) * 100)) : 0;
-    const img = document.createElement('img');
-    img.src = book.coverDataUrl || '';
-    img.style.cssText = 'width:90px; height:120px; object-fit:cover; border-radius:6px; background:#222; box-shadow:0 4px 10px -4px rgba(0,0,0,0.4);';
-    const titleEl = document.createElement('div');
-    titleEl.style.cssText = 'font-size:0.72rem; margin-top:6px; line-height:1.2;';
-    titleEl.textContent = book.title;
-    const pctEl = document.createElement('div');
-    pctEl.className = 'hint';
-    pctEl.style.fontSize = '0.65rem';
-    pctEl.textContent = `${pct}%`;
+    const done = pct >= 100;
+
+    const card = document.createElement('div');
+    card.style.cssText = 'cursor:pointer;';
+
+    const coverWrap = document.createElement('div');
+    coverWrap.style.cssText = 'position:relative; aspect-ratio:3/4; border-radius:6px; overflow:hidden; background:#1e1e2e; box-shadow:0 3px 10px -2px rgba(0,0,0,0.45); margin-bottom:6px;';
+
+    if (book.coverDataUrl) {
+      const img = document.createElement('img');
+      img.src = book.coverDataUrl;
+      img.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
+      coverWrap.appendChild(img);
+    } else {
+      coverWrap.style.cssText += 'display:flex; align-items:center; justify-content:center; padding:8px;';
+      const titleInCover = document.createElement('span');
+      titleInCover.style.cssText = 'font-size:0.65rem; color:#ccc; text-align:center; line-height:1.3;';
+      titleInCover.textContent = book.title;
+      coverWrap.appendChild(titleInCover);
+    }
+
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
-    delBtn.textContent = '✕ remover';
-    delBtn.style.cssText = 'display:block; margin:4px auto 0; font-size:0.65rem; background:none; color:var(--c-text-dim); padding:2px;';
+    delBtn.innerHTML = '✕';
+    delBtn.style.cssText = 'position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:9px; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:2; line-height:1;';
     delBtn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       const idx = books.indexOf(book);
@@ -5217,13 +5267,37 @@ function renderAudiobookShelf(filter) {
       saveState();
       renderAudiobookShelf(document.getElementById('audiobook-premium-search').value);
     });
-    card.appendChild(img);
+    coverWrap.appendChild(delBtn);
+
+    const progressTrack = document.createElement('div');
+    progressTrack.style.cssText = 'height:2px; background:var(--c-border2); border-radius:2px; overflow:hidden; margin-bottom:5px;';
+    const progressFill = document.createElement('div');
+    progressFill.style.cssText = `height:100%; width:${pct}%; background:${done ? '#6a9b5a' : '#b08d57'}; border-radius:2px;`;
+    progressTrack.appendChild(progressFill);
+
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText = 'font-size:0.68rem; line-height:1.25; color:var(--c-text); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;';
+    titleEl.textContent = book.title;
+
+    card.appendChild(coverWrap);
+    card.appendChild(progressTrack);
     card.appendChild(titleEl);
-    card.appendChild(pctEl);
-    card.appendChild(delBtn);
     card.addEventListener('click', () => openPremiumAudiobook(book));
     shelf.appendChild(card);
   });
+
+  // Card "+ adicionar" no final
+  const addCard = document.createElement('div');
+  addCard.style.cssText = 'cursor:pointer;';
+  const addCover = document.createElement('div');
+  addCover.style.cssText = 'aspect-ratio:3/4; border:1.5px dashed var(--c-border2); border-radius:6px; display:flex; align-items:center; justify-content:center; color:var(--c-text-dim); font-size:1.5rem; margin-bottom:6px;';
+  addCover.textContent = '＋';
+  addCard.appendChild(addCover);
+  addCard.addEventListener('click', () => {
+    const panel = document.getElementById('audiobook-premium-add-panel');
+    if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  });
+  shelf.appendChild(addCard);
 }
 document.getElementById('audiobook-premium-search').addEventListener('input', (ev) => renderAudiobookShelf(ev.target.value));
 
@@ -5291,9 +5365,15 @@ async function openOrAddPremiumAudiobook(pdf, title, fileKey, source) {
 
   statusEl.textContent = '';
   document.getElementById('audiobook-premium-title').textContent = book.title;
-  document.getElementById('audiobook-premium-shelf').style.display = 'none';
+  document.getElementById('audiobook-premium-shelf-view').style.display = 'none';
+  document.getElementById('audiobook-premium-add-panel').style.display = 'none';
   document.getElementById('audiobook-premium-reader').style.display = 'block';
-  document.getElementById('audiobook-premium-ctrl-playpause').textContent = '▶️';
+  const ppBtn = document.getElementById('audiobook-premium-ctrl-playpause');
+  if (ppBtn) ppBtn.textContent = '▶';
+  const statusPlayer = document.getElementById('audiobook-premium-player-status');
+  if (statusPlayer) statusPlayer.textContent = 'Pronto para ler';
+  abSetTheme(state.abTheme || 'sepia');
+  abSetNarrator(state.abNarrator || 'vagner');
   updatePremiumAudiobookProgress();
 }
 
@@ -5393,19 +5473,51 @@ document.getElementById('audiobook-premium-back-btn').addEventListener('click', 
   speechSynthesis.cancel();
   premiumAudiobookIsPlaying = false;
   document.getElementById('audiobook-premium-reader').style.display = 'none';
-  document.getElementById('audiobook-premium-shelf').style.display = 'flex';
+  document.getElementById('audiobook-premium-shelf-view').style.display = 'block';
   renderAudiobookShelf(document.getElementById('audiobook-premium-search').value);
 });
+
+function renderPremiumAudiobookTextPage() {
+  const textView = document.getElementById('audiobook-premium-text-view');
+  if (!textView || !premiumAudiobookChunks.length) return;
+  const currentPage = premiumAudiobookChunks[premiumAudiobookChunkIndex].page;
+  const pageChunks = premiumAudiobookChunks.filter((c) => c.page === currentPage);
+  const currentChunk = premiumAudiobookChunks[premiumAudiobookChunkIndex];
+
+  // Remove conteúdo anterior mas preserva os tap zones (primeiros 2 filhos)
+  const tapPrev = document.getElementById('audiobook-premium-tap-prev');
+  const tapNext = document.getElementById('audiobook-premium-tap-next');
+  textView.innerHTML = '';
+  if (tapPrev) textView.appendChild(tapPrev);
+  if (tapNext) textView.appendChild(tapNext);
+
+  pageChunks.forEach((chunk) => {
+    const span = document.createElement('span');
+    span.textContent = chunk.text + ' ';
+    if (chunk === currentChunk && premiumAudiobookIsPlaying) {
+      span.style.cssText = 'background:#e8dcc0; color:inherit; border-radius:3px; padding:1px 0;';
+    }
+    textView.appendChild(span);
+  });
+}
 
 function updatePremiumAudiobookProgress() {
   if (!premiumAudiobookChunks.length) return;
   const page = premiumAudiobookChunks[premiumAudiobookChunkIndex].page;
   const totalPages = premiumAudiobookChunks[premiumAudiobookChunks.length - 1].page;
-  document.getElementById('audiobook-premium-progress').textContent = `Página ${page} de ${totalPages}`;
+  const pct = Math.round((page / totalPages) * 100);
+
+  const progressEl = document.getElementById('audiobook-premium-progress');
+  const pctEl = document.getElementById('audiobook-premium-pct');
+  const barEl = document.getElementById('audiobook-premium-progress-bar');
+  if (progressEl) progressEl.textContent = `Página ${page} de ${totalPages}`;
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (barEl) barEl.style.width = `${pct}%`;
+
   const books = getAudiobookShelf();
   const book = books.find((b) => b.id === premiumAudiobookBookId);
   if (book) { book.lastPage = page; saveState(); }
-  renderPremiumAudiobookCurrentPage(); // Kindle: atualiza a página visual
+  renderPremiumAudiobookTextPage();
 }
 
 function premiumAudiobookSpeakCurrentChunk() {
@@ -5413,7 +5525,9 @@ function premiumAudiobookSpeakCurrentChunk() {
   const chunk = premiumAudiobookChunks[premiumAudiobookChunkIndex];
   const utter = new SpeechSynthesisUtterance(chunk.text);
   utter.lang = 'pt-BR';
-  utter.rate = parseFloat(document.getElementById('audiobook-premium-rate').value) || 1;
+  const rateEl = document.getElementById('audiobook-premium-rate');
+  utter.rate = parseFloat(rateEl ? rateEl.value : '1') || 1;
+  renderPremiumAudiobookTextPage(); // destaca trecho atual
   utter.onend = () => {
     if (!premiumAudiobookIsPlaying || premiumAudiobookIsPaused) return;
     if (premiumAudiobookChunkIndex < premiumAudiobookChunks.length - 1) {
@@ -5422,7 +5536,11 @@ function premiumAudiobookSpeakCurrentChunk() {
       premiumAudiobookSpeakCurrentChunk();
     } else {
       premiumAudiobookIsPlaying = false;
-      document.getElementById('audiobook-premium-ctrl-playpause').textContent = '▶️';
+      const ppBtn = document.getElementById('audiobook-premium-ctrl-playpause');
+      if (ppBtn) ppBtn.textContent = '▶';
+      const statusEl = document.getElementById('audiobook-premium-player-status');
+      if (statusEl) statusEl.textContent = 'Finalizado';
+      renderPremiumAudiobookTextPage();
     }
   };
   speechSynthesis.speak(utter);
@@ -5430,15 +5548,20 @@ function premiumAudiobookSpeakCurrentChunk() {
 
 function premiumAudiobookTogglePlayPause() {
   if (!premiumAudiobookChunks.length) return;
+  const ppBtn = document.getElementById('audiobook-premium-ctrl-playpause');
+  const statusEl = document.getElementById('audiobook-premium-player-status');
   if (premiumAudiobookIsPlaying) {
     speechSynthesis.cancel();
     premiumAudiobookIsPlaying = false;
     premiumAudiobookIsPaused = true;
-    document.getElementById('audiobook-premium-ctrl-playpause').textContent = '▶️';
+    if (ppBtn) ppBtn.textContent = '▶';
+    if (statusEl) statusEl.textContent = 'Pausado';
+    renderPremiumAudiobookTextPage();
   } else {
     premiumAudiobookIsPlaying = true;
     premiumAudiobookIsPaused = false;
-    document.getElementById('audiobook-premium-ctrl-playpause').textContent = '⏸';
+    if (ppBtn) ppBtn.textContent = '⏸';
+    if (statusEl) statusEl.textContent = 'Lendo em voz alta';
     premiumAudiobookSpeakCurrentChunk();
   }
 }
@@ -5458,6 +5581,109 @@ function premiumAudiobookSkipPage(direction) {
 document.getElementById('audiobook-premium-ctrl-playpause').addEventListener('click', premiumAudiobookTogglePlayPause);
 document.getElementById('audiobook-premium-ctrl-prev').addEventListener('click', () => premiumAudiobookSkipPage(-1));
 document.getElementById('audiobook-premium-ctrl-next').addEventListener('click', () => premiumAudiobookSkipPage(1));
+
+/* ── Audiobook Premium: tema, narrador, settings panel ─────────────────── */
+const AB_THEMES = {
+  sepia: { bg:'#f6f1e7', text:'#2b2620', dim:'#9b937f', border:'#e3dac6', accent:'#b08d57' },
+  white: { bg:'#ffffff', text:'#1a1a1a', dim:'#888888', border:'#e0e0e0', accent:'#4a90e2' },
+  dark:  { bg:'var(--c-bg)', text:'var(--c-text)', dim:'var(--c-text-dim)', border:'var(--c-border2)', accent:'var(--c-accent-blue)' },
+};
+
+function abSetTheme(theme) {
+  const reader = document.getElementById('audiobook-premium-reader');
+  if (!reader) return;
+  const t = AB_THEMES[theme] || AB_THEMES.sepia;
+  reader.style.setProperty('--ab-bg', t.bg);
+  reader.style.setProperty('--ab-text', t.text);
+  reader.style.setProperty('--ab-text-dim', t.dim);
+  reader.style.setProperty('--ab-border', t.border);
+  reader.style.setProperty('--ab-accent', t.accent);
+  ['sepia','white','dark'].forEach((id) => {
+    const btn = document.getElementById(`ab-theme-${id}`);
+    if (btn) btn.style.outline = id === theme ? '2.5px solid #8ab4f8' : 'none';
+  });
+  state.abTheme = theme;
+  saveState();
+}
+
+function abSetNarrator(narrator) {
+  const vBtn = document.getElementById('ab-narrator-vagner');
+  const jBtn = document.getElementById('ab-narrator-james');
+  if (vBtn) {
+    vBtn.style.background = narrator === 'vagner' ? 'var(--c-text)' : 'var(--c-bg)';
+    vBtn.style.color = narrator === 'vagner' ? 'var(--c-bg)' : 'var(--c-text)';
+  }
+  if (jBtn) {
+    jBtn.style.background = narrator === 'james' ? 'var(--c-text)' : 'var(--c-bg)';
+    jBtn.style.color = narrator === 'james' ? 'var(--c-bg)' : 'var(--c-text)';
+  }
+  state.abNarrator = narrator;
+  saveState();
+  const infoEl = document.getElementById('audiobook-premium-player-info');
+  const rateEl = document.getElementById('audiobook-premium-rate');
+  const rate = rateEl ? parseFloat(rateEl.value).toString().replace('.', ',') : '1';
+  if (infoEl) infoEl.textContent = `Narrador ${narrator === 'vagner' ? 'Vagner' : 'James'} · ${rate}x`;
+}
+
+function abOpenSettings() {
+  const panel = document.getElementById('audiobook-premium-settings-panel');
+  const backdrop = document.getElementById('audiobook-premium-settings-backdrop');
+  if (panel) panel.style.right = '0';
+  if (backdrop) backdrop.style.display = 'block';
+  // Sincroniza estado atual no painel
+  abSetTheme(state.abTheme || 'sepia');
+  abSetNarrator(state.abNarrator || 'vagner');
+  const rateEl = document.getElementById('audiobook-premium-rate');
+  const labelEl = document.getElementById('ab-rate-label');
+  if (rateEl && labelEl) labelEl.textContent = `${parseFloat(rateEl.value)}x`;
+}
+
+function abCloseSettings() {
+  const panel = document.getElementById('audiobook-premium-settings-panel');
+  const backdrop = document.getElementById('audiobook-premium-settings-backdrop');
+  if (panel) panel.style.right = '-100%';
+  if (backdrop) backdrop.style.display = 'none';
+}
+
+document.getElementById('audiobook-premium-settings-btn').addEventListener('click', abOpenSettings);
+document.getElementById('audiobook-premium-settings-close').addEventListener('click', abCloseSettings);
+document.getElementById('audiobook-premium-settings-backdrop').addEventListener('click', abCloseSettings);
+
+document.getElementById('ab-narrator-vagner').addEventListener('click', () => abSetNarrator('vagner'));
+document.getElementById('ab-narrator-james').addEventListener('click', () => abSetNarrator('james'));
+
+document.getElementById('ab-theme-sepia').addEventListener('click', () => abSetTheme('sepia'));
+document.getElementById('ab-theme-white').addEventListener('click', () => abSetTheme('white'));
+document.getElementById('ab-theme-dark').addEventListener('click', () => abSetTheme('dark'));
+
+document.getElementById('audiobook-premium-rate').addEventListener('input', (ev) => {
+  const val = parseFloat(ev.target.value);
+  const labelEl = document.getElementById('ab-rate-label');
+  if (labelEl) labelEl.textContent = `${val}x`;
+  const infoEl = document.getElementById('audiobook-premium-player-info');
+  if (infoEl) {
+    const narrator = state.abNarrator || 'vagner';
+    infoEl.textContent = `Narrador ${narrator === 'vagner' ? 'Vagner' : 'James'} · ${val}x`;
+  }
+});
+
+document.getElementById('ab-settings-go-shelf').addEventListener('click', () => {
+  abCloseSettings();
+  speechSynthesis.cancel();
+  premiumAudiobookIsPlaying = false;
+  document.getElementById('audiobook-premium-reader').style.display = 'none';
+  document.getElementById('audiobook-premium-shelf-view').style.display = 'block';
+  renderAudiobookShelf(document.getElementById('audiobook-premium-search').value);
+});
+
+document.getElementById('audiobook-premium-add-btn').addEventListener('click', () => {
+  const panel = document.getElementById('audiobook-premium-add-panel');
+  if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('audiobook-premium-add-close').addEventListener('click', () => {
+  document.getElementById('audiobook-premium-add-panel').style.display = 'none';
+});
 
 function buildPlayerResultRow(video, tipoLabel, tab, lista, index) {
   const row = document.createElement('div');
@@ -7541,7 +7767,12 @@ function openPremiumScreen(featureId) {
   if (screen) screen.style.display = 'block';
   document.getElementById('premium-feature-title').textContent = PREMIUM_SCREEN_TITLES[featureId] || '';
   document.getElementById('premium-feature-screen').classList.add('open');
-  if (featureId === 'audiobook-premium') renderAudiobookShelf('');
+  if (featureId === 'audiobook-premium') {
+    document.getElementById('audiobook-premium-shelf-view').style.display = 'block';
+    document.getElementById('audiobook-premium-reader').style.display = 'none';
+    document.getElementById('audiobook-premium-add-panel').style.display = 'none';
+    renderAudiobookShelf('');
+  }
 }
 
 document.querySelectorAll('.premium-nav-btn[data-premium-screen]').forEach((btn) => {
@@ -8695,5 +8926,39 @@ if (new URLSearchParams(window.location.search).get('autoplay') === '1') {
   window.addEventListener('load', () => setTimeout(() => playCircle.click(), 600));
 }
 </script>
+<!-- PAINEL DE CONFIGURAÇÕES do Audiobook Premium (desliza da direita) -->
+<div id="audiobook-premium-settings-panel" style="position:fixed; top:0; right:-100%; bottom:0; width:76%; max-width:280px; background:var(--c-surface); box-shadow:-8px 0 28px rgba(0,0,0,0.4); padding:20px 16px; display:flex; flex-direction:column; gap:16px; transition:right 0.25s ease; z-index:9999; overflow-y:auto;">
+  <div style="display:flex; align-items:center; justify-content:space-between;">
+    <span style="font-size:0.9rem; font-weight:600; color:var(--c-text);">Configurações</span>
+    <button type="button" id="audiobook-premium-settings-close" style="background:none; color:var(--c-text-dim); font-size:1.3rem; padding:0; line-height:1;">✕</button>
+  </div>
+
+  <div>
+    <div style="font-size:11px; color:var(--c-text-dim); margin-bottom:7px;">Narrador</div>
+    <div style="display:flex; gap:6px;">
+      <button id="ab-narrator-vagner" type="button" style="flex:1; border-radius:8px; padding:8px; font-size:12px; cursor:pointer; border:none;">Vagner</button>
+      <button id="ab-narrator-james" type="button" style="flex:1; border-radius:8px; padding:8px; font-size:12px; cursor:pointer; border:none;">James</button>
+    </div>
+    <div style="font-size:10px; color:var(--c-text-dim); margin-top:5px; line-height:1.4;">Preferência salva. A voz do TTS depende do Android.</div>
+  </div>
+
+  <div>
+    <div style="font-size:11px; color:var(--c-text-dim); margin-bottom:7px;">Velocidade: <span id="ab-rate-label">1x</span></div>
+    <input id="audiobook-premium-rate" type="range" min="0.5" max="2" step="0.1" value="1" style="width:100%;">
+  </div>
+
+  <div>
+    <div style="font-size:11px; color:var(--c-text-dim); margin-bottom:8px;">Tema</div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button id="ab-theme-sepia" type="button" aria-label="Sépia" title="Sépia" style="width:32px; height:32px; border-radius:50%; background:#f6f1e7; padding:0; cursor:pointer;"></button>
+      <button id="ab-theme-white" type="button" aria-label="Branco" title="Branco" style="width:32px; height:32px; border-radius:50%; background:#ffffff; border:2px solid var(--c-border2); padding:0; cursor:pointer;"></button>
+      <button id="ab-theme-dark" type="button" aria-label="Escuro" title="Escuro" style="width:32px; height:32px; border-radius:50%; background:#1a1a1a; border:2px solid transparent; padding:0; cursor:pointer;"></button>
+    </div>
+  </div>
+
+  <button type="button" id="ab-settings-go-shelf" style="background:none; border:none; border-top:1px solid var(--c-border2); color:var(--c-text); font-size:13px; text-align:left; padding:12px 0 4px; display:flex; align-items:center; gap:8px; cursor:pointer;">🔖 Voltar pra estante</button>
+</div>
+<div id="audiobook-premium-settings-backdrop" style="display:none; position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,0.2);"></div>
+
 </body>
 </html>
