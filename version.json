@@ -1,4 +1,4 @@
 {
-  "versionName": "4.56",
-  "notes": "Audiobook aceita link de pasta do Google Drive — mostra lista de PDFs pra escolher."
+  "versionName": "4.57",
+  "notes": "PDF do Drive agora abre pelo servidor (proxy), sem depender do link direto instável."
 }

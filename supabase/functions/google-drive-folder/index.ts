@@ -1,11 +1,15 @@
-// Supabase Edge Function — lista os PDFs de uma pasta pública do Google
-// Drive, pro recurso de "colar link do Drive" do Audiobook aceitar link de
-// pasta (com vários arquivos), não só de 1 arquivo específico.
-// Só funciona com pasta compartilhada como "Qualquer pessoa com o link"
-// (Leitor/Visualizador) — chave de API sozinha não acessa pasta privada.
-// Deploy: cole essa função numa function chamada "google-drive-folder" no painel do Supabase.
-// Secret: GOOGLE_DRIVE_API_KEY (chave de API do Google Cloud com a API do
-// Google Drive ativada — pode ser uma chave nova, restrita só a essa API).
+// Supabase Edge Function — dois modos:
+// 1. ?folderId=X  — lista os PDFs de uma pasta pública do Google Drive
+// 2. ?fileId=X    — baixa o conteúdo de um PDF e devolve pro app (proxy)
+//
+// O modo proxy (fileId) existe porque o truque antigo de download direto
+// (drive.google.com/uc?export=download) é instável e cada vez mais
+// bloqueado pelo Google, mostrando página de aviso em vez do PDF bruto.
+// O endpoint oficial da Drive API v3 (files.get?alt=media) é confiável,
+// mas precisa da chave de API — por isso passa pelo servidor, não pelo app.
+//
+// Deploy: cole essa função numa function chamada "google-drive-folder".
+// Secret: GOOGLE_DRIVE_API_KEY (chave de API com Google Drive API ativada).
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -21,9 +25,35 @@ Deno.serve(async (req: Request) => {
   }
 
   const url = new URL(req.url);
+  const fileId = (url.searchParams.get('fileId') || '').trim();
   const folderId = (url.searchParams.get('folderId') || '').trim();
+
+  // Modo 2: proxy de download do PDF — usa o endpoint oficial da API em vez
+  // do uc?export=download que o Google tem progressivamente bloqueado.
+  if (fileId) {
+    try {
+      const driveUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${apiKey}`;
+      const resp = await fetch(driveUrl);
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => resp.status.toString());
+        return Response.json({ error: `Não consegui baixar o arquivo: ${errText}` }, { headers: CORS_HEADERS, status: 502 });
+      }
+      // Repassa o conteúdo do PDF diretamente, adicionando os headers CORS
+      // necessários pro app conseguir ler — o Drive não os inclui por padrão.
+      return new Response(resp.body, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    } catch (e) {
+      return Response.json({ error: 'Erro ao baixar arquivo do Drive: ' + (e instanceof Error ? e.message : String(e)) }, { headers: CORS_HEADERS, status: 500 });
+    }
+  }
+
+  // Modo 1: listagem de PDFs de uma pasta pública.
   if (!folderId) {
-    return Response.json({ files: [], error: 'Faltando ID da pasta.' }, { headers: CORS_HEADERS });
+    return Response.json({ files: [], error: 'Faltando folderId ou fileId.' }, { headers: CORS_HEADERS });
   }
 
   try {
@@ -35,8 +65,6 @@ Deno.serve(async (req: Request) => {
     });
     const resp = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`).then((r) => r.json());
     if (resp.error) {
-      // Causa mais comum: pasta não está compartilhada publicamente, ou a
-      // chave não tem a API do Drive ativada/restrição errada.
       return Response.json({ files: [], error: resp.error.message || 'Erro ao acessar a pasta do Drive.' }, { headers: CORS_HEADERS });
     }
     const files = (resp.files || []).map((f: any) => ({ id: f.id, name: f.name, size: f.size ? Number(f.size) : null }));
@@ -45,6 +73,6 @@ Deno.serve(async (req: Request) => {
       error: files.length ? null : 'Nenhum PDF encontrado nessa pasta — confere se ela está compartilhada como "Qualquer pessoa com o link".',
     }, { headers: CORS_HEADERS });
   } catch (e) {
-    return Response.json({ files: [], error: 'Erro ao consultar o Google Drive: ' + e.message }, { headers: CORS_HEADERS });
+    return Response.json({ files: [], error: 'Erro ao consultar o Google Drive: ' + (e instanceof Error ? e.message : String(e)) }, { headers: CORS_HEADERS });
   }
 });

@@ -2569,8 +2569,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.56';
+const APP_VERSION = '4.57';
 const CHANGELOG = [
+  {
+    version: '4.57', date: '29/06/2026',
+    items: [
+      'Corrigido: PDF do Google Drive falhava ao abrir — agora baixa pelo servidor (proxy seguro via edge function) em vez do link direto instável do Drive',
+    ],
+  },
   {
     version: '4.56', date: '29/06/2026',
     items: [
@@ -4871,6 +4877,13 @@ document.getElementById('audiobook-file-input').addEventListener('change', (ev) 
   if (file) handleAudiobookFileSelected(file);
 });
 
+// URL do proxy de download do Drive (edge function) — mais confiável que
+// o uc?export=download que o Google vem bloqueando progressivamente.
+function driveFileProxyUrl(fileId) {
+  return `${SUPABASE_URL}/functions/v1/google-drive-folder?fileId=${encodeURIComponent(fileId)}`;
+}
+const driveProxyHeaders = { httpHeaders: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } };
+
 // Aceita os formatos comuns de link do Drive: /file/d/ID/view, ?id=ID,
 // ou o ID já "pelado" se a pessoa colar só ele.
 function extrairGoogleDriveFileId(link) {
@@ -4915,10 +4928,9 @@ async function carregarAudiobookDoGoogleDrive(fileId) {
   audiobookIsPlaying = false;
   audiobookIsPaused = false;
 
-  const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
   try {
     const pdfjsLib = await loadPdfjsLib();
-    const pdf = await pdfjsLib.getDocument({ url: directUrl }).promise;
+    const pdf = await pdfjsLib.getDocument({ url: driveFileProxyUrl(fileId), ...driveProxyHeaders }).promise;
     await processAudiobookPdf(pdf, 'PDF do Google Drive', `drive:${fileId}`, statusEl);
     audiobookSetLastDrive(fileId);
     renderAudiobookContinueButton();
@@ -5169,7 +5181,7 @@ async function openPremiumAudiobook(book) {
   statusEl.textContent = `Abrindo "${book.title}"...`;
   try {
     const pdfjsLib = await loadPdfjsLib();
-    const pdf = await pdfjsLib.getDocument({ url: `https://drive.google.com/uc?export=download&id=${book.driveFileId}` }).promise;
+    const pdf = await pdfjsLib.getDocument({ url: driveFileProxyUrl(book.driveFileId), ...driveProxyHeaders }).promise;
     await openOrAddPremiumAudiobook(pdf, book.title, book.fileKey, 'drive');
   } catch (e) {
     console.error('Erro ao abrir livro do Drive:', e);
@@ -5201,7 +5213,7 @@ async function addPremiumAudiobookFromDriveId(fileId, name, statusEl) {
   statusEl.textContent = `Adicionando "${name}"...`;
   try {
     const pdfjsLib = await loadPdfjsLib();
-    const pdf = await pdfjsLib.getDocument({ url: `https://drive.google.com/uc?export=download&id=${fileId}` }).promise;
+    const pdf = await pdfjsLib.getDocument({ url: driveFileProxyUrl(fileId), ...driveProxyHeaders }).promise;
     await openOrAddPremiumAudiobook(pdf, name, `drive:${fileId}`, 'drive');
   } catch (e) {
     console.error('Erro ao ler PDF do Google Drive:', e);
