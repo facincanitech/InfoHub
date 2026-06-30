@@ -2584,8 +2584,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.60';
+const APP_VERSION = '4.61';
 const CHANGELOG = [
+  {
+    version: '4.61', date: '30/06/2026',
+    items: [
+      'Audiobook: lista de PDFs da pasta e biblioteca Premium agora em ordem alfabética',
+    ],
+  },
   {
     version: '4.60', date: '30/06/2026',
     items: [
@@ -4958,7 +4964,8 @@ function extrairGoogleDriveFolderId(link) {
 function renderGoogleDrivePdfPicker(containerEl, files, onPick) {
   containerEl.innerHTML = '';
   containerEl.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;';
-  files.forEach((f) => {
+  const sorted = [...files].sort((a, b) => a.name.localeCompare(b.name, 'pt', { sensitivity: 'base' }));
+  sorted.forEach((f) => {
     const tile = document.createElement('div');
     tile.style.cssText = 'flex:0 0 calc(33% - 6px); background: var(--c-surface); border-radius:8px; padding:0; cursor:pointer; text-align:center; font-size:0.75rem; overflow:hidden;';
     tile.title = f.name;
@@ -5137,7 +5144,9 @@ function renderAudiobookShelf(filter) {
   const shelf = document.getElementById('audiobook-premium-shelf');
   const books = getAudiobookShelf();
   const term = (filter || '').toLowerCase();
-  const filtered = books.filter((b) => b.title.toLowerCase().includes(term));
+  const filtered = books
+    .filter((b) => b.title.toLowerCase().includes(term))
+    .sort((a, b) => a.title.localeCompare(b.title, 'pt', { sensitivity: 'base' }));
   shelf.innerHTML = '';
   if (!filtered.length) {
     shelf.innerHTML = `<div class="hint">${books.length ? 'Nenhum livro encontrado.' : 'Sua biblioteca está vazia — adiciona um PDF ou link do Drive acima.'}</div>`;
