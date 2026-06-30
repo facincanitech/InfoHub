@@ -97,12 +97,19 @@ public class PlayerPipPlugin extends Plugin {
                 // aparelho sem suporte — ignora
             }
         }
+        // addFlags/clearFlags precisa da UI thread — Capacitor chama @PluginMethod
+        // numa thread própria (CapacitorPlugins), não na main/UI, e o Android
+        // rejeita com CalledFromWrongThreadException se tentar tocar na janela
+        // de fora dela (era o crash no MultiSonor ao começar a tocar música).
         if (getActivity() != null) {
-            if (keepScreenOn) {
-                getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            } else {
-                getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            }
+            final boolean shouldKeep = keepScreenOn;
+            getActivity().runOnUiThread(() -> {
+                if (shouldKeep) {
+                    getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                } else {
+                    getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+            });
         }
         call.resolve();
     }

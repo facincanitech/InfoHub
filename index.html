@@ -2584,8 +2584,14 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.58';
+const APP_VERSION = '4.59';
 const CHANGELOG = [
+  {
+    version: '4.59', date: '30/06/2026',
+    items: [
+      'Corrigido: app fechava sozinho ao tocar música/vídeo — FLAG_KEEP_SCREEN_ON estava sendo setado na thread errada (CapacitorPlugins vs UI thread)',
+    ],
+  },
   {
     version: '4.58', date: '29/06/2026',
     items: [

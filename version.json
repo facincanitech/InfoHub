@@ -1,4 +1,4 @@
 {
-  "versionName": "4.58",
-  "notes": "Premium Audiobook Kindle: renderiza página atual. Free: UI reorganizada, grade de PDFs."
+  "versionName": "4.59",
+  "notes": "Corrigido crash ao tocar música — FLAG_KEEP_SCREEN_ON na thread errada."
 }
