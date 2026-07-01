@@ -5493,6 +5493,11 @@ async function openOrAddPremiumAudiobook(pdf, title, fileKey, source) {
     book = { id: `${Date.now()}`, title, fileKey, source, driveFileId: source === 'drive' ? fileKey.replace('drive:', '') : null, coverDataUrl, totalPages: pdf.numPages, lastPage: 1 };
     books.unshift(book);
     saveState();
+  } else if (!book.coverDataUrl) {
+    // Livro já existe mas sem capa — regenera agora
+    book.coverDataUrl = await renderPdfFirstPageCover(pdf);
+    saveState();
+    renderAudiobookShelf(document.getElementById('audiobook-premium-search').value);
   }
 
   premiumAudiobookChunks = chunks;
