@@ -1,4 +1,4 @@
 {
-  "versionName": "4.69",
-  "notes": "Fix PDF no iOS Safari (URL absoluta do worker); Premium persiste 7 dias sem precisar reconectar Google."
+  "versionName": "4.70",
+  "notes": "Fix crash de inicialização: renderAbDriveHistory/renderAbPremFolderHist envoltos em try-catch para não quebrar o init se o elemento não for encontrado."
 }

@@ -2641,7 +2641,7 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.69';
+const APP_VERSION = '4.70';
 const CHANGELOG = [
   {
     version: '4.62', date: '30/06/2026',
@@ -5125,7 +5125,7 @@ function renderAbDriveHistory() {
     });
   });
 }
-renderAbDriveHistory();
+try { renderAbDriveHistory(); } catch (_) {}
 
 function handleAudiobookGoogleDriveLink() {
   const input = document.getElementById('audiobook-drive-input');
@@ -5535,7 +5535,7 @@ function renderAbPremFolderHist() {
     });
   });
 }
-renderAbPremFolderHist();
+try { renderAbPremFolderHist(); } catch (_) {}
 
 document.getElementById('audiobook-premium-back-btn').addEventListener('click', () => {
   speechSynthesis.cancel();
