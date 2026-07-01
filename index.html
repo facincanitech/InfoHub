@@ -517,7 +517,12 @@
   .nav-mic-btn.mic-continuous { background: var(--md-voice); box-shadow: 0 0 0 6px rgba(255,255,255,0.08); }
   /* Audiobook word-by-word TTS highlight */
   .ab-word { border-radius: 2px; }
-  .ab-word-active { background: var(--ab-accent, #b08d57); color: var(--ab-bg, #f6f1e7); border-radius: 2px; padding: 0 1px; }
+  .ab-word-active { background: rgba(255,214,0,0.42); border-radius: 2px; padding: 0 1px; }
+  .ab-tab-active { background: var(--c-surface) !important; color: var(--c-text) !important; }
+  .ab-folder-row { border-radius:8px; border:1px solid var(--c-border2); margin-bottom:6px; overflow:hidden; }
+  .ab-folder-hdr { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--c-bg); cursor:pointer; gap:8px; }
+  .ab-folder-arrow { font-size:0.7rem; color:var(--c-text-dim); flex-shrink:0; display:inline-block; transition:transform 0.2s; }
+  .ab-folder-body { display:none; padding:6px; }
 </style>
 </head>
 <body>
@@ -772,31 +777,36 @@
         <!-- Inputs ocultos -->
         <input type="file" id="audiobook-premium-file-input" accept="application/pdf" style="display:none;">
 
-        <!-- Painel de adição (recolhido por padrão, abre com o + da estante) -->
-        <div id="audiobook-premium-add-panel" style="display:none; background:var(--c-surface); border-radius:12px; padding:14px; margin-bottom:14px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-            <span style="font-weight:600; font-size:0.9rem; color:var(--c-text);">Adicionar livro</span>
-            <button type="button" id="audiobook-premium-add-close" style="background:none; color:var(--c-text-dim); font-size:1.3rem; padding:0; line-height:1;">✕</button>
-          </div>
-          <button type="button" id="audiobook-premium-pick-btn" style="width:100%; margin-bottom:8px; font-size:0.85rem;">📂 Selecionar PDF do celular</button>
-          <div style="display:flex; gap:6px;">
-            <input type="text" id="audiobook-premium-drive-input" placeholder="Link do Google Drive" enterkeyhint="done" style="flex:1; background:var(--c-bg); border:1px solid var(--c-border2); color:var(--c-text); border-radius:8px; padding:8px 10px; font-size:0.85rem;">
-            <button type="button" id="audiobook-premium-drive-btn" style="flex-shrink:0; font-size:0.85rem; padding:8px 10px;">🔗</button>
-          </div>
-          <div id="audiobook-premium-folder-history" style="display:none; margin-top:6px;"></div>
-          <div id="audiobook-premium-status" class="hint" style="margin-top:8px; font-size:0.8rem;"></div>
-          <div id="audiobook-premium-drive-folder-list" style="display:none; margin-top:10px;"></div>
-        </div>
-
-        <!-- ESTANTE -->
+        <!-- ESTANTE + DRIVE com tabs -->
         <div id="audiobook-premium-shelf-view">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-            <span style="font-size:0.72rem; color:var(--c-text-dim); letter-spacing:0.06em; text-transform:uppercase;">Minha estante</span>
-            <button type="button" id="audiobook-premium-add-btn" style="background:none; color:var(--c-text-dim); font-size:1.4rem; padding:0; line-height:1; width:30px; height:30px; display:flex; align-items:center; justify-content:center;">＋</button>
+          <!-- Status compartilhado (acima das tabs) -->
+          <div id="audiobook-premium-status" class="hint" style="font-size:0.8rem; margin-bottom:6px; min-height:0;"></div>
+
+          <!-- Tab bar -->
+          <div style="display:flex; background:var(--c-bg); border-radius:10px; padding:3px; margin-bottom:14px; gap:3px;">
+            <button id="ab-tab-lib" type="button" class="ab-tab-active" style="flex:1; border-radius:8px; padding:8px 6px; font-size:0.8rem; font-weight:600; border:none; cursor:pointer; transition:background 0.15s,color 0.15s;">📱 Biblioteca</button>
+            <button id="ab-tab-drive" type="button" style="flex:1; border-radius:8px; padding:8px 6px; font-size:0.8rem; font-weight:600; background:none; color:var(--c-text-dim); border:none; cursor:pointer; transition:background 0.15s,color 0.15s;">☁️ Drive</button>
           </div>
-          <input type="text" id="audiobook-premium-search" placeholder="🔎 Buscar..." style="width:100%; margin-bottom:14px; background:var(--c-bg); border:1px solid var(--c-border2); color:var(--c-text); border-radius:8px; padding:8px 10px; font-size:0.85rem;">
-          <div id="audiobook-premium-shelf" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:10px;"></div>
-          <div id="audiobook-premium-shelf-count" class="hint" style="font-size:0.75rem;"></div>
+
+          <!-- Pane: Biblioteca (estante completa) -->
+          <div id="ab-pane-lib">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+              <input type="text" id="audiobook-premium-search" placeholder="🔎 Buscar..." style="flex:1; background:var(--c-bg); border:1px solid var(--c-border2); color:var(--c-text); border-radius:8px; padding:8px 10px; font-size:0.85rem;">
+              <button type="button" id="audiobook-premium-add-btn" title="Adicionar PDF do celular" style="flex-shrink:0; background:var(--c-surface); color:var(--c-text); font-size:1.2rem; padding:0; line-height:1; width:36px; height:36px; border-radius:8px; border:1px solid var(--c-border2); display:flex; align-items:center; justify-content:center; cursor:pointer;">＋</button>
+            </div>
+            <div id="audiobook-premium-shelf" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:10px;"></div>
+            <div id="audiobook-premium-shelf-count" class="hint" style="font-size:0.75rem;"></div>
+          </div>
+
+          <!-- Pane: Google Drive -->
+          <div id="ab-pane-drive" style="display:none;">
+            <div style="display:flex; gap:6px; margin-bottom:10px;">
+              <input type="text" id="audiobook-premium-drive-input" placeholder="Link da pasta do Google Drive" enterkeyhint="done" style="flex:1; background:var(--c-bg); border:1px solid var(--c-border2); color:var(--c-text); border-radius:8px; padding:8px 10px; font-size:0.85rem;">
+              <button type="button" id="audiobook-premium-drive-btn" style="flex-shrink:0; font-size:0.82rem; padding:8px 10px; border-radius:8px;">🔗 Sincronizar</button>
+            </div>
+            <div id="audiobook-premium-drive-folder-list" style="margin-bottom:10px;"></div>
+            <div id="audiobook-premium-folder-history"></div>
+          </div>
         </div>
 
         <!-- READER -->
@@ -1627,9 +1637,11 @@
   <div>
     <div style="font-size:11px; color:var(--c-text-dim); margin-bottom:8px;">Tema</div>
     <div style="display:flex; gap:10px; align-items:center;">
-      <button id="ab-theme-sepia" type="button" aria-label="Sépia" title="Sépia" style="width:32px; height:32px; border-radius:50%; background:#f6f1e7; padding:0; cursor:pointer;"></button>
-      <button id="ab-theme-white" type="button" aria-label="Branco" title="Branco" style="width:32px; height:32px; border-radius:50%; background:#ffffff; border:2px solid var(--c-border2); padding:0; cursor:pointer;"></button>
-      <button id="ab-theme-dark" type="button" aria-label="Escuro" title="Escuro" style="width:32px; height:32px; border-radius:50%; background:#1a1a1a; border:2px solid transparent; padding:0; cursor:pointer;"></button>
+      <button id="ab-theme-sepia" type="button" aria-label="Sépia" title="Sépia" style="width:28px; height:28px; border-radius:50%; background:#f6f1e7; padding:0; cursor:pointer;"></button>
+      <button id="ab-theme-white" type="button" aria-label="Branco" title="Branco" style="width:28px; height:28px; border-radius:50%; background:#ffffff; border:2px solid var(--c-border2); padding:0; cursor:pointer;"></button>
+      <button id="ab-theme-dark" type="button" aria-label="Escuro" title="Escuro" style="width:28px; height:28px; border-radius:50%; background:#1a1a1a; border:2px solid #555; padding:0; cursor:pointer;"></button>
+      <button id="ab-theme-gray" type="button" aria-label="Cinza" title="Cinza" style="width:28px; height:28px; border-radius:50%; background:#3c3c3c; border:2px solid #777; padding:0; cursor:pointer;"></button>
+      <button id="ab-theme-black" type="button" aria-label="Preto puro" title="Preto puro" style="width:28px; height:28px; border-radius:50%; background:#000000; border:2px solid #444; padding:0; cursor:pointer;"></button>
     </div>
   </div>
 
@@ -2733,7 +2745,7 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.73';
+const APP_VERSION = '4.74';
 const CHANGELOG = [
   {
     version: '4.73', date: '30/06/2026',
@@ -5365,10 +5377,6 @@ function renderAudiobookShelf(filter) {
     ? `${books.length} livro${books.length !== 1 ? 's' : ''}${inProgress ? ` · ${inProgress} em andamento` : ''}`
     : '';
 
-  if (!filtered.length && !books.length) {
-    shelf.innerHTML = `<div class="hint" style="grid-column:1/-1; padding:12px 0;">Toque em ＋ para adicionar seu primeiro livro.</div>`;
-  }
-
   filtered.forEach((book) => {
     const pct = book.totalPages ? Math.min(100, Math.round(((book.lastPage || 1) / book.totalPages) * 100)) : 0;
     const done = pct >= 100;
@@ -5398,6 +5406,9 @@ function renderAudiobookShelf(filter) {
     delBtn.style.cssText = 'position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:9px; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:2; line-height:1;';
     delBtn.addEventListener('click', (ev) => {
       ev.stopPropagation();
+      // Guarda posição antes de remover — quando re-adicionado, retoma de onde parou
+      if (!state.abPositions) state.abPositions = {};
+      state.abPositions[book.fileKey] = { lastPage: book.lastPage || 1, totalPages: book.totalPages || 0 };
       const idx = books.indexOf(book);
       if (idx !== -1) books.splice(idx, 1);
       saveState();
@@ -5427,18 +5438,9 @@ function renderAudiobookShelf(filter) {
     shelf.appendChild(card);
   });
 
-  // Card "+ adicionar" no final
-  const addCard = document.createElement('div');
-  addCard.style.cssText = 'cursor:pointer;';
-  const addCover = document.createElement('div');
-  addCover.style.cssText = 'aspect-ratio:3/4; border:1.5px dashed var(--c-border2); border-radius:6px; display:flex; align-items:center; justify-content:center; color:var(--c-text-dim); font-size:1.5rem; margin-bottom:6px;';
-  addCover.textContent = '＋';
-  addCard.appendChild(addCover);
-  addCard.addEventListener('click', () => {
-    const panel = document.getElementById('audiobook-premium-add-panel');
-    if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  });
-  shelf.appendChild(addCard);
+  if (!books.length) {
+    shelf.innerHTML = `<div class="hint" style="grid-column:1/-1; padding:12px 0;">Toque em ＋ para adicionar seu primeiro PDF.</div>`;
+  }
 }
 document.getElementById('audiobook-premium-search').addEventListener('input', (ev) => renderAudiobookShelf(ev.target.value));
 
@@ -5490,7 +5492,8 @@ async function openOrAddPremiumAudiobook(pdf, title, fileKey, source) {
 
   if (!book) {
     const coverDataUrl = await renderPdfFirstPageCover(pdf);
-    book = { id: `${Date.now()}`, title, fileKey, source, driveFileId: source === 'drive' ? fileKey.replace('drive:', '') : null, coverDataUrl, totalPages: pdf.numPages, lastPage: 1 };
+    const savedPos = (state.abPositions || {})[fileKey];
+    book = { id: `${Date.now()}`, title, fileKey, source, driveFileId: source === 'drive' ? fileKey.replace('drive:', '') : null, coverDataUrl, totalPages: pdf.numPages, lastPage: savedPos ? savedPos.lastPage : 1 };
     books.unshift(book);
     saveState();
   } else if (!book.coverDataUrl) {
@@ -5513,7 +5516,6 @@ async function openOrAddPremiumAudiobook(pdf, title, fileKey, source) {
   document.getElementById('audiobook-premium-title').textContent = book.title;
   abHideOverlayHeader();
   document.getElementById('audiobook-premium-shelf-view').style.display = 'none';
-  document.getElementById('audiobook-premium-add-panel').style.display = 'none';
   document.getElementById('audiobook-premium-reader').style.display = 'flex';
   const ppBtn = document.getElementById('audiobook-premium-ctrl-playpause');
   if (ppBtn) ppBtn.textContent = '▶';
@@ -5543,9 +5545,7 @@ function abShowOverlayHeader() {
 async function openPremiumAudiobook(book) {
   const statusEl = document.getElementById('audiobook-premium-status');
   if (book.source === 'local') {
-    const addPanel = document.getElementById('audiobook-premium-add-panel');
-    if (addPanel) addPanel.style.display = 'block';
-    statusEl.textContent = `Seleciona o arquivo "${book.title}" pra continuar de onde parou (pág. ${book.lastPage || 1}).`;
+    statusEl.textContent = `Seleciona o arquivo "${book.title}" pra continuar (pág. ${book.lastPage || 1}).`;
     document.getElementById('audiobook-premium-file-input').click();
     return;
   }
@@ -5553,7 +5553,6 @@ async function openPremiumAudiobook(book) {
   abHideOverlayHeader();
   document.getElementById('audiobook-premium-title').textContent = book.title;
   document.getElementById('audiobook-premium-shelf-view').style.display = 'none';
-  document.getElementById('audiobook-premium-add-panel').style.display = 'none';
   document.getElementById('audiobook-premium-reader').style.display = 'flex';
   const tv = document.getElementById('audiobook-premium-text-view');
   const tapPrev = document.getElementById('audiobook-premium-tap-prev');
@@ -5586,8 +5585,8 @@ async function openPremiumAudiobook(book) {
   }
 }
 
-document.getElementById('audiobook-premium-pick-btn').addEventListener('click', () => {
-  document.getElementById('audiobook-premium-file-input').click();
+document.getElementById('audiobook-premium-drive-input').addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') document.getElementById('audiobook-premium-drive-btn').click();
 });
 document.getElementById('audiobook-premium-file-input').addEventListener('change', async (ev) => {
   const file = ev.target.files && ev.target.files[0];
@@ -5627,7 +5626,7 @@ document.getElementById('audiobook-premium-drive-btn').addEventListener('click',
 
   const folderId = extrairGoogleDriveFolderId(link);
   if (folderId) {
-    listEl.style.display = 'none';
+    listEl.innerHTML = '';
     statusEl.textContent = 'Buscando PDFs na pasta...';
     try {
       const resp = await callEdgeFunction('google-drive-folder', { folderId });
@@ -5635,12 +5634,11 @@ document.getElementById('audiobook-premium-drive-btn').addEventListener('click',
         statusEl.textContent = resp.error || 'Nenhum PDF encontrado nessa pasta.';
         return;
       }
-      statusEl.textContent = `${resp.files.length} PDF(s) encontrados — escolhe um pra adicionar:`;
-      saveAbPremFolderHist(folderId, `Pasta Drive · ${resp.files.length} PDFs`);
-      renderGoogleDrivePdfPicker(listEl, resp.files, (f) => {
-        listEl.style.display = 'none';
-        addPremiumAudiobookFromDriveId(f.id, f.name, statusEl);
-      });
+      statusEl.textContent = `${resp.files.length} PDF(s) — toque para adicionar:`;
+      saveAbPremFolderHist(folderId, `Pasta Drive · ${resp.files.length} PDF(s)`, resp.files);
+      renderCachedDriveFiles(listEl, resp.files);
+      renderAbPremFolderHist();
+      input.value = '';
     } catch (e) {
       console.error('Erro ao buscar PDFs da pasta:', e);
       statusEl.textContent = 'Erro ao buscar PDFs dessa pasta.';
@@ -5657,44 +5655,80 @@ document.getElementById('audiobook-premium-drive-btn').addEventListener('click',
   input.value = '';
 });
 
-// ── Premium: histórico de pastas Drive (últimas 3) ────────────────────────
+// ── Premium: histórico de pastas Drive (últimas 5) com cascata ────────────
 function getAbPremFolderHist() {
   try { return JSON.parse(localStorage.getItem('infohub_abprem_folders') || '[]'); } catch { return []; }
 }
-function saveAbPremFolderHist(folderId, name) {
+function saveAbPremFolderHist(folderId, name, files) {
   const hist = getAbPremFolderHist().filter(h => h.id !== folderId);
-  hist.unshift({ id: folderId, name, ts: Date.now() });
-  localStorage.setItem('infohub_abprem_folders', JSON.stringify(hist.slice(0, 3)));
-  renderAbPremFolderHist();
+  hist.unshift({ id: folderId, name, files: files || [], ts: Date.now() });
+  localStorage.setItem('infohub_abprem_folders', JSON.stringify(hist.slice(0, 5)));
 }
+
+function renderCachedDriveFiles(container, files) {
+  container.innerHTML = '';
+  if (!files || !files.length) {
+    container.innerHTML = '<div style="font-size:0.78rem;color:var(--c-text-dim);padding:4px 2px;">Nenhum PDF encontrado.</div>';
+    return;
+  }
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:2px 0;';
+  files.forEach(f => {
+    const name = (f.name || '').replace(/\.pdf$/i, '');
+    const tile = document.createElement('div');
+    tile.style.cssText = 'cursor:pointer; border-radius:6px; overflow:hidden; background:var(--c-bg); border:1px solid var(--c-border2); font-size:0.65rem; text-align:center;';
+    tile.innerHTML = `<img src="https://drive.google.com/thumbnail?id=${f.id}&sz=w200-h200" loading="lazy" onerror="this.style.display='none'" style="width:100%;height:64px;object-fit:cover;display:block;"><div style="padding:3px 2px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${name}</div>`;
+    tile.addEventListener('click', () => addPremiumAudiobookFromDriveId(f.id, name, document.getElementById('audiobook-premium-status')));
+    grid.appendChild(tile);
+  });
+  container.appendChild(grid);
+}
+
 function renderAbPremFolderHist() {
   const hist = getAbPremFolderHist();
   const el = document.getElementById('audiobook-premium-folder-history');
-  if (!hist.length) { el.style.display = 'none'; return; }
-  el.style.display = 'block';
-  el.innerHTML = '<div style="font-size:0.7rem; color:var(--c-text-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Pastas recentes</div>' +
-    hist.map(h =>
-      `<button type="button" data-id="${h.id}" style="display:block; width:100%; text-align:left; background:var(--c-bg); color:var(--c-text); border-radius:6px; padding:6px 8px; margin-bottom:3px; font-size:0.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🗂 ${h.name}</button>`
-    ).join('');
-  el.querySelectorAll('button[data-id]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const folderId = btn.dataset.id;
-      const statusEl = document.getElementById('audiobook-premium-status');
-      const listEl = document.getElementById('audiobook-premium-drive-folder-list');
-      listEl.style.display = 'none';
-      statusEl.textContent = 'Buscando PDFs na pasta...';
-      callEdgeFunction('google-drive-folder', { folderId }).then(resp => {
-        if (resp.error || !resp.files || !resp.files.length) {
-          statusEl.textContent = resp.error || 'Nenhum PDF encontrado nessa pasta.';
-          return;
+  if (!el) return;
+  el.innerHTML = '';
+  if (!hist.length) return;
+  const label = document.createElement('div');
+  label.style.cssText = 'font-size:0.7rem; color:var(--c-text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em;';
+  label.textContent = 'Pastas recentes';
+  el.appendChild(label);
+  hist.forEach(folder => {
+    const row = document.createElement('div');
+    row.className = 'ab-folder-row';
+    const hdr = document.createElement('div');
+    hdr.className = 'ab-folder-hdr';
+    hdr.innerHTML = `<span style="font-size:0.82rem;color:var(--c-text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🗂 ${folder.name}</span><span class="ab-folder-arrow">▶</span>`;
+    const body = document.createElement('div');
+    body.className = 'ab-folder-body';
+    if (folder.files && folder.files.length) renderCachedDriveFiles(body, folder.files);
+    hdr.addEventListener('click', () => {
+      const isOpen = body.style.display !== 'none';
+      const arrow = hdr.querySelector('.ab-folder-arrow');
+      if (isOpen) {
+        body.style.display = 'none';
+        if (arrow) arrow.style.transform = '';
+      } else {
+        body.style.display = '';
+        if (arrow) arrow.style.transform = 'rotate(90deg)';
+        if (!folder.files || !folder.files.length) {
+          body.innerHTML = '<div style="font-size:0.78rem;color:var(--c-text-dim);padding:4px;">Buscando PDFs...</div>';
+          callEdgeFunction('google-drive-folder', { folderId: folder.id }).then(resp => {
+            if (resp.error || !resp.files || !resp.files.length) {
+              body.innerHTML = `<div style="font-size:0.78rem;color:var(--c-text-dim);padding:4px;">${resp.error || 'Nenhum PDF encontrado.'}</div>`;
+              return;
+            }
+            folder.files = resp.files;
+            saveAbPremFolderHist(folder.id, folder.name, resp.files);
+            renderCachedDriveFiles(body, resp.files);
+          }).catch(() => { body.innerHTML = '<div style="font-size:0.78rem;color:var(--c-text-dim);padding:4px;">Erro ao buscar PDFs.</div>'; });
         }
-        statusEl.textContent = `${resp.files.length} PDF(s) encontrados — escolhe um pra adicionar:`;
-        renderGoogleDrivePdfPicker(listEl, resp.files, (f) => {
-          listEl.style.display = 'none';
-          addPremiumAudiobookFromDriveId(f.id, f.name, statusEl);
-        });
-      }).catch(() => { statusEl.textContent = 'Erro ao buscar PDFs dessa pasta.'; });
+      }
     });
+    row.appendChild(hdr);
+    row.appendChild(body);
+    el.appendChild(row);
   });
 }
 try { renderAbPremFolderHist(); } catch (_) {}
@@ -5847,6 +5881,8 @@ const AB_THEMES = {
   sepia: { bg:'#f6f1e7', text:'#2b2620', dim:'#9b937f', border:'#e3dac6', accent:'#b08d57' },
   white: { bg:'#ffffff', text:'#1a1a1a', dim:'#888888', border:'#e0e0e0', accent:'#4a90e2' },
   dark:  { bg:'var(--c-bg)', text:'var(--c-text)', dim:'var(--c-text-dim)', border:'var(--c-border2)', accent:'var(--c-accent-blue)' },
+  gray:  { bg:'#3c3c3c', text:'#f0f0f0', dim:'#aaaaaa', border:'#555555', accent:'#8ab4f8' },
+  black: { bg:'#000000', text:'#ffffff', dim:'#999999', border:'#222222', accent:'#8ab4f8' },
 };
 
 function abSetTheme(theme) {
@@ -5960,6 +5996,8 @@ abGotoInput.addEventListener('keydown', (ev) => {
 document.getElementById('ab-theme-sepia').addEventListener('click', () => abSetTheme('sepia'));
 document.getElementById('ab-theme-white').addEventListener('click', () => abSetTheme('white'));
 document.getElementById('ab-theme-dark').addEventListener('click', () => abSetTheme('dark'));
+document.getElementById('ab-theme-gray').addEventListener('click', () => abSetTheme('gray'));
+document.getElementById('ab-theme-black').addEventListener('click', () => abSetTheme('black'));
 
 document.getElementById('audiobook-premium-rate').addEventListener('input', (ev) => {
   const val = parseFloat(ev.target.value);
@@ -5983,13 +6021,30 @@ document.getElementById('ab-settings-go-shelf').addEventListener('click', () => 
 });
 
 document.getElementById('audiobook-premium-add-btn').addEventListener('click', () => {
-  const panel = document.getElementById('audiobook-premium-add-panel');
-  if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('audiobook-premium-file-input').click();
 });
 
-document.getElementById('audiobook-premium-add-close').addEventListener('click', () => {
-  document.getElementById('audiobook-premium-add-panel').style.display = 'none';
-});
+function abSwitchTab(tab) {
+  const libPane = document.getElementById('ab-pane-lib');
+  const drivePane = document.getElementById('ab-pane-drive');
+  const libBtn = document.getElementById('ab-tab-lib');
+  const driveBtn = document.getElementById('ab-tab-drive');
+  if (tab === 'drive') {
+    if (libPane) libPane.style.display = 'none';
+    if (drivePane) drivePane.style.display = '';
+    libBtn.classList.remove('ab-tab-active'); libBtn.style.cssText += 'background:none; color:var(--c-text-dim);';
+    driveBtn.classList.add('ab-tab-active'); driveBtn.style.background = 'var(--c-surface)'; driveBtn.style.color = 'var(--c-text)';
+    renderAbPremFolderHist();
+  } else {
+    if (drivePane) drivePane.style.display = 'none';
+    if (libPane) libPane.style.display = '';
+    driveBtn.classList.remove('ab-tab-active'); driveBtn.style.cssText += 'background:none; color:var(--c-text-dim);';
+    libBtn.classList.add('ab-tab-active'); libBtn.style.background = 'var(--c-surface)'; libBtn.style.color = 'var(--c-text)';
+  }
+}
+
+document.getElementById('ab-tab-lib').addEventListener('click', () => abSwitchTab('lib'));
+document.getElementById('ab-tab-drive').addEventListener('click', () => abSwitchTab('drive'));
 
 function buildPlayerResultRow(video, tipoLabel, tab, lista, index) {
   const row = document.createElement('div');
@@ -8077,7 +8132,7 @@ function openPremiumScreen(featureId) {
   if (featureId === 'audiobook-premium') {
     document.getElementById('audiobook-premium-shelf-view').style.display = 'block';
     document.getElementById('audiobook-premium-reader').style.display = 'none';
-    document.getElementById('audiobook-premium-add-panel').style.display = 'none';
+    abSwitchTab('lib');
     renderAudiobookShelf('');
   }
 }

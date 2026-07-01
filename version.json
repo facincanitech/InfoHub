@@ -1,4 +1,4 @@
 {
-  "versionName": "4.73",
-  "notes": "Audiobook premium: highlight palavra-a-palavra com TTS, controle de fonte A-/A+, progresso na estante, seletor de página, fix livro local."
+  "versionName": "4.74",
+  "notes": "Audiobook premium: tabs Biblioteca/Drive, histórico cascata de pastas, temas cinza+preto, highlight amarelo TTS, posição persistida ao remover da estante."
 }
