@@ -6815,8 +6815,12 @@ function renderPlayerRadioResults(estacoes, error) {
     const row = renderPlayerRadioResultRow(est);
     const favBtn = document.createElement('button');
     favBtn.type = 'button';
-    favBtn.textContent = '⭐';
-    favBtn.addEventListener('click', () => addRadioFavorito(est));
+    favBtn.style.cssText = 'background:none; color:var(--c-text); font-size:1.2rem; padding:4px; flex-shrink:0;';
+    favBtn.textContent = isRadioFavoritada(est) ? '⭐' : '☆';
+    favBtn.addEventListener('click', () => {
+      toggleRadioFavorito(est);
+      favBtn.textContent = isRadioFavoritada(est) ? '⭐' : '☆';
+    });
     row.appendChild(favBtn);
     container.appendChild(row);
   });
