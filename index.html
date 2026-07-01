@@ -5792,7 +5792,7 @@ function updatePremiumAudiobookProgress() {
   const progressEl = document.getElementById('audiobook-premium-progress');
   const pctEl = document.getElementById('audiobook-premium-pct');
   const barEl = document.getElementById('audiobook-premium-progress-bar');
-  if (progressEl) progressEl.textContent = `Página ${page} de ${totalPages}`;
+  if (progressEl) progressEl.textContent = `${totalPages} pdf  ›  pg ${page}`;
   if (pctEl) pctEl.textContent = `${pct}%`;
   if (barEl) barEl.style.width = `${pct}%`;
 
