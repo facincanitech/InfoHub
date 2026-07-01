@@ -524,7 +524,10 @@
   <!-- ============ TAB: MEU DIA ============ -->
   <section class="tab active" id="tab-briefing">
     <div class="screen-header">
-      <h1>▶ Meu Dia</h1>
+      <div style="flex:1; min-width:0;">
+        <h1 style="margin-bottom:3px;">🔊 SonorHub</h1>
+        <div style="font-size:0.72rem; color:var(--c-text-dim); line-height:1.5;">Briefings · Música · Rádio<br>Seu dia completo em áudio.</div>
+      </div>
       <div class="header-actions" style="position: relative;">
         <button class="icon-btn" id="saved-header-btn">💾</button>
         <button class="icon-btn more-menu-btn">⋯</button>
@@ -544,6 +547,14 @@
         <button id="update-banner-download" type="button" style="background: var(--c-on-accent); color: var(--c-accent-blue); padding: 6px 10px; font-size: 0.78rem; border-radius: 6px; font-weight: 600; border:none; cursor:pointer;">Baixar</button>
       </div>
     </div>
+
+    <button type="button" id="download-app-row" style="width:100%; display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:var(--c-surface); border-radius:10px; margin-bottom:14px; cursor:pointer; border:none; text-align:left;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:1rem; flex-shrink:0;">📲</span>
+        <span style="font-size:13px; color:var(--c-text);">Baixar / compartilhar o app</span>
+      </div>
+      <span style="font-size:0.85rem; color:var(--c-text-dim);">›</span>
+    </button>
 
     <div class="md-settings-bento">
       <div class="md-bento-tile" id="custom-tile" style="--tile-color: var(--c-accent-blue);">
@@ -601,14 +612,6 @@
         </div>
       </div>
     </div>
-
-    <button type="button" id="download-app-row" style="width:100%; display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:var(--c-surface); border-radius:10px; margin-bottom:14px; cursor:pointer; border:none; text-align:left;">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:1rem; flex-shrink:0;">📲</span>
-        <span style="font-size:13px; color:var(--c-text);">Baixar / compartilhar o app</span>
-      </div>
-      <span style="font-size:0.85rem; color:var(--c-text-dim);">›</span>
-    </button>
 
     <div class="briefing-wrap">
       <div id="briefing-label">Configure suas categorias na aba Guia</div>
@@ -992,6 +995,37 @@
 
   <div id="voice-toast" class="voice-toast"></div>
   <div id="yt-snippet-player" style="position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden;"></div>
+</div>
+
+<!-- ============ BAIXAR / COMPARTILHAR (overlay) ============ -->
+<div class="overlay" id="download-share-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <button class="back-btn" id="download-share-back">←</button>
+      <h2>Baixar / Compartilhar</h2>
+    </div>
+
+    <!-- APK -->
+    <div style="background:var(--c-surface); border-radius:14px; padding:16px; margin-bottom:12px;">
+      <div style="font-size:0.72rem; color:var(--c-text-dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">📱 Instalar no Android</div>
+      <button type="button" id="dl-apk-btn" style="width:100%; background:var(--c-text); color:var(--c-bg); border-radius:12px; padding:14px; font-size:1rem; font-weight:700; display:flex; align-items:center; justify-content:center; gap:10px;">⬇ Baixar SonorHub.apk</button>
+      <p style="font-size:11px; color:var(--c-text-dim); margin-top:10px; line-height:1.5;">Abra o arquivo baixado e toque em <b style="color:var(--c-text);">Instalar</b>. Se aparecer aviso, habilite <b style="color:var(--c-text);">Instalar apps desconhecidos</b> nas configurações.</p>
+    </div>
+
+    <!-- Atalho -->
+    <div style="background:var(--c-surface); border-radius:14px; padding:16px; margin-bottom:12px;">
+      <div style="font-size:0.72rem; color:var(--c-text-dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">📲 Atalho na tela inicial</div>
+      <button type="button" id="dl-pwa-btn" style="width:100%; background:var(--c-surface-alt); color:var(--c-text); border:1px solid var(--c-border2); border-radius:12px; padding:14px; font-size:0.95rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:10px;">📲 Adicionar à tela inicial</button>
+      <p id="dl-pwa-hint" style="font-size:11px; color:var(--c-text-dim); margin-top:10px; line-height:1.5; display:none;"></p>
+    </div>
+
+    <!-- Compartilhar link -->
+    <div style="background:var(--c-surface); border-radius:14px; padding:16px;">
+      <div style="font-size:0.72rem; color:var(--c-text-dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">🔗 Compartilhar</div>
+      <button type="button" id="dl-share-btn" style="width:100%; background:var(--c-surface-alt); color:var(--c-text); border:1px solid var(--c-border2); border-radius:12px; padding:14px; font-size:0.95rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:10px;">🔗 Compartilhar link do app</button>
+      <p style="font-size:11px; color:var(--c-text-dim); margin-top:10px; line-height:1.5;">Envia o link da versão web, que funciona direto no navegador sem precisar instalar nada.</p>
+    </div>
+  </div>
 </div>
 
 <!-- ============ CENTRAL DE CONTAS (overlay) ============ -->
@@ -2677,8 +2711,12 @@ document.getElementById('privacy-close-btn').addEventListener('click', () => {
 
 // Versão mostrada aqui precisa bater com versionName do android/app/build.gradle
 // — atualiza os dois juntos sempre que reempacotar o APK pra distribuir.
-const APP_VERSION = '4.71';
+const APP_VERSION = '4.72';
 const CHANGELOG = [
+  {
+    version: '4.72', date: '30/06/2026',
+    notes: 'Header Meu Dia → SonorHub com tagline. Botão "Baixar/Compartilhar" subiu pro topo (abaixo do header). Overlay in-app no lugar de nova aba do browser, com download APK, atalho PWA e compartilhar link.',
+  },
   {
     version: '4.71', date: '30/06/2026',
     notes: 'Fix crash silencioso de init: painel de configurações do audiobook movido para antes do script (evita TypeError que impedia renderização das cards e init geral).',
@@ -8561,8 +8599,53 @@ document.getElementById('saved-header-btn').addEventListener('click', () => {
 document.getElementById('saved-close-btn').addEventListener('click', () => {
   document.getElementById('saved-overlay').classList.remove('open');
 });
+/* ── Overlay de baixar / compartilhar ────────────────────────────────────── */
+const downloadShareOverlay = document.getElementById('download-share-overlay');
 document.getElementById('download-app-row').addEventListener('click', () => {
-  tocarNoNavegador('https://facincanitech.github.io/SonorHub/downloads/');
+  downloadShareOverlay.classList.add('open');
+});
+document.getElementById('download-share-back').addEventListener('click', () => {
+  downloadShareOverlay.classList.remove('open');
+});
+
+let dlPwaPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  dlPwaPrompt = e;
+});
+
+document.getElementById('dl-apk-btn').addEventListener('click', () => {
+  tocarNoNavegador('https://facincanitech.github.io/SonorHub/downloads/SonorHub.apk');
+});
+
+document.getElementById('dl-pwa-btn').addEventListener('click', async () => {
+  if (dlPwaPrompt) {
+    dlPwaPrompt.prompt();
+    await dlPwaPrompt.userChoice;
+    dlPwaPrompt = null;
+    return;
+  }
+  const hint = document.getElementById('dl-pwa-hint');
+  hint.style.display = 'block';
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS) {
+    hint.innerHTML = 'No Safari: toque em <b>Compartilhar ⬆</b> → <b>Adicionar à Tela de Início</b>.';
+  } else {
+    hint.innerHTML = 'No Chrome: menu <b>⋮</b> → <b>Adicionar à tela inicial</b>.<br>No Chrome desktop: ícone de instalação na barra de endereço.';
+  }
+});
+
+document.getElementById('dl-share-btn').addEventListener('click', () => {
+  const url = 'https://facincanitech.github.io/SonorHub/';
+  if (navigator.share) {
+    navigator.share({ title: 'SonorHub', text: 'Seu dia completo em áudio — Briefings, Música, Rádio e mais.', url });
+  } else {
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('dl-share-btn');
+      btn.textContent = '✓ Link copiado!';
+      setTimeout(() => { btn.innerHTML = '🔗 Compartilhar link do app'; }, 2000);
+    }).catch(() => { tocarNoNavegador(url); });
+  }
 });
 
 document.querySelectorAll('.md-bento-tile').forEach((tile) => {

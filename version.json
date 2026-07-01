@@ -1,4 +1,4 @@
 {
-  "versionName": "4.71",
-  "notes": "Fix crash silencioso de init: painel de configurações do audiobook movido para antes do script, eliminando TypeError que impedia renderização das cards e inicialização geral."
+  "versionName": "4.72",
+  "notes": "Header Meu Dia virou SonorHub com tagline. Botão Baixar/Compartilhar no topo da tela. Overlay in-app: download APK, atalho PWA e compartilhar link."
 }

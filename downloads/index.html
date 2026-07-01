@@ -108,7 +108,10 @@
 </head>
 <body>
 
-  <div class="icon">🎵</div>
+  <div style="position:relative; display:flex; align-items:center; justify-content:center; margin-bottom:0;">
+    <a href="https://facincanitech.github.io/SonorHub/" style="position:absolute; left:0; top:50%; transform:translateY(-50%); color:#9aa0a6; font-size:1.4rem; text-decoration:none; line-height:1; padding:6px;" title="Voltar ao app">←</a>
+    <div class="icon" style="margin:0 0 16px;">🎵</div>
+  </div>
   <h1>SonorHub</h1>
   <p class="tagline">Música · Rádio · Audiobook · Místico<br>Seu dia em áudio.</p>
   <p class="version" id="version-text" style="display:none;"></p>
@@ -125,22 +128,19 @@
     </p>
   </div>
 
-  <!-- Card: usar no navegador -->
+  <!-- Card: atalho na tela inicial (PWA) -->
   <div class="card">
-    <div class="card-title">🌐 Usar pelo navegador</div>
+    <div class="card-title">📲 Atalho na tela inicial</div>
     <div class="uses-row" style="margin-bottom:14px;">
-      <div class="use-item">
-        <span class="use-icon">📱</span>
-        <span class="use-text"><b>Celular</b> — funciona direto no Chrome ou Safari, sem precisar instalar nada.</span>
-      </div>
       <div class="use-item">
         <span class="use-icon">💻</span>
         <span class="use-text"><b>PC / Mac</b> — abre no navegador igual qualquer site. Ideal pra ouvir sem tirar o celular do bolso.</span>
       </div>
     </div>
-    <a class="btn-web" href="https://facincanitech.github.io/SonorHub/" target="_blank">
-      🔗 Abrir SonorHub no navegador
-    </a>
+    <button class="btn-web" id="pwa-install-btn" style="cursor:pointer; border:1px solid #2a2d35;">
+      📲 Adicionar à tela inicial
+    </button>
+    <p class="install-hint" id="pwa-hint" style="margin-top:10px; display:none;"></p>
   </div>
 
   <footer>2026 · FacincaniTech</footer>
@@ -156,6 +156,30 @@
         }
       })
       .catch(() => {});
+
+    // PWA install / atalho na tela inicial
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+    });
+
+    document.getElementById('pwa-install-btn').addEventListener('click', () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        deferredInstallPrompt.userChoice.then(() => { deferredInstallPrompt = null; });
+        return;
+      }
+      // Fallback: detecta iOS ou mostra instrução genérica
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const hint = document.getElementById('pwa-hint');
+      hint.style.display = 'block';
+      if (isIOS) {
+        hint.innerHTML = 'No Safari: toque em <b>Compartilhar ⬆</b> → <b>Adicionar à Tela de Início</b>.';
+      } else {
+        hint.innerHTML = 'No Chrome: toque no menu <b>⋮</b> → <b>Adicionar à tela inicial</b>.<br>No Chrome desktop: clique no ícone de instalação na barra de endereço.';
+      }
+    });
   </script>
 </body>
 </html>
